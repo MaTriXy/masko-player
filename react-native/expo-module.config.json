@@ -1,0 +1,9 @@
+{
+  "platforms": ["apple", "android"],
+  "apple": {
+    "modules": ["MaskoPlayerModule"]
+  },
+  "android": {
+    "modules": ["ai.masko.player.reactnative.MaskoPlayerModule"]
+  }
+}

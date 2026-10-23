@@ -1,0 +1,21 @@
+{
+  "name": "load-refuses-missing-feature",
+  "about": "A delivery that requires a feature the player lacks is refused.",
+  "rules": [
+    "1.2"
+  ],
+  "canvas": "otto",
+  "patch": {
+    "delivery": {
+      "requires": [
+        "any-state",
+        "condition-groups",
+        "speech-bubbles"
+      ]
+    }
+  },
+  "expectLoad": {
+    "refused": "missing_feature"
+  },
+  "steps": []
+}

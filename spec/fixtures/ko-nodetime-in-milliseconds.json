@@ -1,0 +1,98 @@
+{
+  "name": "ko-nodetime-in-milliseconds",
+  "about": "node::nodeTime is in milliseconds: the coffee chain moves on after 4.2 s.",
+  "rules": ["8.2", "8.3", "5.3"],
+  "canvas": "ko-coffee",
+  "steps": [
+    {
+      "start": true,
+      "expect": {
+        "clock": 0,
+        "pose": "idle",
+        "clip": "loop-idle",
+        "next": null,
+        "events": ["pose:idle", "shown:loop-idle"]
+      }
+    },
+    {
+      "fire": "morningCoffeeRitual",
+      "expect": {
+        "clock": 0,
+        "pose": "idle",
+        "clip": "loop-idle",
+        "next": {
+          "clip": "enter-coffee-grind",
+          "at": "end"
+        },
+        "events": []
+      }
+    },
+    {
+      "loopEnded": true,
+      "expect": {
+        "clock": 4000,
+        "pose": "idle",
+        "clip": "enter-coffee-grind",
+        "next": null,
+        "events": ["shown:enter-coffee-grind"]
+      }
+    },
+    {
+      "clipEnded": true,
+      "expect": {
+        "clock": 6857,
+        "pose": "coffee-grind",
+        "clip": "loop-coffee-grind",
+        "next": null,
+        "events": ["pose:coffee-grind", "shown:loop-coffee-grind"]
+      }
+    },
+    {
+      "loopEnded": true,
+      "expect": {
+        "clock": 10857,
+        "pose": "coffee-grind",
+        "clip": "loop-coffee-grind",
+        "next": null,
+        "events": ["spent:action::morningCoffeeRitual", "shown:loop-coffee-grind"],
+        "values": {
+          "node::nodeTime": 4000,
+          "node::loopCount": 1
+        }
+      }
+    },
+    {
+      "advance": 200,
+      "expect": {
+        "clock": 11057,
+        "pose": "coffee-grind",
+        "clip": "loop-coffee-grind",
+        "next": null,
+        "events": []
+      }
+    },
+    {
+      "advance": 1,
+      "expect": {
+        "clock": 11058,
+        "pose": "coffee-grind",
+        "clip": "loop-coffee-grind",
+        "next": {
+          "clip": "coffee-grind-to-coffee-brew",
+          "at": "end"
+        },
+        "events": []
+      }
+    },
+    {
+      "loopEnded": true,
+      "expect": {
+        "clock": 14857,
+        "pose": "coffee-grind",
+        "clip": "coffee-grind-to-coffee-brew",
+        "next": null,
+        "events": ["shown:coffee-grind-to-coffee-brew"]
+      }
+    }
+  ]
+}

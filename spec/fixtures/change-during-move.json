@@ -1,0 +1,81 @@
+{
+  "name": "change-during-move",
+  "about": "Changes during a move are decided on when the move ends, with the latest values.",
+  "rules": ["10"],
+  "canvas": "otto",
+  "steps": [
+    {
+      "start": true,
+      "expect": {
+        "clock": 0,
+        "pose": "idle",
+        "clip": "loop-idle",
+        "next": null,
+        "events": ["pose:idle", "shown:loop-idle"]
+      }
+    },
+    {
+      "set": ["working", true],
+      "expect": {
+        "clock": 0,
+        "pose": "idle",
+        "clip": "loop-idle",
+        "next": {
+          "clip": "idle-to-watching",
+          "at": "end"
+        },
+        "events": []
+      }
+    },
+    {
+      "loopEnded": true,
+      "expect": {
+        "clock": 4000,
+        "pose": "idle",
+        "clip": "idle-to-watching",
+        "next": null,
+        "events": ["shown:idle-to-watching"]
+      }
+    },
+    {
+      "advance": 500,
+      "expect": {
+        "clock": 4500,
+        "pose": "idle",
+        "clip": "idle-to-watching",
+        "next": null,
+        "events": []
+      }
+    },
+    {
+      "set": ["attention", true],
+      "expect": {
+        "clock": 4500,
+        "pose": "idle",
+        "clip": "idle-to-watching",
+        "next": null,
+        "events": []
+      }
+    },
+    {
+      "set": ["working", false],
+      "expect": {
+        "clock": 4500,
+        "pose": "idle",
+        "clip": "idle-to-watching",
+        "next": null,
+        "events": []
+      }
+    },
+    {
+      "clipEnded": true,
+      "expect": {
+        "clock": 5000,
+        "pose": "watching",
+        "clip": "watching-to-alert",
+        "next": null,
+        "events": ["pose:watching", "shown:watching-to-alert"]
+      }
+    }
+  ]
+}

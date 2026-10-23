@@ -1,0 +1,71 @@
+{
+  "name": "no-play-once",
+  "about": "A pose is left as soon as a move from it wins, even before its loop plays.",
+  "rules": ["5.7", "10"],
+  "canvas": "ko-coffee",
+  "steps": [
+    {
+      "start": true,
+      "expect": {
+        "clock": 0,
+        "pose": "idle",
+        "clip": "loop-idle",
+        "next": null,
+        "events": ["pose:idle", "shown:loop-idle"]
+      }
+    },
+    {
+      "set": ["attention", true],
+      "expect": {
+        "clock": 0,
+        "pose": "idle",
+        "clip": "loop-idle",
+        "next": {
+          "clip": "enter-fan-wave",
+          "at": "end"
+        },
+        "events": []
+      }
+    },
+    {
+      "loopEnded": true,
+      "expect": {
+        "clock": 4000,
+        "pose": "idle",
+        "clip": "enter-fan-wave",
+        "next": null,
+        "events": ["shown:enter-fan-wave"]
+      }
+    },
+    {
+      "advance": 1000,
+      "expect": {
+        "clock": 5000,
+        "pose": "idle",
+        "clip": "enter-fan-wave",
+        "next": null,
+        "events": []
+      }
+    },
+    {
+      "set": ["attention", false],
+      "expect": {
+        "clock": 5000,
+        "pose": "idle",
+        "clip": "enter-fan-wave",
+        "next": null,
+        "events": []
+      }
+    },
+    {
+      "clipEnded": true,
+      "expect": {
+        "clock": 6000,
+        "pose": "fan-wave",
+        "clip": "return-fan-wave",
+        "next": null,
+        "events": ["pose:fan-wave", "shown:return-fan-wave"]
+      }
+    }
+  ]
+}

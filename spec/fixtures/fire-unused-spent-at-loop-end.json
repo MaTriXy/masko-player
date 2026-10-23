@@ -1,0 +1,50 @@
+{
+  "name": "fire-unused-spent-at-loop-end",
+  "about": "A fire nothing uses is spent at the next loop end and reported unused.",
+  "rules": ["3.3"],
+  "canvas": "otto",
+  "steps": [
+    {
+      "start": true,
+      "expect": {
+        "clock": 0,
+        "pose": "idle",
+        "clip": "loop-idle",
+        "next": null,
+        "events": ["pose:idle", "shown:loop-idle"]
+      }
+    },
+    {
+      "advance": 1000,
+      "expect": {
+        "clock": 1000,
+        "pose": "idle",
+        "clip": "loop-idle",
+        "next": null,
+        "events": []
+      }
+    },
+    {
+      "fire": "wave",
+      "expect": {
+        "clock": 1000,
+        "pose": "idle",
+        "clip": "loop-idle",
+        "next": null,
+        "events": [],
+        "fired": ["action::wave"]
+      }
+    },
+    {
+      "loopEnded": true,
+      "expect": {
+        "clock": 4000,
+        "pose": "idle",
+        "clip": "loop-idle",
+        "next": null,
+        "events": ["spent:action::wave:unused", "shown:loop-idle"],
+        "fired": []
+      }
+    }
+  ]
+}

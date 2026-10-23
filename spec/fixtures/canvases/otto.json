@@ -1,0 +1,291 @@
+{
+ "deliverySchemaVersion": 1,
+ "playerContract": 1,
+ "requires": [
+  "any-state",
+  "condition-groups"
+ ],
+ "target": "web",
+ "mode": "selected",
+ "runtimeGraph": {
+  "version": "2.1",
+  "name": "otto",
+  "initialNode": "idle",
+  "autoPlay": true,
+  "nodes": [
+   {
+    "id": "idle",
+    "name": "Idle"
+   },
+   {
+    "id": "watching",
+    "name": "Watching"
+   },
+   {
+    "id": "alert",
+    "name": "Alert"
+   },
+   {
+    "id": "celebrating",
+    "name": "Celebrating"
+   }
+  ],
+  "edges": [
+   {
+    "id": "loop-idle",
+    "source": "idle",
+    "target": "idle",
+    "isLoop": true,
+    "duration": 4,
+    "videos": {
+     "hevc": "https://example.invalid/loop-idle.mov",
+     "webm": "https://example.invalid/loop-idle.webm"
+    }
+   },
+   {
+    "id": "loop-watching",
+    "source": "watching",
+    "target": "watching",
+    "isLoop": true,
+    "duration": 4,
+    "videos": {
+     "hevc": "https://example.invalid/loop-watching.mov",
+     "webm": "https://example.invalid/loop-watching.webm"
+    }
+   },
+   {
+    "id": "loop-alert",
+    "source": "alert",
+    "target": "alert",
+    "isLoop": true,
+    "duration": 4,
+    "videos": {
+     "hevc": "https://example.invalid/loop-alert.mov",
+     "webm": "https://example.invalid/loop-alert.webm"
+    }
+   },
+   {
+    "id": "loop-celebrating",
+    "source": "celebrating",
+    "target": "celebrating",
+    "isLoop": true,
+    "duration": 4,
+    "videos": {
+     "hevc": "https://example.invalid/loop-celebrating.mov",
+     "webm": "https://example.invalid/loop-celebrating.webm"
+    }
+   },
+   {
+    "id": "idle-to-alert",
+    "source": "idle",
+    "target": "alert",
+    "isLoop": false,
+    "duration": 1,
+    "conditionGroups": [
+     [
+      {
+       "op": "==",
+       "input": "behavior::attention",
+       "value": true
+      }
+     ]
+    ],
+    "videos": {
+     "hevc": "https://example.invalid/idle-to-alert.mov",
+     "webm": "https://example.invalid/idle-to-alert.webm"
+    },
+    "priority": 30
+   },
+   {
+    "id": "watching-to-alert",
+    "source": "watching",
+    "target": "alert",
+    "isLoop": false,
+    "duration": 1,
+    "conditionGroups": [
+     [
+      {
+       "op": "==",
+       "input": "behavior::attention",
+       "value": true
+      }
+     ]
+    ],
+    "videos": {
+     "hevc": "https://example.invalid/watching-to-alert.mov",
+     "webm": "https://example.invalid/watching-to-alert.webm"
+    },
+    "priority": 30
+   },
+   {
+    "id": "idle-to-watching",
+    "source": "idle",
+    "target": "watching",
+    "isLoop": false,
+    "duration": 1,
+    "conditionGroups": [
+     [
+      {
+       "op": "==",
+       "input": "behavior::working",
+       "value": true
+      }
+     ]
+    ],
+    "videos": {
+     "hevc": "https://example.invalid/idle-to-watching.mov",
+     "webm": "https://example.invalid/idle-to-watching.webm"
+    },
+    "priority": 20
+   },
+   {
+    "id": "alert-to-watching",
+    "source": "alert",
+    "target": "watching",
+    "isLoop": false,
+    "duration": 1,
+    "conditionGroups": [
+     [
+      {
+       "op": "==",
+       "input": "behavior::attention",
+       "value": false
+      },
+      {
+       "op": "==",
+       "input": "behavior::working",
+       "value": true
+      }
+     ]
+    ],
+    "videos": {
+     "hevc": "https://example.invalid/alert-to-watching.mov",
+     "webm": "https://example.invalid/alert-to-watching.webm"
+    },
+    "priority": 20
+   },
+   {
+    "id": "watching-to-celebrating",
+    "source": "watching",
+    "target": "celebrating",
+    "isLoop": false,
+    "duration": 1,
+    "conditionGroups": [
+     [
+      {
+       "op": "==",
+       "input": "behavior::working",
+       "value": false
+      },
+      {
+       "op": "==",
+       "input": "behavior::attention",
+       "value": false
+      }
+     ]
+    ],
+    "videos": {
+     "hevc": "https://example.invalid/watching-to-celebrating.mov",
+     "webm": "https://example.invalid/watching-to-celebrating.webm"
+    },
+    "priority": 10
+   },
+   {
+    "id": "celebrating-to-idle",
+    "source": "celebrating",
+    "target": "idle",
+    "isLoop": false,
+    "duration": 1,
+    "conditionGroups": [
+     [
+      {
+       "op": "==",
+       "input": "behavior::working",
+       "value": false
+      },
+      {
+       "op": "==",
+       "input": "behavior::attention",
+       "value": false
+      }
+     ]
+    ],
+    "videos": {
+     "hevc": "https://example.invalid/celebrating-to-idle.mov",
+     "webm": "https://example.invalid/celebrating-to-idle.webm"
+    },
+    "priority": 5
+   },
+   {
+    "id": "alert-to-idle",
+    "source": "alert",
+    "target": "idle",
+    "isLoop": false,
+    "duration": 1,
+    "conditionGroups": [
+     [
+      {
+       "op": "==",
+       "input": "behavior::attention",
+       "value": false
+      },
+      {
+       "op": "==",
+       "input": "behavior::working",
+       "value": false
+      }
+     ]
+    ],
+    "videos": {
+     "hevc": "https://example.invalid/alert-to-idle.mov",
+     "webm": "https://example.invalid/alert-to-idle.webm"
+    },
+    "priority": 5
+   },
+   {
+    "id": "watching-to-idle",
+    "source": "watching",
+    "target": "idle",
+    "isLoop": false,
+    "duration": 1,
+    "conditionGroups": [
+     [
+      {
+       "op": "==",
+       "input": "behavior::working",
+       "value": false
+      },
+      {
+       "op": "==",
+       "input": "behavior::attention",
+       "value": false
+      }
+     ]
+    ],
+    "videos": {
+     "hevc": "https://example.invalid/watching-to-idle.mov",
+     "webm": "https://example.invalid/watching-to-idle.webm"
+    },
+    "priority": 1
+   }
+  ],
+  "inputs": [
+   {
+    "name": "behavior::attention",
+    "type": "boolean",
+    "default": false
+   },
+   {
+    "name": "behavior::working",
+    "type": "boolean",
+    "default": false
+   },
+   {
+    "name": "behavior::rest",
+    "type": "boolean",
+    "default": false
+   }
+  ],
+  "runtimeGraphSchemaVersion": 1
+ }
+}

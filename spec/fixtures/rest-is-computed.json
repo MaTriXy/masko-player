@@ -1,0 +1,109 @@
+{
+  "name": "rest-is-computed",
+  "about": "rest is on exactly when no other behavior is, whatever its default; apps cannot set it.",
+  "rules": ["3.4", "2.4", "3.2"],
+  "canvas": "ko-coffee",
+  "steps": [
+    {
+      "start": true,
+      "expect": {
+        "clock": 0,
+        "pose": "idle",
+        "clip": "loop-idle",
+        "next": null,
+        "events": ["pose:idle", "shown:loop-idle"],
+        "values": {
+          "rest": true
+        }
+      }
+    },
+    {
+      "set": ["working", true],
+      "expect": {
+        "clock": 0,
+        "pose": "idle",
+        "clip": "loop-idle",
+        "next": {
+          "clip": "enter-laptop-working",
+          "at": "end"
+        },
+        "events": [],
+        "values": {
+          "rest": false
+        }
+      }
+    },
+    {
+      "set": ["rest", true],
+      "expect": {
+        "clock": 0,
+        "pose": "idle",
+        "clip": "loop-idle",
+        "next": {
+          "clip": "enter-laptop-working",
+          "at": "end"
+        },
+        "events": ["error:read_only"],
+        "values": {
+          "rest": false
+        }
+      }
+    },
+    {
+      "loopEnded": true,
+      "expect": {
+        "clock": 4000,
+        "pose": "idle",
+        "clip": "enter-laptop-working",
+        "next": null,
+        "events": ["shown:enter-laptop-working"]
+      }
+    },
+    {
+      "clipEnded": true,
+      "expect": {
+        "clock": 6286,
+        "pose": "laptop-working",
+        "clip": "loop-laptop-working",
+        "next": null,
+        "events": ["pose:laptop-working", "shown:loop-laptop-working"]
+      }
+    },
+    {
+      "set": ["working", false],
+      "expect": {
+        "clock": 6286,
+        "pose": "laptop-working",
+        "clip": "loop-laptop-working",
+        "next": {
+          "clip": "return-laptop-working",
+          "at": "end"
+        },
+        "events": [],
+        "values": {
+          "rest": true
+        }
+      }
+    },
+    {
+      "loopEnded": true,
+      "expect": {
+        "clock": 10286,
+        "pose": "laptop-working",
+        "clip": "return-laptop-working",
+        "next": null,
+        "events": ["shown:return-laptop-working"]
+      }
+    },
+    {
+      "clipEnded": true,
+      "expect": {
+        "clock": 13045,
+        "pose": "idle",
+        "clip": "loop-idle",
+        "next": null,
+        "events": ["pose:idle", "shown:loop-idle"]
+      }
+    }
+  ]
+}

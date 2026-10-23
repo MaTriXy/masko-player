@@ -1,0 +1,50 @@
+{
+  "name": "pose-clip-with-no-length-fails",
+  "about": "A failed pose clip with no length becomes a 1 s still, so the mascot never shows stills in an endless loop.",
+  "rules": ["9.5"],
+  "canvas": "otto",
+  "patch": {
+    "edges": {
+      "loop-idle": {
+        "duration": 0
+      }
+    }
+  },
+  "steps": [
+    {
+      "failClip": "loop-idle",
+      "expect": {
+        "clock": 0,
+        "clip": null
+      }
+    },
+    {
+      "start": true,
+      "expect": {
+        "clock": 0,
+        "pose": "idle",
+        "clip": "still:idle",
+        "events": ["pose:idle", "error:clip_failed", "shown:still:idle"]
+      }
+    },
+    {
+      "advance": 999,
+      "expect": {
+        "clock": 999,
+        "clip": "still:idle",
+        "events": []
+      }
+    },
+    {
+      "advance": 1,
+      "expect": {
+        "clock": 1000,
+        "clip": "still:idle",
+        "values": {
+          "node::loopCount": 1
+        },
+        "events": ["error:clip_failed", "shown:still:idle"]
+      }
+    }
+  ]
+}

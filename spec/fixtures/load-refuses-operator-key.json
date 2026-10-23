@@ -1,0 +1,25 @@
+{
+  "name": "load-refuses-operator-key",
+  "about": "The Ko coffee graph as shipped wrote `operator`; it is refused, not read as ==.",
+  "rules": [
+    "1.3"
+  ],
+  "canvas": "ko-coffee",
+  "patch": {
+    "edges": {
+      "enter-fan-wave": {
+        "conditions": [
+          {
+            "input": "behavior::attention",
+            "value": true,
+            "operator": "=="
+          }
+        ]
+      }
+    }
+  },
+  "expectLoad": {
+    "refused": "unknown_condition_key"
+  },
+  "steps": []
+}

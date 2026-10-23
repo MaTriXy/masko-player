@@ -1,0 +1,84 @@
+{
+  "name": "fire-reaction-pose-plays-one-loop",
+  "about": "A fired reaction stays on through its pose's first loop, so the pose shows once.",
+  "rules": ["3.3", "5.5", "5.7"],
+  "canvas": "ko-coffee",
+  "steps": [
+    {
+      "start": true,
+      "expect": {
+        "clock": 0,
+        "pose": "idle",
+        "clip": "loop-idle",
+        "next": null,
+        "events": ["pose:idle", "shown:loop-idle"]
+      }
+    },
+    {
+      "fire": "boop",
+      "expect": {
+        "clock": 0,
+        "pose": "idle",
+        "clip": "loop-idle",
+        "next": {
+          "clip": "enter-overboop-fluster",
+          "at": "end"
+        },
+        "events": []
+      }
+    },
+    {
+      "loopEnded": true,
+      "expect": {
+        "clock": 4000,
+        "pose": "idle",
+        "clip": "enter-overboop-fluster",
+        "next": null,
+        "events": ["shown:enter-overboop-fluster"],
+        "fired": ["action::boop"]
+      }
+    },
+    {
+      "clipEnded": true,
+      "expect": {
+        "clock": 5333,
+        "pose": "overboop-fluster",
+        "clip": "loop-overboop-fluster",
+        "next": null,
+        "events": ["pose:overboop-fluster", "shown:loop-overboop-fluster"],
+        "fired": ["action::boop"]
+      }
+    },
+    {
+      "advance": 3800,
+      "expect": {
+        "clock": 9133,
+        "pose": "overboop-fluster",
+        "clip": "loop-overboop-fluster",
+        "next": null,
+        "events": []
+      }
+    },
+    {
+      "loopEnded": true,
+      "expect": {
+        "clock": 9333,
+        "pose": "overboop-fluster",
+        "clip": "return-overboop-fluster",
+        "next": null,
+        "events": ["spent:action::boop", "shown:return-overboop-fluster"],
+        "fired": []
+      }
+    },
+    {
+      "clipEnded": true,
+      "expect": {
+        "clock": 11151,
+        "pose": "idle",
+        "clip": "loop-idle",
+        "next": null,
+        "events": ["pose:idle", "shown:loop-idle"]
+      }
+    }
+  ]
+}

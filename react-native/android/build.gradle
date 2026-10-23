@@ -1,0 +1,39 @@
+apply plugin: 'com.android.library'
+
+group = 'ai.masko'
+version = '0.1.0'
+
+def expoModulesCorePlugin = new File(project(":expo-modules-core").projectDir.absolutePath, "ExpoModulesCorePlugin.gradle")
+apply from: expoModulesCorePlugin
+applyKotlinExpoModulesCorePlugin()
+useCoreDependencies()
+useDefaultAndroidSdkVersions()
+
+// ai.masko:player, the Kotlin player. In the masko-player repository it comes
+// from the library next door, published by scripts/build-react-native.sh;
+// `npm pack` copies that Maven repository into maven/ (scripts/vendor.mjs).
+def maskoPlayerRepository = [
+  file('../../android/player/build/repo'),
+  file('maven')
+].find { new File(it, 'ai/masko/player').isDirectory() }
+if (maskoPlayerRepository == null) {
+  throw new GradleException(
+    "ai.masko:player is missing: run scripts/build-react-native.sh in the masko-player repository.")
+}
+// The app resolves this library's dependencies with its own repositories.
+rootProject.allprojects {
+  repositories {
+    maven {
+      url = maskoPlayerRepository.toURI()
+      content { includeModule('ai.masko', 'player') }
+    }
+  }
+}
+
+android {
+  namespace "ai.masko.player.reactnative"
+}
+
+dependencies {
+  implementation 'ai.masko:player:0.1.0'
+}

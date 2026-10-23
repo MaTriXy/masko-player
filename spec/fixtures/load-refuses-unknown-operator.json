@@ -1,0 +1,27 @@
+{
+  "name": "load-refuses-unknown-operator",
+  "about": "An unknown operator refuses the release instead of reading as false.",
+  "rules": [
+    "1.3"
+  ],
+  "canvas": "otto",
+  "patch": {
+    "edges": {
+      "idle-to-alert": {
+        "conditionGroups": [
+          [
+            {
+              "input": "behavior::attention",
+              "op": "~=",
+              "value": true
+            }
+          ]
+        ]
+      }
+    }
+  },
+  "expectLoad": {
+    "refused": "unknown_operator"
+  },
+  "steps": []
+}

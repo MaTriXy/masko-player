@@ -1,0 +1,54 @@
+{
+  "name": "clip-never-shown-times-out",
+  "about": "A move that is not on screen 10 s after it was asked for counts as a clip that cannot play.",
+  "rules": ["9.3", "9.4"],
+  "canvas": "otto",
+  "loadMs": {
+    "idle-to-watching": 60000
+  },
+  "steps": [
+    {
+      "start": true,
+      "expect": {
+        "clock": 0,
+        "pose": "idle",
+        "clip": "loop-idle"
+      }
+    },
+    {
+      "set": ["working", true],
+      "expect": {
+        "next": {
+          "clip": "idle-to-watching",
+          "at": "end"
+        }
+      }
+    },
+    {
+      "loopEnded": true,
+      "expect": {
+        "clock": 4000,
+        "clip": "idle-to-watching",
+        "events": ["shown:idle-to-watching"]
+      }
+    },
+    {
+      "advance": 9999,
+      "expect": {
+        "clock": 13999,
+        "pose": "idle",
+        "clip": "idle-to-watching",
+        "events": []
+      }
+    },
+    {
+      "advance": 1,
+      "expect": {
+        "clock": 14000,
+        "pose": "watching",
+        "clip": "loop-watching",
+        "events": ["error:clip_timeout", "pose:watching", "shown:loop-watching"]
+      }
+    }
+  ]
+}

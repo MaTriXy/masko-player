@@ -1,0 +1,158 @@
+{
+  "name": "speed-from-canvas-number",
+  "about": "speedInput scales a clip by a canvas number, clamped, from its next start.",
+  "rules": ["9.2"],
+  "canvas": {
+    "deliverySchemaVersion": 1,
+    "playerContract": 1,
+    "requires": ["any-state", "condition-groups"],
+    "target": "web",
+    "mode": "selected",
+    "runtimeGraph": {
+      "runtimeGraphSchemaVersion": 1,
+      "version": "2.1",
+      "name": "scenario",
+      "initialNode": "a",
+      "autoPlay": true,
+      "nodes": [
+        {
+          "id": "a",
+          "name": "a"
+        }
+      ],
+      "edges": [
+        {
+          "id": "loop-a",
+          "source": "a",
+          "target": "a",
+          "isLoop": true,
+          "duration": 4,
+          "videos": {
+            "hevc": "https://example.invalid/loop-a.mov",
+            "webm": "https://example.invalid/loop-a.webm"
+          },
+          "speedInput": "tempo"
+        }
+      ],
+      "inputs": [
+        {
+          "name": "tempo",
+          "type": "number",
+          "default": 1
+        }
+      ]
+    }
+  },
+  "steps": [
+    {
+      "start": true,
+      "expect": {
+        "clock": 0,
+        "pose": "a",
+        "clip": "loop-a",
+        "next": null,
+        "events": ["pose:a", "shown:loop-a"]
+      }
+    },
+    {
+      "advance": 1000,
+      "expect": {
+        "clock": 1000,
+        "pose": "a",
+        "clip": "loop-a",
+        "next": null,
+        "events": []
+      }
+    },
+    {
+      "set": ["tempo", 2],
+      "expect": {
+        "clock": 1000,
+        "pose": "a",
+        "clip": "loop-a",
+        "next": null,
+        "events": []
+      }
+    },
+    {
+      "loopEnded": true,
+      "expect": {
+        "clock": 4000,
+        "pose": "a",
+        "clip": "loop-a",
+        "next": null,
+        "events": ["shown:loop-a"]
+      }
+    },
+    {
+      "loopEnded": true,
+      "expect": {
+        "clock": 6000,
+        "pose": "a",
+        "clip": "loop-a",
+        "next": null,
+        "events": ["shown:loop-a"]
+      }
+    },
+    {
+      "set": ["tempo", 10],
+      "expect": {
+        "clock": 6000,
+        "pose": "a",
+        "clip": "loop-a",
+        "next": null,
+        "events": []
+      }
+    },
+    {
+      "loopEnded": true,
+      "expect": {
+        "clock": 8000,
+        "pose": "a",
+        "clip": "loop-a",
+        "next": null,
+        "events": ["shown:loop-a"]
+      }
+    },
+    {
+      "loopEnded": true,
+      "expect": {
+        "clock": 9000,
+        "pose": "a",
+        "clip": "loop-a",
+        "next": null,
+        "events": ["shown:loop-a"]
+      }
+    },
+    {
+      "set": ["tempo", 0.05],
+      "expect": {
+        "clock": 9000,
+        "pose": "a",
+        "clip": "loop-a",
+        "next": null,
+        "events": []
+      }
+    },
+    {
+      "loopEnded": true,
+      "expect": {
+        "clock": 10000,
+        "pose": "a",
+        "clip": "loop-a",
+        "next": null,
+        "events": ["shown:loop-a"]
+      }
+    },
+    {
+      "loopEnded": true,
+      "expect": {
+        "clock": 30000,
+        "pose": "a",
+        "clip": "loop-a",
+        "next": null,
+        "events": ["shown:loop-a"]
+      }
+    }
+  ]
+}

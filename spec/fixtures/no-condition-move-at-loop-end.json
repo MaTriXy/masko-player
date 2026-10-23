@@ -1,0 +1,131 @@
+{
+  "name": "no-condition-move-at-loop-end",
+  "about": "A move with no conditions plays at the end of the loop, never as its pose is entered.",
+  "rules": ["2.1", "5.4"],
+  "canvas": {
+    "deliverySchemaVersion": 1,
+    "playerContract": 1,
+    "requires": ["any-state", "condition-groups"],
+    "target": "web",
+    "mode": "selected",
+    "runtimeGraph": {
+      "runtimeGraphSchemaVersion": 1,
+      "version": "2.1",
+      "name": "scenario",
+      "initialNode": "a",
+      "autoPlay": true,
+      "nodes": [
+        {
+          "id": "a",
+          "name": "a"
+        },
+        {
+          "id": "b",
+          "name": "b"
+        }
+      ],
+      "edges": [
+        {
+          "id": "loop-a",
+          "source": "a",
+          "target": "a",
+          "isLoop": true,
+          "duration": 2,
+          "videos": {
+            "hevc": "https://example.invalid/loop-a.mov",
+            "webm": "https://example.invalid/loop-a.webm"
+          }
+        },
+        {
+          "id": "loop-b",
+          "source": "b",
+          "target": "b",
+          "isLoop": true,
+          "duration": 4,
+          "videos": {
+            "hevc": "https://example.invalid/loop-b.mov",
+            "webm": "https://example.invalid/loop-b.webm"
+          }
+        },
+        {
+          "id": "a-to-b",
+          "source": "a",
+          "target": "b",
+          "isLoop": false,
+          "duration": 1,
+          "videos": {
+            "hevc": "https://example.invalid/a-to-b.mov",
+            "webm": "https://example.invalid/a-to-b.webm"
+          }
+        },
+        {
+          "id": "b-to-a",
+          "source": "b",
+          "target": "a",
+          "isLoop": false,
+          "duration": 1,
+          "videos": {
+            "hevc": "https://example.invalid/b-to-a.mov",
+            "webm": "https://example.invalid/b-to-a.webm"
+          },
+          "conditions": [
+            {
+              "input": "action::back",
+              "op": "==",
+              "value": true
+            }
+          ]
+        }
+      ],
+      "inputs": []
+    }
+  },
+  "steps": [
+    {
+      "start": true,
+      "expect": {
+        "clock": 0,
+        "pose": "a",
+        "clip": "loop-a",
+        "next": {
+          "clip": "a-to-b",
+          "at": "end"
+        },
+        "events": ["pose:a", "shown:loop-a"]
+      }
+    },
+    {
+      "advance": 1100,
+      "expect": {
+        "clock": 1100,
+        "pose": "a",
+        "clip": "loop-a",
+        "next": {
+          "clip": "a-to-b",
+          "at": "end"
+        },
+        "events": []
+      }
+    },
+    {
+      "loopEnded": true,
+      "expect": {
+        "clock": 2000,
+        "pose": "a",
+        "clip": "a-to-b",
+        "next": null,
+        "events": ["shown:a-to-b"]
+      }
+    },
+    {
+      "clipEnded": true,
+      "expect": {
+        "clock": 3000,
+        "pose": "b",
+        "clip": "loop-b",
+        "next": null,
+        "events": ["pose:b", "shown:loop-b"]
+      }
+    }
+  ]
+}

@@ -1,0 +1,84 @@
+{
+  "name": "person-move-interrupts-a-move",
+  "about": "A grab during a move stops that move and starts at once; letting go takes the shortest way home.",
+  "rules": ["10", "5.2", "6.2"],
+  "canvas": "ko-coffee",
+  "steps": [
+    {
+      "start": true,
+      "expect": {
+        "clock": 0,
+        "pose": "idle",
+        "clip": "loop-idle",
+        "next": null,
+        "events": ["pose:idle", "shown:loop-idle"]
+      }
+    },
+    {
+      "set": ["working", true],
+      "expect": {
+        "clock": 0,
+        "pose": "idle",
+        "clip": "loop-idle",
+        "next": {
+          "clip": "enter-laptop-working",
+          "at": "end"
+        },
+        "events": []
+      }
+    },
+    {
+      "loopEnded": true,
+      "expect": {
+        "clock": 4000,
+        "pose": "idle",
+        "clip": "enter-laptop-working",
+        "next": null,
+        "events": ["shown:enter-laptop-working"]
+      }
+    },
+    {
+      "advance": 1000,
+      "expect": {
+        "clock": 5000,
+        "pose": "idle",
+        "clip": "enter-laptop-working",
+        "next": null,
+        "events": []
+      }
+    },
+    {
+      "set": ["heldContact", true],
+      "expect": {
+        "clock": 5000,
+        "pose": "idle",
+        "clip": "enter-held-contact-squish",
+        "next": null,
+        "events": ["interrupted:enter-laptop-working", "shown:enter-held-contact-squish"]
+      }
+    },
+    {
+      "clipEnded": true,
+      "expect": {
+        "clock": 6333,
+        "pose": "held-contact-squish",
+        "clip": "loop-held-contact-squish",
+        "next": null,
+        "events": ["pose:held-contact-squish", "shown:loop-held-contact-squish"]
+      }
+    },
+    {
+      "set": ["heldContact", false],
+      "expect": {
+        "clock": 6333,
+        "pose": "held-contact-squish",
+        "clip": "loop-held-contact-squish",
+        "next": {
+          "clip": "return-held-contact-squish",
+          "at": "end"
+        },
+        "events": []
+      }
+    }
+  ]
+}

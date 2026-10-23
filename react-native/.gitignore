@@ -1,0 +1,11 @@
+node_modules/
+build/
+*.tgz
+# Made by the podspec (links to ../apple) or by `npm pack` (copies).
+ios/vendor/
+# Made by `npm pack`: ai.masko:player as a Maven repository.
+android/maven/
+android/build/
+android/.gradle/
+LICENSE
+THIRD_PARTY_NOTICES.md

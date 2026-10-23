@@ -1,0 +1,71 @@
+{
+  "name": "pose-clip-fails-keeps-counting",
+  "about": "A pose whose loop fails shows its still and keeps counting loops.",
+  "rules": ["9.5", "8.1"],
+  "canvas": "ko-coffee",
+  "steps": [
+    {
+      "failClip": "loop-paper-fold",
+      "expect": {
+        "clock": 0,
+        "pose": null,
+        "clip": null,
+        "next": null,
+        "events": []
+      }
+    },
+    {
+      "start": true,
+      "expect": {
+        "clock": 0,
+        "pose": "idle",
+        "clip": "loop-idle",
+        "next": null,
+        "events": ["pose:idle", "shown:loop-idle"]
+      }
+    },
+    {
+      "fire": "papercraftGift",
+      "expect": {
+        "clock": 0,
+        "pose": "idle",
+        "clip": "loop-idle",
+        "next": {
+          "clip": "enter-paper-fold",
+          "at": "end"
+        },
+        "events": []
+      }
+    },
+    {
+      "loopEnded": true,
+      "expect": {
+        "clock": 4000,
+        "pose": "idle",
+        "clip": "enter-paper-fold",
+        "next": null,
+        "events": ["shown:enter-paper-fold"]
+      }
+    },
+    {
+      "clipEnded": true,
+      "expect": {
+        "clock": 6286,
+        "pose": "paper-fold",
+        "clip": "still:paper-fold",
+        "next": null,
+        "events": ["pose:paper-fold", "error:clip_failed", "shown:still:paper-fold"]
+      }
+    },
+    {
+      "loopEnded": true,
+      "expect": {
+        "clock": 10286,
+        "pose": "paper-fold",
+        "clip": "paper-fold-to-paper-crane",
+        "next": null,
+        "events": ["spent:action::papercraftGift", "shown:paper-fold-to-paper-crane"]
+      }
+    }
+  ]
+}

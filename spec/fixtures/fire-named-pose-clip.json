@@ -1,0 +1,116 @@
+{
+  "name": "fire-named-pose-clip",
+  "about": "A fire with no move plays the pose's named clip once, at the next loop end.",
+  "rules": ["3.3", "5.5", "7.1", "7.2"],
+  "canvas": "ko-coffee",
+  "patch": {
+    "addEdges": [
+      {
+        "id": "loop-laptop-reading",
+        "source": "laptop-working",
+        "target": "laptop-working",
+        "isLoop": true,
+        "duration": 4,
+        "videos": {
+          "hevc": "https://example.invalid/loop-laptop-reading.mov",
+          "webm": "https://example.invalid/loop-laptop-reading.webm"
+        },
+        "conditions": [
+          {
+            "input": "action::reading",
+            "op": "==",
+            "value": true
+          }
+        ]
+      }
+    ]
+  },
+  "steps": [
+    {
+      "start": true,
+      "expect": {
+        "clock": 0,
+        "pose": "idle",
+        "clip": "loop-idle",
+        "next": null,
+        "events": ["pose:idle", "shown:loop-idle"]
+      }
+    },
+    {
+      "set": ["working", true],
+      "expect": {
+        "clock": 0,
+        "pose": "idle",
+        "clip": "loop-idle",
+        "next": {
+          "clip": "enter-laptop-working",
+          "at": "end"
+        },
+        "events": []
+      }
+    },
+    {
+      "loopEnded": true,
+      "expect": {
+        "clock": 4000,
+        "pose": "idle",
+        "clip": "enter-laptop-working",
+        "next": null,
+        "events": ["shown:enter-laptop-working"]
+      }
+    },
+    {
+      "clipEnded": true,
+      "expect": {
+        "clock": 6286,
+        "pose": "laptop-working",
+        "clip": "loop-laptop-working",
+        "next": null,
+        "events": ["pose:laptop-working", "shown:loop-laptop-working"]
+      }
+    },
+    {
+      "advance": 500,
+      "expect": {
+        "clock": 6786,
+        "pose": "laptop-working",
+        "clip": "loop-laptop-working",
+        "next": null,
+        "events": []
+      }
+    },
+    {
+      "fire": "reading",
+      "expect": {
+        "clock": 6786,
+        "pose": "laptop-working",
+        "clip": "loop-laptop-working",
+        "next": null,
+        "events": [],
+        "fired": ["action::reading"]
+      }
+    },
+    {
+      "loopEnded": true,
+      "expect": {
+        "clock": 10286,
+        "pose": "laptop-working",
+        "clip": "loop-laptop-reading",
+        "next": null,
+        "events": ["shown:loop-laptop-reading"],
+        "fired": ["action::reading"]
+      }
+    },
+    {
+      "loopEnded": true,
+      "expect": {
+        "clock": 14286,
+        "pose": "laptop-working",
+        "clip": "loop-laptop-working",
+        "next": null,
+        "events": ["spent:action::reading", "shown:loop-laptop-working"],
+        "fired": []
+      }
+    }
+  ]
+}

@@ -1,0 +1,86 @@
+{
+  "name": "set-on-trigger-fires",
+  "about": "Setting a trigger input on fires it once; the reaction plays and does not come back.",
+  "rules": ["3.2", "3.3"],
+  "canvas": "ko-coffee",
+  "steps": [
+    {
+      "start": true,
+      "expect": {
+        "clock": 0,
+        "pose": "idle",
+        "clip": "loop-idle",
+        "next": null,
+        "events": ["pose:idle", "shown:loop-idle"]
+      }
+    },
+    {
+      "set": ["idleStretch", true],
+      "expect": {
+        "clock": 0,
+        "pose": "idle",
+        "clip": "loop-idle",
+        "next": {
+          "clip": "enter-idle-stretch",
+          "at": "end"
+        },
+        "events": [],
+        "fired": ["action::idleStretch"]
+      }
+    },
+    {
+      "loopEnded": true,
+      "expect": {
+        "clock": 4000,
+        "pose": "idle",
+        "clip": "enter-idle-stretch",
+        "next": null,
+        "events": ["shown:enter-idle-stretch"]
+      }
+    },
+    {
+      "clipEnded": true,
+      "expect": {
+        "clock": 6857,
+        "pose": "idle-stretch",
+        "clip": "loop-idle-stretch",
+        "next": null,
+        "events": ["pose:idle-stretch", "shown:loop-idle-stretch"]
+      }
+    },
+    {
+      "loopEnded": true,
+      "expect": {
+        "clock": 9281,
+        "pose": "idle-stretch",
+        "clip": "return-idle-stretch",
+        "next": null,
+        "events": ["spent:action::idleStretch", "shown:return-idle-stretch"],
+        "fired": []
+      }
+    },
+    {
+      "clipEnded": true,
+      "expect": {
+        "clock": 11948,
+        "pose": "idle",
+        "clip": "loop-idle",
+        "next": null,
+        "events": ["pose:idle", "shown:loop-idle"]
+      }
+    },
+    {
+      "loopEnded": true,
+      "expect": {
+        "clock": 15948,
+        "pose": "idle",
+        "clip": "loop-idle",
+        "next": null,
+        "events": ["shown:loop-idle"],
+        "values": {
+          "idleStretch": false
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,54 @@
+{
+  "name": "pose-clip-safety-net",
+  "about": "A pose clip whose end is never reported still ends, so loops keep counting.",
+  "rules": ["9.3"],
+  "canvas": "otto",
+  "steps": [
+    {
+      "noEndSignal": "loop-idle",
+      "expect": {
+        "clock": 0,
+        "pose": null,
+        "clip": null,
+        "next": null,
+        "events": []
+      }
+    },
+    {
+      "start": true,
+      "expect": {
+        "clock": 0,
+        "pose": "idle",
+        "clip": "loop-idle",
+        "next": null,
+        "events": ["pose:idle", "shown:loop-idle"]
+      }
+    },
+    {
+      "advance": 4999,
+      "expect": {
+        "clock": 4999,
+        "pose": "idle",
+        "clip": "loop-idle",
+        "next": null,
+        "events": [],
+        "values": {
+          "node::loopCount": 0
+        }
+      }
+    },
+    {
+      "advance": 1,
+      "expect": {
+        "clock": 5000,
+        "pose": "idle",
+        "clip": "loop-idle",
+        "next": null,
+        "events": ["error:missing_end", "shown:loop-idle"],
+        "values": {
+          "node::loopCount": 1
+        }
+      }
+    }
+  ]
+}

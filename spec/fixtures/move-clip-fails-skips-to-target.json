@@ -1,0 +1,51 @@
+{
+  "name": "move-clip-fails-skips-to-target",
+  "about": "A move whose clip fails enters its target at once.",
+  "rules": ["9.4"],
+  "canvas": "otto",
+  "steps": [
+    {
+      "failClip": "idle-to-watching",
+      "expect": {
+        "clock": 0,
+        "pose": null,
+        "clip": null,
+        "next": null,
+        "events": []
+      }
+    },
+    {
+      "start": true,
+      "expect": {
+        "clock": 0,
+        "pose": "idle",
+        "clip": "loop-idle",
+        "next": null,
+        "events": ["pose:idle", "shown:loop-idle"]
+      }
+    },
+    {
+      "set": ["working", true],
+      "expect": {
+        "clock": 0,
+        "pose": "idle",
+        "clip": "loop-idle",
+        "next": {
+          "clip": "idle-to-watching",
+          "at": "end"
+        },
+        "events": []
+      }
+    },
+    {
+      "loopEnded": true,
+      "expect": {
+        "clock": 4000,
+        "pose": "watching",
+        "clip": "loop-watching",
+        "next": null,
+        "events": ["error:clip_failed", "pose:watching", "shown:loop-watching"]
+      }
+    }
+  ]
+}

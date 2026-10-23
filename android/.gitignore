@@ -1,0 +1,15 @@
+# Gradle and IDE state
+.gradle/
+.kotlin/
+build/
+local.properties
+.idea/
+*.iml
+
+# Built by scripts/build-android.sh
+player/src/main/jniLibs/
+player/src/main/generated/
+player/src/test/resources/darwin-*/
+player/src/test/resources/linux-*/
+*.so
+*.dylib

@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Script tag page</title>
+    <style>
+      body { margin: 0; background: #fff; }
+      #mascot { width: 240px; height: 240px; }
+    </style>
+    <!-- One script tag, as on Bubble or Webflow. -->
+    <script src="/dist/masko-player.js"></script>
+  </head>
+  <body>
+    <div id="mascot"></div>
+    <script>
+      // The page passes the delivery in; the harness only watches.
+      window.mascot = null;
+      window.start = function (delivery) {
+        window.mascot = MaskoPlayer.mount(document.getElementById('mascot'), { delivery: delivery });
+        return true;
+      };
+    </script>
+    <script type="module">
+      import { record, testDelivery, watch } from '/pages/harness.js';
+      window.testDelivery = testDelivery;
+      window.observe = () => {
+        window.events = record(window.mascot);
+        window.watcher = watch(document.querySelector('#mascot .masko-player'));
+        return true;
+      };
+      window.ready = true;
+    </script>
+  </body>
+</html>

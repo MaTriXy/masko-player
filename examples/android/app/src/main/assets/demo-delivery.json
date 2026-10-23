@@ -1,0 +1,30 @@
+{
+  "deliverySchemaVersion": 1,
+  "playerContract": 1,
+  "requires": [],
+  "runtimeGraph": {
+    "runtimeGraphSchemaVersion": 1,
+    "initialNode": "idle",
+    "autoPlay": true,
+    "nodes": [{ "id": "idle", "name": "Idle" }, { "id": "working", "name": "Working" }],
+    "inputs": [
+      { "name": "behavior::working", "type": "boolean", "default": false },
+      { "name": "behavior::celebrate", "type": "boolean", "default": false }
+    ],
+    "edges": [
+      { "id": "idle", "source": "idle", "target": "idle", "isLoop": true, "duration": 1.0,
+        "videos": { "stacked": "asset:///clips/red.mp4" } },
+      { "id": "celebrate", "source": "idle", "target": "idle", "isLoop": true, "duration": 0.6,
+        "conditions": [{ "input": "behavior::celebrate", "op": "==", "value": true }],
+        "videos": { "stacked": "asset:///clips/green.mp4" } },
+      { "id": "start-working", "source": "idle", "target": "working", "isLoop": false, "duration": 0.6,
+        "conditions": [{ "input": "behavior::working", "op": "==", "value": true }],
+        "videos": { "stacked": "asset:///clips/green.mp4" } },
+      { "id": "working", "source": "working", "target": "working", "isLoop": true, "duration": 1.0,
+        "videos": { "stacked": "asset:///clips/blue.mp4" } },
+      { "id": "stop-working", "source": "working", "target": "idle", "isLoop": false, "duration": 0.6,
+        "conditions": [{ "input": "behavior::working", "op": "==", "value": false }],
+        "videos": { "stacked": "asset:///clips/green.mp4" } }
+    ]
+  }
+}

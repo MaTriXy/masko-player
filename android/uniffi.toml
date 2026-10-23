@@ -1,0 +1,6 @@
+# UniFFI settings for the Kotlin bindings scripts/build-android.sh generates.
+# `android = true`: Android's SystemCleaner on API 34 and later, JNA's cleaner
+# before (lint-clean for minSdk 24).
+[crates.masko_player_ffi.bindings.kotlin]
+package_name = "ai.masko.player.engine"
+android = true

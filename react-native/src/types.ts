@@ -1,0 +1,72 @@
+// What the app gives and hears: the same names as the other players
+// (spec/player.md, "What the app sees").
+
+import type { ViewProps } from 'react-native';
+
+/** A release delivery, as the player reads it. Every other field is kept as given. */
+export interface Delivery {
+  deliverySchemaVersion: number;
+  runtimeGraph: { [key: string]: unknown };
+  [key: string]: unknown;
+}
+
+/**
+ * What `delivery` accepts: the delivery, its JSON, or the API response around
+ * it (`{ data: { delivery } }` from `GET .../releases/{id}/delivery`).
+ */
+export type DeliveryInput = Delivery | string | { delivery: Delivery } | { data: { delivery: Delivery } };
+
+/** A value for `set`: a boolean or a number. */
+export type Value = boolean | number;
+
+/** What a clip on screen is: a pose's clip or a move. */
+export type ClipKind = 'pose' | 'move';
+
+/** What the app hears. */
+export interface MaskoEvents {
+  /** The mascot entered a pose. */
+  pose: { pose: string };
+  /** A clip, or a pose's still (`still:<pose>`), is now on screen. */
+  clip: { clip: string; kind: ClipKind | 'still'; rate: number };
+  /** A fire is done: used by a start, or spent unused. `name` is the full name, as `action::boop`. */
+  reactionDone: { name: string; used: boolean };
+  /** A move with `movement` is now on screen: the app may move the mascot. */
+  movement: { edge: string; movement: unknown; rate: number; seconds: number };
+  /** Something went wrong, with a code from rules.md or the player. */
+  error: { code: string; detail?: string };
+}
+
+/** The clip on screen and its clip time, in seconds of its file. */
+export interface Position {
+  clip: string | null;
+  time: number;
+}
+
+/** What the ref gives: the same calls on every platform. */
+export interface MaskoHandle {
+  set(name: string, value: Value): void;
+  fire(name: string): void;
+  reset(): void;
+  play(): void;
+  pause(): void;
+  /** The clip on screen and its clip time in seconds. */
+  position(): Promise<Position>;
+  /** For editors and tools only (rules.md 13). */
+  preview: { showPose(id: string): void; playMove(id: string): void };
+}
+
+export interface MaskoViewProps extends ViewProps {
+  /** The release delivery, its JSON, or the API response around it. */
+  delivery: DeliveryInput;
+  /** Returns a fresh delivery of the same release, before signed links expire. */
+  getDelivery?: () => DeliveryInput | Promise<DeliveryInput>;
+  /** Lets clips with their own voice be heard. Off by default; edge sounds play either way. */
+  sound?: boolean;
+  /** Starts at once. Defaults to the canvas's `autoPlay`, else true. Read when a release loads. */
+  autoPlay?: boolean;
+  onPose?: (event: MaskoEvents['pose']) => void;
+  onClip?: (event: MaskoEvents['clip']) => void;
+  onReactionDone?: (event: MaskoEvents['reactionDone']) => void;
+  onMovement?: (event: MaskoEvents['movement']) => void;
+  onError?: (event: MaskoEvents['error']) => void;
+}

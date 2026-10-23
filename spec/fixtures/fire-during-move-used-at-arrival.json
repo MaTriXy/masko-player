@@ -1,0 +1,82 @@
+{
+  "name": "fire-during-move-used-at-arrival",
+  "about": "A fire during a move is used when the target is entered.",
+  "rules": ["3.3", "10"],
+  "canvas": "ko-coffee",
+  "steps": [
+    {
+      "start": true,
+      "expect": {
+        "clock": 0,
+        "pose": "idle",
+        "clip": "loop-idle",
+        "next": null,
+        "events": ["pose:idle", "shown:loop-idle"]
+      }
+    },
+    {
+      "set": ["working", true],
+      "expect": {
+        "clock": 0,
+        "pose": "idle",
+        "clip": "loop-idle",
+        "next": {
+          "clip": "enter-laptop-working",
+          "at": "end"
+        },
+        "events": []
+      }
+    },
+    {
+      "loopEnded": true,
+      "expect": {
+        "clock": 4000,
+        "pose": "idle",
+        "clip": "enter-laptop-working",
+        "next": null,
+        "events": ["shown:enter-laptop-working"]
+      }
+    },
+    {
+      "advance": 1000,
+      "expect": {
+        "clock": 5000,
+        "pose": "idle",
+        "clip": "enter-laptop-working",
+        "next": null,
+        "events": []
+      }
+    },
+    {
+      "fire": "boop",
+      "expect": {
+        "clock": 5000,
+        "pose": "idle",
+        "clip": "enter-laptop-working",
+        "next": null,
+        "events": [],
+        "fired": ["action::boop"]
+      }
+    },
+    {
+      "clipEnded": true,
+      "expect": {
+        "clock": 6286,
+        "pose": "laptop-working",
+        "clip": "return-laptop-working",
+        "next": null,
+        "events": ["pose:laptop-working", "shown:return-laptop-working"]
+      }
+    },
+    {
+      "clipEnded": true,
+      "expect": {
+        "clock": 9045,
+        "pose": "idle",
+        "clip": "enter-overboop-fluster",
+        "next": null,
+        "events": ["pose:idle", "shown:enter-overboop-fluster"]
+      }
+    }
+  ]
+}

@@ -1,0 +1,22 @@
+{
+  "name": "load-refuses-newer-delivery-first",
+  "about": "A newer delivery is refused for its version, whatever else changed in it.",
+  "rules": ["1.2"],
+  "canvas": "otto",
+  "patch": {
+    "delivery": {
+      "deliverySchemaVersion": 2,
+      "runtimeGraph": {
+        "edges": {
+          "by-id": {
+            "note": "a shape this player does not know"
+          }
+        }
+      }
+    }
+  },
+  "expectLoad": {
+    "refused": "unsupported_delivery"
+  },
+  "steps": []
+}

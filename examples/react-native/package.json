@@ -1,0 +1,25 @@
+{
+  "name": "masko-player-react-native-example",
+  "version": "0.1.0",
+  "private": true,
+  "main": "index.ts",
+  "scripts": {
+    "clips": "node server/serve.mjs",
+    "start": "expo start",
+    "ios": "expo run:ios",
+    "android": "expo run:android",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@masko/player-react-native": "file:../../react-native",
+    "expo": "54.0.38",
+    "expo-build-properties": "1.0.10",
+    "expo-status-bar": "3.0.9",
+    "react": "19.1.0",
+    "react-native": "0.81.5"
+  },
+  "devDependencies": {
+    "@types/react": "19.1.17",
+    "typescript": "5.9.3"
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "name": "load-refuses-unknown-contract",
+  "about": "A delivery for a newer rulebook is refused, not half played.",
+  "rules": [
+    "1.2"
+  ],
+  "canvas": "otto",
+  "patch": {
+    "delivery": {
+      "playerContract": 2
+    }
+  },
+  "expectLoad": {
+    "refused": "unsupported_contract"
+  },
+  "steps": []
+}

@@ -1,0 +1,73 @@
+{
+  "name": "fire-waits-for-its-clip",
+  "about": "A fired reaction waits for the loop end even past 4 s, then plays.",
+  "rules": ["3.3", "5.3"],
+  "canvas": "ko-coffee",
+  "patch": {
+    "edges": {
+      "loop-idle": {
+        "duration": 6
+      }
+    }
+  },
+  "steps": [
+    {
+      "start": true,
+      "expect": {
+        "clock": 0,
+        "pose": "idle",
+        "clip": "loop-idle",
+        "next": null,
+        "events": ["pose:idle", "shown:loop-idle"]
+      }
+    },
+    {
+      "advance": 1000,
+      "expect": {
+        "clock": 1000,
+        "pose": "idle",
+        "clip": "loop-idle",
+        "next": null,
+        "events": []
+      }
+    },
+    {
+      "fire": "boop",
+      "expect": {
+        "clock": 1000,
+        "pose": "idle",
+        "clip": "loop-idle",
+        "next": {
+          "clip": "enter-overboop-fluster",
+          "at": "end"
+        },
+        "events": [],
+        "fired": ["action::boop"]
+      }
+    },
+    {
+      "advance": 4500,
+      "expect": {
+        "clock": 5500,
+        "pose": "idle",
+        "clip": "loop-idle",
+        "next": {
+          "clip": "enter-overboop-fluster",
+          "at": "end"
+        },
+        "events": [],
+        "fired": ["action::boop"]
+      }
+    },
+    {
+      "loopEnded": true,
+      "expect": {
+        "clock": 6000,
+        "pose": "idle",
+        "clip": "enter-overboop-fluster",
+        "next": null,
+        "events": ["shown:enter-overboop-fluster"]
+      }
+    }
+  ]
+}

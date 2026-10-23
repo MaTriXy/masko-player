@@ -1,0 +1,194 @@
+{
+  "name": "start-chooses-first-pose",
+  "about": "Values set before start choose the first pose, entered without a clip.",
+  "rules": ["11.1", "11.3"],
+  "canvas": {
+    "deliverySchemaVersion": 1,
+    "playerContract": 1,
+    "requires": ["any-state", "condition-groups"],
+    "target": "web",
+    "mode": "selected",
+    "runtimeGraph": {
+      "runtimeGraphSchemaVersion": 1,
+      "version": "2.1",
+      "name": "scenario",
+      "initialNode": "egg",
+      "autoPlay": true,
+      "nodes": [
+        {
+          "id": "egg",
+          "name": "egg"
+        },
+        {
+          "id": "baby",
+          "name": "baby"
+        },
+        {
+          "id": "adult",
+          "name": "adult"
+        }
+      ],
+      "edges": [
+        {
+          "id": "loop-egg",
+          "source": "egg",
+          "target": "egg",
+          "isLoop": true,
+          "duration": 4,
+          "videos": {
+            "hevc": "https://example.invalid/loop-egg.mov",
+            "webm": "https://example.invalid/loop-egg.webm"
+          }
+        },
+        {
+          "id": "loop-baby",
+          "source": "baby",
+          "target": "baby",
+          "isLoop": true,
+          "duration": 4,
+          "videos": {
+            "hevc": "https://example.invalid/loop-baby.mov",
+            "webm": "https://example.invalid/loop-baby.webm"
+          }
+        },
+        {
+          "id": "loop-adult",
+          "source": "adult",
+          "target": "adult",
+          "isLoop": true,
+          "duration": 4,
+          "videos": {
+            "hevc": "https://example.invalid/loop-adult.mov",
+            "webm": "https://example.invalid/loop-adult.webm"
+          }
+        },
+        {
+          "id": "egg-to-baby",
+          "source": "egg",
+          "target": "baby",
+          "isLoop": false,
+          "duration": 1,
+          "videos": {
+            "hevc": "https://example.invalid/egg-to-baby.mov",
+            "webm": "https://example.invalid/egg-to-baby.webm"
+          },
+          "conditions": [
+            {
+              "input": "stage",
+              "op": "==",
+              "value": 1
+            }
+          ]
+        },
+        {
+          "id": "baby-to-adult",
+          "source": "baby",
+          "target": "adult",
+          "isLoop": false,
+          "duration": 1,
+          "videos": {
+            "hevc": "https://example.invalid/baby-to-adult.mov",
+            "webm": "https://example.invalid/baby-to-adult.webm"
+          },
+          "conditions": [
+            {
+              "input": "stage",
+              "op": ">=",
+              "value": 2
+            }
+          ]
+        },
+        {
+          "id": "any-baby",
+          "source": "*",
+          "target": "baby",
+          "isLoop": false,
+          "duration": 0,
+          "videos": {},
+          "conditions": [
+            {
+              "input": "stage",
+              "op": "==",
+              "value": 1
+            }
+          ],
+          "priority": 1
+        },
+        {
+          "id": "any-adult",
+          "source": "*",
+          "target": "adult",
+          "isLoop": false,
+          "duration": 0,
+          "videos": {},
+          "conditions": [
+            {
+              "input": "stage",
+              "op": ">=",
+              "value": 2
+            }
+          ],
+          "priority": 2
+        }
+      ],
+      "inputs": [
+        {
+          "name": "stage",
+          "type": "number",
+          "default": 0
+        }
+      ]
+    }
+  },
+  "steps": [
+    {
+      "set": ["stage", 2],
+      "expect": {
+        "clock": 0,
+        "pose": null,
+        "clip": null,
+        "next": null,
+        "events": [],
+        "values": {
+          "stage": 2
+        }
+      }
+    },
+    {
+      "start": true,
+      "expect": {
+        "clock": 0,
+        "pose": "adult",
+        "clip": "loop-adult",
+        "next": null,
+        "events": ["pose:adult", "shown:loop-adult"]
+      }
+    },
+    {
+      "reset": true,
+      "expect": {
+        "clock": 0,
+        "pose": "egg",
+        "clip": "loop-egg",
+        "next": null,
+        "events": ["pose:egg", "shown:loop-egg"],
+        "values": {
+          "stage": 0
+        }
+      }
+    },
+    {
+      "set": ["stage", 1],
+      "expect": {
+        "clock": 0,
+        "pose": "egg",
+        "clip": "loop-egg",
+        "next": {
+          "clip": "egg-to-baby",
+          "at": "end"
+        },
+        "events": []
+      }
+    }
+  ]
+}

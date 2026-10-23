@@ -1,0 +1,12 @@
+node_modules/
+dist/
+src/wasm/
+test-results/
+playwright-report/
+test/browser/.clips/
+test/browser/.cache/
+test/browser/.build/
+*.tgz
+# Copied from the repository root by prepack
+/LICENSE
+/THIRD_PARTY_NOTICES.md

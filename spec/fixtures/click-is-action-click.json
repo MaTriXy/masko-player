@@ -1,0 +1,71 @@
+{
+  "name": "click-is-action-click",
+  "about": "A click fires action::click and its move starts at once.",
+  "rules": ["3.5", "5.2"],
+  "canvas": "ko-coffee",
+  "patch": {
+    "addEdges": [
+      {
+        "id": "enter-click-bow",
+        "source": "idle",
+        "target": "bow-greeting",
+        "isLoop": false,
+        "duration": 4,
+        "videos": {
+          "hevc": "https://example.invalid/enter-click-bow.mov",
+          "webm": "https://example.invalid/enter-click-bow.webm"
+        },
+        "conditions": [
+          {
+            "input": "action::click",
+            "op": "==",
+            "value": true
+          }
+        ]
+      }
+    ]
+  },
+  "steps": [
+    {
+      "start": true,
+      "expect": {
+        "clock": 0,
+        "pose": "idle",
+        "clip": "loop-idle",
+        "next": null,
+        "events": ["pose:idle", "shown:loop-idle"]
+      }
+    },
+    {
+      "advance": 2000,
+      "expect": {
+        "clock": 2000,
+        "pose": "idle",
+        "clip": "loop-idle",
+        "next": null,
+        "events": []
+      }
+    },
+    {
+      "click": true,
+      "expect": {
+        "clock": 2000,
+        "pose": "idle",
+        "clip": "enter-click-bow",
+        "next": null,
+        "events": ["shown:enter-click-bow"],
+        "fired": ["action::click"]
+      }
+    },
+    {
+      "clipEnded": true,
+      "expect": {
+        "clock": 6000,
+        "pose": "bow-greeting",
+        "clip": "loop-bow-greeting",
+        "next": null,
+        "events": ["pose:bow-greeting", "shown:loop-bow-greeting"]
+      }
+    }
+  ]
+}

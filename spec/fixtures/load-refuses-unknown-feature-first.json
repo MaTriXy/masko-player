@@ -1,0 +1,22 @@
+{
+  "name": "load-refuses-unknown-feature-first",
+  "about": "A feature the player does not implement is refused, whatever else changed in the delivery.",
+  "rules": ["1.2"],
+  "canvas": "otto",
+  "patch": {
+    "delivery": {
+      "requires": ["any-state", "timelines"],
+      "runtimeGraph": {
+        "edges": {
+          "by-id": {
+            "note": "a shape this player does not know"
+          }
+        }
+      }
+    }
+  },
+  "expectLoad": {
+    "refused": "missing_feature"
+  },
+  "steps": []
+}

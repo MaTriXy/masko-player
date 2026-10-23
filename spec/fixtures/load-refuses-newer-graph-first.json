@@ -1,0 +1,19 @@
+{
+  "name": "load-refuses-newer-graph-first",
+  "about": "A newer runtime graph is refused for its version, whatever else changed in it.",
+  "rules": ["1.2"],
+  "canvas": "otto",
+  "patch": {
+    "delivery": {
+      "runtimeGraph": {
+        "runtimeGraphSchemaVersion": 2,
+        "edges": null,
+        "nodes": "a shape this player does not know"
+      }
+    }
+  },
+  "expectLoad": {
+    "refused": "unsupported_graph"
+  },
+  "steps": []
+}

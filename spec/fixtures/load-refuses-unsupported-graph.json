@@ -1,0 +1,19 @@
+{
+  "name": "load-refuses-unsupported-graph",
+  "about": "A runtime graph schema the player does not know is refused.",
+  "rules": [
+    "1.2"
+  ],
+  "canvas": "otto",
+  "patch": {
+    "delivery": {
+      "runtimeGraph": {
+        "runtimeGraphSchemaVersion": 2
+      }
+    }
+  },
+  "expectLoad": {
+    "refused": "unsupported_graph"
+  },
+  "steps": []
+}

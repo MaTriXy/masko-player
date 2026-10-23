@@ -1,0 +1,3241 @@
+{
+ "deliverySchemaVersion": 1,
+ "playerContract": 1,
+ "requires": [
+  "any-state",
+  "condition-groups"
+ ],
+ "target": "macos",
+ "mode": "selected",
+ "runtimeGraph": {
+  "name": "Ko coffee graph repair",
+  "edges": [
+   {
+    "id": "loop-idle",
+    "name": "idle",
+    "speed": 1,
+    "isLoop": true,
+    "source": "idle",
+    "target": "idle",
+    "videos": {
+     "hevc": "https://example.invalid/loop-idle.mov"
+    },
+    "duration": 4,
+    "conditions": []
+   },
+   {
+    "id": "loop-fan-wave",
+    "name": "fan-wave",
+    "speed": 1,
+    "isLoop": true,
+    "source": "fan-wave",
+    "target": "fan-wave",
+    "videos": {
+     "hevc": "https://example.invalid/loop-fan-wave.mov"
+    },
+    "duration": 4,
+    "conditions": []
+   },
+   {
+    "id": "loop-bow-greeting",
+    "name": "bow-greeting",
+    "speed": 1,
+    "isLoop": true,
+    "source": "bow-greeting",
+    "target": "bow-greeting",
+    "videos": {
+     "hevc": "https://example.invalid/loop-bow-greeting.mov"
+    },
+    "duration": 4,
+    "conditions": []
+   },
+   {
+    "id": "loop-ink-brushing",
+    "name": "ink-brushing",
+    "speed": 1,
+    "isLoop": true,
+    "source": "ink-brushing",
+    "target": "ink-brushing",
+    "videos": {
+     "hevc": "https://example.invalid/loop-ink-brushing.mov"
+    },
+    "duration": 4,
+    "conditions": []
+   },
+   {
+    "id": "loop-patient-sit",
+    "name": "patient-sit",
+    "speed": 1,
+    "isLoop": true,
+    "source": "patient-sit",
+    "target": "patient-sit",
+    "videos": {
+     "hevc": "https://example.invalid/loop-patient-sit.mov"
+    },
+    "duration": 4,
+    "conditions": []
+   },
+   {
+    "id": "loop-victory-clap",
+    "name": "victory-clap",
+    "speed": 1,
+    "isLoop": true,
+    "source": "victory-clap",
+    "target": "victory-clap",
+    "videos": {
+     "hevc": "https://example.invalid/loop-victory-clap.mov"
+    },
+    "duration": 4,
+    "conditions": []
+   },
+   {
+    "id": "loop-startled-stumble",
+    "name": "startled-stumble",
+    "speed": 1,
+    "isLoop": true,
+    "source": "startled-stumble",
+    "target": "startled-stumble",
+    "videos": {
+     "hevc": "https://example.invalid/loop-startled-stumble.mov"
+    },
+    "duration": 4,
+    "conditions": []
+   },
+   {
+    "id": "loop-origami-fold",
+    "name": "origami-fold",
+    "speed": 1,
+    "isLoop": true,
+    "source": "origami-fold",
+    "target": "origami-fold",
+    "videos": {
+     "hevc": "https://example.invalid/loop-origami-fold.mov"
+    },
+    "duration": 4,
+    "conditions": []
+   },
+   {
+    "id": "enter-fan-wave",
+    "name": "idle -> fan-wave",
+    "speed": 2,
+    "isLoop": false,
+    "source": "idle",
+    "target": "fan-wave",
+    "videos": {
+     "hevc": "https://example.invalid/enter-fan-wave.mov"
+    },
+    "duration": 4,
+    "conditions": [
+     {
+      "input": "behavior::attention",
+      "value": true,
+      "op": "=="
+     }
+    ]
+   },
+   {
+    "id": "enter-bow-greeting",
+    "name": "idle -> bow-greeting",
+    "speed": 2,
+    "isLoop": false,
+    "source": "idle",
+    "target": "bow-greeting",
+    "videos": {
+     "hevc": "https://example.invalid/enter-bow-greeting.mov"
+    },
+    "duration": 4,
+    "conditions": [
+     {
+      "op": "==",
+      "input": "behavior::showcase",
+      "value": true
+     }
+    ]
+   },
+   {
+    "id": "enter-ink-brushing",
+    "name": "idle -> ink-brushing",
+    "speed": 2,
+    "isLoop": false,
+    "source": "idle",
+    "target": "ink-brushing",
+    "videos": {
+     "hevc": "https://example.invalid/enter-ink-brushing.mov"
+    },
+    "duration": 4,
+    "conditions": [
+     {
+      "input": "behavior::focus",
+      "value": true,
+      "op": "=="
+     }
+    ]
+   },
+   {
+    "id": "enter-patient-sit",
+    "name": "idle -> patient-sit",
+    "speed": 2,
+    "isLoop": false,
+    "source": "idle",
+    "target": "patient-sit",
+    "videos": {
+     "hevc": "https://example.invalid/enter-patient-sit.mov"
+    },
+    "duration": 4,
+    "conditions": [
+     {
+      "input": "behavior::waiting",
+      "value": true,
+      "op": "=="
+     }
+    ]
+   },
+   {
+    "id": "enter-victory-clap",
+    "name": "idle -> victory-clap",
+    "speed": 2,
+    "isLoop": false,
+    "source": "idle",
+    "target": "victory-clap",
+    "videos": {
+     "hevc": "https://example.invalid/enter-victory-clap.mov"
+    },
+    "duration": 4,
+    "conditions": [
+     {
+      "input": "behavior::celebrate",
+      "value": true,
+      "op": "=="
+     }
+    ]
+   },
+   {
+    "id": "enter-startled-stumble",
+    "name": "idle -> startled-stumble",
+    "speed": 2,
+    "isLoop": false,
+    "source": "idle",
+    "target": "startled-stumble",
+    "videos": {
+     "hevc": "https://example.invalid/enter-startled-stumble.mov"
+    },
+    "duration": 4,
+    "conditions": [
+     {
+      "input": "behavior::error",
+      "value": true,
+      "op": "=="
+     }
+    ]
+   },
+   {
+    "id": "enter-origami-fold",
+    "name": "idle -> origami-fold",
+    "speed": 2,
+    "isLoop": false,
+    "source": "idle",
+    "target": "origami-fold",
+    "videos": {
+     "hevc": "https://example.invalid/enter-origami-fold.mov"
+    },
+    "duration": 4,
+    "conditions": [
+     {
+      "input": "behavior::ambient",
+      "value": true,
+      "op": "=="
+     }
+    ]
+   },
+   {
+    "id": "return-fan-wave",
+    "name": "fan-wave -> idle",
+    "speed": 2,
+    "isLoop": false,
+    "source": "fan-wave",
+    "target": "idle",
+    "videos": {
+     "hevc": "https://example.invalid/return-fan-wave.mov"
+    },
+    "duration": 4,
+    "conditions": [
+     {
+      "input": "behavior::rest",
+      "value": true,
+      "op": "=="
+     }
+    ]
+   },
+   {
+    "id": "return-bow-greeting",
+    "name": "bow-greeting -> idle",
+    "speed": 2,
+    "isLoop": false,
+    "source": "bow-greeting",
+    "target": "idle",
+    "videos": {
+     "hevc": "https://example.invalid/return-bow-greeting.mov"
+    },
+    "duration": 4,
+    "conditions": [
+     {
+      "input": "node::nodeTime",
+      "value": 5,
+      "op": ">"
+     }
+    ]
+   },
+   {
+    "id": "return-ink-brushing",
+    "name": "ink-brushing -> idle",
+    "speed": 2,
+    "isLoop": false,
+    "source": "ink-brushing",
+    "target": "idle",
+    "videos": {
+     "hevc": "https://example.invalid/return-ink-brushing.mov"
+    },
+    "duration": 4,
+    "conditions": [
+     {
+      "input": "behavior::rest",
+      "value": true,
+      "op": "=="
+     }
+    ]
+   },
+   {
+    "id": "return-patient-sit",
+    "name": "patient-sit -> idle",
+    "speed": 2,
+    "isLoop": false,
+    "source": "patient-sit",
+    "target": "idle",
+    "videos": {
+     "hevc": "https://example.invalid/return-patient-sit.mov"
+    },
+    "duration": 4,
+    "conditions": [
+     {
+      "input": "behavior::rest",
+      "value": true,
+      "op": "=="
+     }
+    ]
+   },
+   {
+    "id": "return-victory-clap",
+    "name": "victory-clap -> idle",
+    "speed": 2,
+    "isLoop": false,
+    "source": "victory-clap",
+    "target": "idle",
+    "videos": {
+     "hevc": "https://example.invalid/return-victory-clap.mov"
+    },
+    "duration": 4,
+    "conditions": [
+     {
+      "input": "node::nodeTime",
+      "value": 6,
+      "op": ">"
+     }
+    ]
+   },
+   {
+    "id": "return-startled-stumble",
+    "name": "startled-stumble -> idle",
+    "speed": 2,
+    "isLoop": false,
+    "source": "startled-stumble",
+    "target": "idle",
+    "videos": {
+     "hevc": "https://example.invalid/return-startled-stumble.mov"
+    },
+    "duration": 4,
+    "conditions": [
+     {
+      "input": "node::nodeTime",
+      "value": 8,
+      "op": ">"
+     }
+    ]
+   },
+   {
+    "id": "return-origami-fold",
+    "name": "origami-fold -> idle",
+    "speed": 2,
+    "isLoop": false,
+    "source": "origami-fold",
+    "target": "idle",
+    "videos": {
+     "hevc": "https://example.invalid/return-origami-fold.mov"
+    },
+    "duration": 4,
+    "conditions": [
+     {
+      "input": "behavior::rest",
+      "value": true,
+      "op": "=="
+     }
+    ]
+   },
+   {
+    "id": "loop-music-walkman",
+    "name": "music-walkman",
+    "speed": 1,
+    "isLoop": true,
+    "source": "music-walkman",
+    "target": "music-walkman",
+    "videos": {
+     "hevc": "https://example.invalid/loop-music-walkman.mov"
+    },
+    "duration": 4,
+    "conditions": []
+   },
+   {
+    "id": "enter-music-walkman",
+    "name": "idle -> music-walkman",
+    "speed": 2,
+    "isLoop": false,
+    "source": "idle",
+    "target": "music-walkman",
+    "videos": {
+     "hevc": "https://example.invalid/enter-music-walkman.mov"
+    },
+    "duration": 4,
+    "conditions": [
+     {
+      "input": "behavior::rhythm",
+      "value": true,
+      "op": "=="
+     }
+    ]
+   },
+   {
+    "id": "return-music-walkman",
+    "name": "music-walkman -> idle",
+    "speed": 2,
+    "isLoop": false,
+    "source": "music-walkman",
+    "target": "idle",
+    "videos": {
+     "hevc": "https://example.invalid/return-music-walkman.mov"
+    },
+    "duration": 4,
+    "conditions": [
+     {
+      "input": "behavior::rest",
+      "value": true,
+      "op": "=="
+     }
+    ]
+   },
+   {
+    "id": "enter-coffee-grind",
+    "name": "idle -> Ko morning coffee grind fresh",
+    "speed": 1.4,
+    "isLoop": false,
+    "source": "idle",
+    "target": "coffee-grind",
+    "videos": {
+     "hevc": "https://example.invalid/enter-coffee-grind.mov"
+    },
+    "duration": 4,
+    "conditions": [
+     {
+      "op": "==",
+      "input": "action::morningCoffeeRitual",
+      "value": true
+     }
+    ]
+   },
+   {
+    "id": "coffee-grind-to-coffee-brew",
+    "name": "Ko morning coffee grind fresh -> Ko V60 coffee preparing fresh",
+    "speed": 1.3,
+    "isLoop": false,
+    "source": "coffee-grind",
+    "target": "coffee-brew",
+    "videos": {
+     "hevc": "https://example.invalid/coffee-grind-to-coffee-brew.mov"
+    },
+    "duration": 4,
+    "conditions": [
+     {
+      "op": ">",
+      "input": "node::nodeTime",
+      "value": 4200
+     }
+    ]
+   },
+   {
+    "id": "coffee-brew-to-coffee-sip",
+    "name": "Ko V60 coffee preparing fresh -> Coffee sip continuity",
+    "speed": 1.3,
+    "isLoop": false,
+    "source": "coffee-brew",
+    "target": "coffee-sip",
+    "videos": {
+     "hevc": "https://example.invalid/coffee-brew-to-coffee-sip.mov"
+    },
+    "duration": 4,
+    "conditions": [
+     {
+      "op": ">",
+      "input": "node::nodeTime",
+      "value": 4200
+     }
+    ]
+   },
+   {
+    "id": "fallback-coffee-grind-to-idle",
+    "name": "Ko morning coffee grind fresh -> idle",
+    "speed": 2,
+    "isLoop": false,
+    "source": "coffee-grind",
+    "target": "idle",
+    "videos": {
+     "hevc": "https://example.invalid/fallback-coffee-grind-to-idle.mov"
+    },
+    "duration": 4,
+    "conditions": [],
+    "conditionGroups": [
+     [
+      {
+       "op": "==",
+       "input": "behavior::working",
+       "value": true
+      }
+     ],
+     [
+      {
+       "op": "==",
+       "input": "behavior::attention",
+       "value": true
+      }
+     ],
+     [
+      {
+       "op": "==",
+       "input": "behavior::interact",
+       "value": true
+      }
+     ],
+     [
+      {
+       "op": "==",
+       "input": "behavior::focus",
+       "value": true
+      }
+     ],
+     [
+      {
+       "op": "==",
+       "input": "behavior::waiting",
+       "value": true
+      }
+     ],
+     [
+      {
+       "op": "==",
+       "input": "behavior::celebrate",
+       "value": true
+      }
+     ],
+     [
+      {
+       "op": "==",
+       "input": "behavior::error",
+       "value": true
+      }
+     ],
+     [
+      {
+       "op": "==",
+       "input": "behavior::rhythm",
+       "value": true
+      }
+     ]
+    ]
+   },
+   {
+    "id": "fallback-coffee-brew-to-idle",
+    "name": "Ko V60 coffee preparing fresh -> idle",
+    "speed": 2,
+    "isLoop": false,
+    "source": "coffee-brew",
+    "target": "idle",
+    "videos": {
+     "hevc": "https://example.invalid/fallback-coffee-brew-to-idle.mov"
+    },
+    "duration": 4,
+    "conditions": [],
+    "conditionGroups": [
+     [
+      {
+       "op": "==",
+       "input": "behavior::working",
+       "value": true
+      }
+     ],
+     [
+      {
+       "op": "==",
+       "input": "behavior::attention",
+       "value": true
+      }
+     ],
+     [
+      {
+       "op": "==",
+       "input": "behavior::interact",
+       "value": true
+      }
+     ],
+     [
+      {
+       "op": "==",
+       "input": "behavior::focus",
+       "value": true
+      }
+     ],
+     [
+      {
+       "op": "==",
+       "input": "behavior::waiting",
+       "value": true
+      }
+     ],
+     [
+      {
+       "op": "==",
+       "input": "behavior::celebrate",
+       "value": true
+      }
+     ],
+     [
+      {
+       "op": "==",
+       "input": "behavior::error",
+       "value": true
+      }
+     ],
+     [
+      {
+       "op": "==",
+       "input": "behavior::rhythm",
+       "value": true
+      }
+     ]
+    ]
+   },
+   {
+    "id": "enter-night-yawn",
+    "name": "idle -> Night yawn",
+    "speed": 1.4,
+    "isLoop": false,
+    "source": "idle",
+    "target": "night-yawn",
+    "videos": {
+     "hevc": "https://example.invalid/enter-night-yawn.mov"
+    },
+    "duration": 4,
+    "conditions": [
+     {
+      "op": "==",
+      "input": "action::eveningRitual",
+      "value": true
+     }
+    ]
+   },
+   {
+    "id": "night-yawn-to-night-bonnet",
+    "name": "Night yawn -> Night bonnet",
+    "speed": 1.3,
+    "isLoop": false,
+    "source": "night-yawn",
+    "target": "night-bonnet",
+    "videos": {
+     "hevc": "https://example.invalid/night-yawn-to-night-bonnet.mov"
+    },
+    "duration": 4,
+    "conditions": [
+     {
+      "op": ">",
+      "input": "node::nodeTime",
+      "value": 4200
+     }
+    ]
+   },
+   {
+    "id": "night-bonnet-to-night-doze",
+    "name": "Night bonnet -> Night doze continuity",
+    "speed": 1.3,
+    "isLoop": false,
+    "source": "night-bonnet",
+    "target": "night-doze",
+    "videos": {
+     "hevc": "https://example.invalid/night-bonnet-to-night-doze.mov"
+    },
+    "duration": 4,
+    "conditions": [
+     {
+      "op": ">",
+      "input": "node::nodeTime",
+      "value": 4200
+     }
+    ]
+   },
+   {
+    "id": "fallback-night-yawn-to-idle",
+    "name": "Night yawn -> idle",
+    "speed": 2,
+    "isLoop": false,
+    "source": "night-yawn",
+    "target": "idle",
+    "videos": {
+     "hevc": "https://example.invalid/fallback-night-yawn-to-idle.mov"
+    },
+    "duration": 4,
+    "conditions": [],
+    "conditionGroups": [
+     [
+      {
+       "op": "==",
+       "input": "behavior::working",
+       "value": true
+      }
+     ],
+     [
+      {
+       "op": "==",
+       "input": "behavior::attention",
+       "value": true
+      }
+     ],
+     [
+      {
+       "op": "==",
+       "input": "behavior::interact",
+       "value": true
+      }
+     ],
+     [
+      {
+       "op": "==",
+       "input": "behavior::focus",
+       "value": true
+      }
+     ],
+     [
+      {
+       "op": "==",
+       "input": "behavior::waiting",
+       "value": true
+      }
+     ],
+     [
+      {
+       "op": "==",
+       "input": "behavior::celebrate",
+       "value": true
+      }
+     ],
+     [
+      {
+       "op": "==",
+       "input": "behavior::error",
+       "value": true
+      }
+     ],
+     [
+      {
+       "op": "==",
+       "input": "behavior::rhythm",
+       "value": true
+      }
+     ]
+    ]
+   },
+   {
+    "id": "fallback-night-bonnet-to-idle",
+    "name": "Night bonnet -> idle",
+    "speed": 2,
+    "isLoop": false,
+    "source": "night-bonnet",
+    "target": "idle",
+    "videos": {
+     "hevc": "https://example.invalid/fallback-night-bonnet-to-idle.mov"
+    },
+    "duration": 4,
+    "conditions": [],
+    "conditionGroups": [
+     [
+      {
+       "op": "==",
+       "input": "behavior::working",
+       "value": true
+      }
+     ],
+     [
+      {
+       "op": "==",
+       "input": "behavior::attention",
+       "value": true
+      }
+     ],
+     [
+      {
+       "op": "==",
+       "input": "behavior::interact",
+       "value": true
+      }
+     ],
+     [
+      {
+       "op": "==",
+       "input": "behavior::focus",
+       "value": true
+      }
+     ],
+     [
+      {
+       "op": "==",
+       "input": "behavior::waiting",
+       "value": true
+      }
+     ],
+     [
+      {
+       "op": "==",
+       "input": "behavior::celebrate",
+       "value": true
+      }
+     ],
+     [
+      {
+       "op": "==",
+       "input": "behavior::error",
+       "value": true
+      }
+     ],
+     [
+      {
+       "op": "==",
+       "input": "behavior::rhythm",
+       "value": true
+      }
+     ]
+    ]
+   },
+   {
+    "id": "enter-paper-fold",
+    "name": "idle -> Paper fold",
+    "speed": 1.75,
+    "isLoop": false,
+    "source": "idle",
+    "target": "paper-fold",
+    "videos": {
+     "hevc": "https://example.invalid/enter-paper-fold.mov"
+    },
+    "duration": 4,
+    "conditions": [
+     {
+      "op": "==",
+      "input": "action::papercraftGift",
+      "value": true
+     }
+    ]
+   },
+   {
+    "id": "paper-fold-to-paper-crane",
+    "name": "Paper fold -> Paper crane continuity",
+    "speed": 1.3,
+    "isLoop": false,
+    "source": "paper-fold",
+    "target": "paper-crane",
+    "videos": {
+     "hevc": "https://example.invalid/paper-fold-to-paper-crane.mov"
+    },
+    "duration": 4,
+    "conditions": [
+     {
+      "op": ">=",
+      "input": "node::loopCount",
+      "value": 1
+     }
+    ]
+   },
+   {
+    "id": "paper-crane-to-paper-crane-fly",
+    "name": "Paper crane continuity -> Paper crane fly continuity",
+    "speed": 1.3,
+    "isLoop": false,
+    "source": "paper-crane",
+    "target": "paper-crane-fly",
+    "videos": {
+     "hevc": "https://example.invalid/paper-crane-to-paper-crane-fly.mov"
+    },
+    "duration": 4,
+    "conditions": [
+     {
+      "op": ">=",
+      "input": "node::loopCount",
+      "value": 1
+     }
+    ]
+   },
+   {
+    "id": "return-paper-crane-fly",
+    "name": "Paper crane fly continuity -> idle",
+    "speed": 1.6,
+    "isLoop": false,
+    "source": "paper-crane-fly",
+    "target": "idle",
+    "videos": {
+     "hevc": "https://example.invalid/return-paper-crane-fly.mov"
+    },
+    "duration": 4,
+    "conditions": [
+     {
+      "op": ">=",
+      "input": "node::loopCount",
+      "value": 1
+     }
+    ]
+   },
+   {
+    "id": "fallback-paper-fold-to-idle",
+    "name": "Paper fold -> idle",
+    "speed": 2,
+    "isLoop": false,
+    "source": "paper-fold",
+    "target": "idle",
+    "videos": {
+     "hevc": "https://example.invalid/fallback-paper-fold-to-idle.mov"
+    },
+    "duration": 4,
+    "conditions": [],
+    "conditionGroups": [
+     [
+      {
+       "op": "==",
+       "input": "behavior::working",
+       "value": true
+      }
+     ],
+     [
+      {
+       "op": "==",
+       "input": "behavior::attention",
+       "value": true
+      }
+     ],
+     [
+      {
+       "op": "==",
+       "input": "behavior::interact",
+       "value": true
+      }
+     ],
+     [
+      {
+       "op": "==",
+       "input": "behavior::focus",
+       "value": true
+      }
+     ],
+     [
+      {
+       "op": "==",
+       "input": "behavior::waiting",
+       "value": true
+      }
+     ],
+     [
+      {
+       "op": "==",
+       "input": "behavior::celebrate",
+       "value": true
+      }
+     ],
+     [
+      {
+       "op": "==",
+       "input": "behavior::error",
+       "value": true
+      }
+     ],
+     [
+      {
+       "op": "==",
+       "input": "behavior::rhythm",
+       "value": true
+      }
+     ]
+    ]
+   },
+   {
+    "id": "fallback-paper-crane-to-idle",
+    "name": "Paper crane continuity -> idle",
+    "speed": 2,
+    "isLoop": false,
+    "source": "paper-crane",
+    "target": "idle",
+    "videos": {
+     "hevc": "https://example.invalid/fallback-paper-crane-to-idle.mov"
+    },
+    "duration": 4,
+    "conditions": [],
+    "conditionGroups": [
+     [
+      {
+       "op": "==",
+       "input": "behavior::working",
+       "value": true
+      }
+     ],
+     [
+      {
+       "op": "==",
+       "input": "behavior::attention",
+       "value": true
+      }
+     ],
+     [
+      {
+       "op": "==",
+       "input": "behavior::interact",
+       "value": true
+      }
+     ],
+     [
+      {
+       "op": "==",
+       "input": "behavior::focus",
+       "value": true
+      }
+     ],
+     [
+      {
+       "op": "==",
+       "input": "behavior::waiting",
+       "value": true
+      }
+     ],
+     [
+      {
+       "op": "==",
+       "input": "behavior::celebrate",
+       "value": true
+      }
+     ],
+     [
+      {
+       "op": "==",
+       "input": "behavior::error",
+       "value": true
+      }
+     ],
+     [
+      {
+       "op": "==",
+       "input": "behavior::rhythm",
+       "value": true
+      }
+     ]
+    ]
+   },
+   {
+    "id": "fallback-paper-crane-fly-to-idle",
+    "name": "Paper crane fly continuity -> idle",
+    "speed": 2,
+    "isLoop": false,
+    "source": "paper-crane-fly",
+    "target": "idle",
+    "videos": {
+     "hevc": "https://example.invalid/fallback-paper-crane-fly-to-idle.mov"
+    },
+    "duration": 4,
+    "conditions": [],
+    "conditionGroups": [
+     [
+      {
+       "op": "==",
+       "input": "behavior::working",
+       "value": true
+      }
+     ],
+     [
+      {
+       "op": "==",
+       "input": "behavior::attention",
+       "value": true
+      }
+     ],
+     [
+      {
+       "op": "==",
+       "input": "behavior::interact",
+       "value": true
+      }
+     ],
+     [
+      {
+       "op": "==",
+       "input": "behavior::focus",
+       "value": true
+      }
+     ],
+     [
+      {
+       "op": "==",
+       "input": "behavior::waiting",
+       "value": true
+      }
+     ],
+     [
+      {
+       "op": "==",
+       "input": "behavior::celebrate",
+       "value": true
+      }
+     ],
+     [
+      {
+       "op": "==",
+       "input": "behavior::error",
+       "value": true
+      }
+     ],
+     [
+      {
+       "op": "==",
+       "input": "behavior::rhythm",
+       "value": true
+      }
+     ]
+    ]
+   },
+   {
+    "id": "enter-ink-dip",
+    "name": "idle -> Ink dip",
+    "speed": 1.4,
+    "isLoop": false,
+    "source": "idle",
+    "target": "ink-dip",
+    "videos": {
+     "hevc": "https://example.invalid/enter-ink-dip.mov"
+    },
+    "duration": 4,
+    "conditions": [
+     {
+      "op": "==",
+      "input": "action::inkAccident",
+      "value": true
+     }
+    ]
+   },
+   {
+    "id": "ink-dip-to-ink-blot",
+    "name": "Ink dip -> Ink blot",
+    "speed": 1.3,
+    "isLoop": false,
+    "source": "ink-dip",
+    "target": "ink-blot",
+    "videos": {
+     "hevc": "https://example.invalid/ink-dip-to-ink-blot.mov"
+    },
+    "duration": 4,
+    "conditions": [
+     {
+      "op": ">",
+      "input": "node::nodeTime",
+      "value": 4200
+     }
+    ]
+   },
+   {
+    "id": "ink-blot-to-ink-fix",
+    "name": "Ink blot -> Ink fix",
+    "speed": 1.3,
+    "isLoop": false,
+    "source": "ink-blot",
+    "target": "ink-fix",
+    "videos": {
+     "hevc": "https://example.invalid/ink-blot-to-ink-fix.mov"
+    },
+    "duration": 4,
+    "conditions": [
+     {
+      "op": ">",
+      "input": "node::nodeTime",
+      "value": 4200
+     }
+    ]
+   },
+   {
+    "id": "return-ink-fix",
+    "name": "Ink fix -> idle",
+    "speed": 1.6,
+    "isLoop": false,
+    "source": "ink-fix",
+    "target": "idle",
+    "videos": {
+     "hevc": "https://example.invalid/return-ink-fix.mov"
+    },
+    "duration": 4,
+    "conditions": [
+     {
+      "op": ">",
+      "input": "node::nodeTime",
+      "value": 5200
+     }
+    ]
+   },
+   {
+    "id": "fallback-ink-dip-to-idle",
+    "name": "Ink dip -> idle",
+    "speed": 2,
+    "isLoop": false,
+    "source": "ink-dip",
+    "target": "idle",
+    "videos": {
+     "hevc": "https://example.invalid/fallback-ink-dip-to-idle.mov"
+    },
+    "duration": 4,
+    "conditions": [],
+    "conditionGroups": [
+     [
+      {
+       "op": "==",
+       "input": "behavior::working",
+       "value": true
+      }
+     ],
+     [
+      {
+       "op": "==",
+       "input": "behavior::attention",
+       "value": true
+      }
+     ],
+     [
+      {
+       "op": "==",
+       "input": "behavior::interact",
+       "value": true
+      }
+     ],
+     [
+      {
+       "op": "==",
+       "input": "behavior::focus",
+       "value": true
+      }
+     ],
+     [
+      {
+       "op": "==",
+       "input": "behavior::waiting",
+       "value": true
+      }
+     ],
+     [
+      {
+       "op": "==",
+       "input": "behavior::celebrate",
+       "value": true
+      }
+     ],
+     [
+      {
+       "op": "==",
+       "input": "behavior::error",
+       "value": true
+      }
+     ],
+     [
+      {
+       "op": "==",
+       "input": "behavior::rhythm",
+       "value": true
+      }
+     ]
+    ]
+   },
+   {
+    "id": "fallback-ink-blot-to-idle",
+    "name": "Ink blot -> idle",
+    "speed": 2,
+    "isLoop": false,
+    "source": "ink-blot",
+    "target": "idle",
+    "videos": {
+     "hevc": "https://example.invalid/fallback-ink-blot-to-idle.mov"
+    },
+    "duration": 4,
+    "conditions": [],
+    "conditionGroups": [
+     [
+      {
+       "op": "==",
+       "input": "behavior::working",
+       "value": true
+      }
+     ],
+     [
+      {
+       "op": "==",
+       "input": "behavior::attention",
+       "value": true
+      }
+     ],
+     [
+      {
+       "op": "==",
+       "input": "behavior::interact",
+       "value": true
+      }
+     ],
+     [
+      {
+       "op": "==",
+       "input": "behavior::focus",
+       "value": true
+      }
+     ],
+     [
+      {
+       "op": "==",
+       "input": "behavior::waiting",
+       "value": true
+      }
+     ],
+     [
+      {
+       "op": "==",
+       "input": "behavior::celebrate",
+       "value": true
+      }
+     ],
+     [
+      {
+       "op": "==",
+       "input": "behavior::error",
+       "value": true
+      }
+     ],
+     [
+      {
+       "op": "==",
+       "input": "behavior::rhythm",
+       "value": true
+      }
+     ]
+    ]
+   },
+   {
+    "id": "fallback-ink-fix-to-idle",
+    "name": "Ink fix -> idle",
+    "speed": 2,
+    "isLoop": false,
+    "source": "ink-fix",
+    "target": "idle",
+    "videos": {
+     "hevc": "https://example.invalid/fallback-ink-fix-to-idle.mov"
+    },
+    "duration": 4,
+    "conditions": [],
+    "conditionGroups": [
+     [
+      {
+       "op": "==",
+       "input": "behavior::working",
+       "value": true
+      }
+     ],
+     [
+      {
+       "op": "==",
+       "input": "behavior::attention",
+       "value": true
+      }
+     ],
+     [
+      {
+       "op": "==",
+       "input": "behavior::interact",
+       "value": true
+      }
+     ],
+     [
+      {
+       "op": "==",
+       "input": "behavior::focus",
+       "value": true
+      }
+     ],
+     [
+      {
+       "op": "==",
+       "input": "behavior::waiting",
+       "value": true
+      }
+     ],
+     [
+      {
+       "op": "==",
+       "input": "behavior::celebrate",
+       "value": true
+      }
+     ],
+     [
+      {
+       "op": "==",
+       "input": "behavior::error",
+       "value": true
+      }
+     ],
+     [
+      {
+       "op": "==",
+       "input": "behavior::rhythm",
+       "value": true
+      }
+     ]
+    ]
+   },
+   {
+    "id": "enter-idle-stretch",
+    "name": "idle -> Idle stretch stronger",
+    "speed": 1.4,
+    "isLoop": false,
+    "source": "idle",
+    "target": "idle-stretch",
+    "videos": {
+     "hevc": "https://example.invalid/enter-idle-stretch.mov"
+    },
+    "duration": 4,
+    "conditions": [
+     {
+      "op": "==",
+      "input": "action::idleStretch",
+      "value": true
+     }
+    ]
+   },
+   {
+    "id": "return-idle-stretch",
+    "name": "Idle stretch stronger -> idle",
+    "speed": 1.5,
+    "isLoop": false,
+    "source": "idle-stretch",
+    "target": "idle",
+    "videos": {
+     "hevc": "https://example.invalid/return-idle-stretch.mov"
+    },
+    "duration": 4,
+    "conditions": [
+     {
+      "op": "==",
+      "input": "action::idleStretch",
+      "value": false
+     }
+    ]
+   },
+   {
+    "id": "fallback-idle-stretch-to-idle",
+    "name": "Idle stretch stronger -> idle",
+    "speed": 2,
+    "isLoop": false,
+    "source": "idle-stretch",
+    "target": "idle",
+    "videos": {
+     "hevc": "https://example.invalid/fallback-idle-stretch-to-idle.mov"
+    },
+    "duration": 4,
+    "conditions": [],
+    "conditionGroups": [
+     [
+      {
+       "op": "==",
+       "input": "behavior::working",
+       "value": true
+      }
+     ],
+     [
+      {
+       "op": "==",
+       "input": "behavior::attention",
+       "value": true
+      }
+     ],
+     [
+      {
+       "op": "==",
+       "input": "behavior::interact",
+       "value": true
+      }
+     ],
+     [
+      {
+       "op": "==",
+       "input": "behavior::focus",
+       "value": true
+      }
+     ],
+     [
+      {
+       "op": "==",
+       "input": "behavior::waiting",
+       "value": true
+      }
+     ],
+     [
+      {
+       "op": "==",
+       "input": "behavior::celebrate",
+       "value": true
+      }
+     ],
+     [
+      {
+       "op": "==",
+       "input": "behavior::error",
+       "value": true
+      }
+     ],
+     [
+      {
+       "op": "==",
+       "input": "behavior::rhythm",
+       "value": true
+      }
+     ]
+    ]
+   },
+   {
+    "id": "enter-idle-paper-fidget",
+    "name": "idle -> Idle paper fidget stronger",
+    "speed": 1.4,
+    "isLoop": false,
+    "source": "idle",
+    "target": "idle-paper-fidget",
+    "videos": {
+     "hevc": "https://example.invalid/enter-idle-paper-fidget.mov"
+    },
+    "duration": 4,
+    "conditions": [
+     {
+      "op": "==",
+      "input": "action::idlePaperFidget",
+      "value": true
+     }
+    ]
+   },
+   {
+    "id": "return-idle-paper-fidget",
+    "name": "Idle paper fidget stronger -> idle",
+    "speed": 1.5,
+    "isLoop": false,
+    "source": "idle-paper-fidget",
+    "target": "idle",
+    "videos": {
+     "hevc": "https://example.invalid/return-idle-paper-fidget.mov"
+    },
+    "duration": 4,
+    "conditions": [
+     {
+      "op": "==",
+      "input": "action::idlePaperFidget",
+      "value": false
+     }
+    ]
+   },
+   {
+    "id": "fallback-idle-paper-fidget-to-idle",
+    "name": "Idle paper fidget stronger -> idle",
+    "speed": 2,
+    "isLoop": false,
+    "source": "idle-paper-fidget",
+    "target": "idle",
+    "videos": {
+     "hevc": "https://example.invalid/fallback-idle-paper-fidget-to-idle.mov"
+    },
+    "duration": 4,
+    "conditions": [],
+    "conditionGroups": [
+     [
+      {
+       "op": "==",
+       "input": "behavior::working",
+       "value": true
+      }
+     ],
+     [
+      {
+       "op": "==",
+       "input": "behavior::attention",
+       "value": true
+      }
+     ],
+     [
+      {
+       "op": "==",
+       "input": "behavior::interact",
+       "value": true
+      }
+     ],
+     [
+      {
+       "op": "==",
+       "input": "behavior::focus",
+       "value": true
+      }
+     ],
+     [
+      {
+       "op": "==",
+       "input": "behavior::waiting",
+       "value": true
+      }
+     ],
+     [
+      {
+       "op": "==",
+       "input": "behavior::celebrate",
+       "value": true
+      }
+     ],
+     [
+      {
+       "op": "==",
+       "input": "behavior::error",
+       "value": true
+      }
+     ],
+     [
+      {
+       "op": "==",
+       "input": "behavior::rhythm",
+       "value": true
+      }
+     ]
+    ]
+   },
+   {
+    "id": "enter-idle-handstand",
+    "name": "idle -> Idle handstands",
+    "speed": 1.4,
+    "isLoop": false,
+    "source": "idle",
+    "target": "71f3b9dc-ca3a-4642-aace-4608ff92c968",
+    "videos": {
+     "hevc": "https://example.invalid/enter-idle-handstand.mov"
+    },
+    "duration": 4,
+    "conditions": [
+     {
+      "op": "==",
+      "input": "action::idleHandstand",
+      "value": true
+     }
+    ]
+   },
+   {
+    "id": "return-idle-handstand",
+    "name": "Idle handstands -> idle",
+    "speed": 1.5,
+    "isLoop": false,
+    "source": "71f3b9dc-ca3a-4642-aace-4608ff92c968",
+    "target": "idle",
+    "videos": {
+     "hevc": "https://example.invalid/return-idle-handstand.mov"
+    },
+    "duration": 4,
+    "conditions": [
+     {
+      "op": "==",
+      "input": "action::idleHandstand",
+      "value": false
+     }
+    ]
+   },
+   {
+    "id": "fallback-idle-handstand-to-idle",
+    "name": "Idle handstands -> idle",
+    "speed": 1.15,
+    "isLoop": false,
+    "source": "71f3b9dc-ca3a-4642-aace-4608ff92c968",
+    "target": "idle",
+    "videos": {
+     "hevc": "https://example.invalid/fallback-idle-handstand-to-idle.mov"
+    },
+    "duration": 4,
+    "conditions": [],
+    "conditionGroups": [
+     [
+      {
+       "op": "==",
+       "input": "behavior::working",
+       "value": true
+      }
+     ],
+     [
+      {
+       "op": "==",
+       "input": "behavior::attention",
+       "value": true
+      }
+     ],
+     [
+      {
+       "op": "==",
+       "input": "behavior::interact",
+       "value": true
+      }
+     ],
+     [
+      {
+       "op": "==",
+       "input": "behavior::focus",
+       "value": true
+      }
+     ],
+     [
+      {
+       "op": "==",
+       "input": "behavior::waiting",
+       "value": true
+      }
+     ],
+     [
+      {
+       "op": "==",
+       "input": "behavior::celebrate",
+       "value": true
+      }
+     ],
+     [
+      {
+       "op": "==",
+       "input": "behavior::error",
+       "value": true
+      }
+     ],
+     [
+      {
+       "op": "==",
+       "input": "behavior::rhythm",
+       "value": true
+      }
+     ]
+    ]
+   },
+   {
+    "id": "enter-coffee-sip",
+    "name": "idle -> Coffee sip continuity",
+    "speed": 1.4,
+    "isLoop": false,
+    "source": "idle",
+    "target": "coffee-sip",
+    "videos": {
+     "hevc": "https://example.invalid/enter-coffee-sip.mov"
+    },
+    "duration": 4,
+    "conditions": [
+     {
+      "op": "==",
+      "input": "action::idleCoffeeSip",
+      "value": true
+     }
+    ]
+   },
+   {
+    "id": "return-coffee-sip",
+    "name": "Coffee sip continuity -> idle",
+    "speed": 1.5,
+    "isLoop": false,
+    "source": "coffee-sip",
+    "target": "idle",
+    "videos": {
+     "hevc": "https://example.invalid/return-coffee-sip.mov"
+    },
+    "duration": 4,
+    "conditions": [
+     {
+      "input": "action::idleCoffeeSip",
+      "op": "==",
+      "value": false
+     },
+     {
+      "input": "node::loopCount",
+      "op": ">=",
+      "value": 1
+     }
+    ]
+   },
+   {
+    "id": "fallback-coffee-sip-to-idle",
+    "name": "Coffee sip continuity -> idle",
+    "speed": 2,
+    "isLoop": false,
+    "source": "coffee-sip",
+    "target": "idle",
+    "videos": {
+     "hevc": "https://example.invalid/fallback-coffee-sip-to-idle.mov"
+    },
+    "duration": 4,
+    "conditions": [],
+    "conditionGroups": [
+     [
+      {
+       "op": "==",
+       "input": "behavior::working",
+       "value": true
+      }
+     ],
+     [
+      {
+       "op": "==",
+       "input": "behavior::attention",
+       "value": true
+      }
+     ],
+     [
+      {
+       "op": "==",
+       "input": "behavior::interact",
+       "value": true
+      }
+     ],
+     [
+      {
+       "op": "==",
+       "input": "behavior::focus",
+       "value": true
+      }
+     ],
+     [
+      {
+       "op": "==",
+       "input": "behavior::waiting",
+       "value": true
+      }
+     ],
+     [
+      {
+       "op": "==",
+       "input": "behavior::celebrate",
+       "value": true
+      }
+     ],
+     [
+      {
+       "op": "==",
+       "input": "behavior::error",
+       "value": true
+      }
+     ],
+     [
+      {
+       "op": "==",
+       "input": "behavior::rhythm",
+       "value": true
+      }
+     ]
+    ]
+   },
+   {
+    "id": "enter-night-doze",
+    "name": "idle -> Night doze continuity",
+    "speed": 1.4,
+    "isLoop": false,
+    "source": "idle",
+    "target": "night-doze",
+    "videos": {
+     "hevc": "https://example.invalid/enter-night-doze.mov"
+    },
+    "duration": 4,
+    "conditions": [
+     {
+      "op": "==",
+      "input": "action::idleNightDoze",
+      "value": true
+     }
+    ]
+   },
+   {
+    "id": "return-night-doze",
+    "name": "Night doze continuity -> idle",
+    "speed": 1.5,
+    "isLoop": false,
+    "source": "night-doze",
+    "target": "idle",
+    "videos": {
+     "hevc": "https://example.invalid/return-night-doze.mov"
+    },
+    "duration": 4,
+    "conditions": [
+     {
+      "op": "==",
+      "input": "action::idleNightDoze",
+      "value": false
+     }
+    ]
+   },
+   {
+    "id": "fallback-night-doze-to-idle",
+    "name": "Night doze continuity -> idle",
+    "speed": 2,
+    "isLoop": false,
+    "source": "night-doze",
+    "target": "idle",
+    "videos": {
+     "hevc": "https://example.invalid/fallback-night-doze-to-idle.mov"
+    },
+    "duration": 4,
+    "conditions": [],
+    "conditionGroups": [
+     [
+      {
+       "op": "==",
+       "input": "behavior::working",
+       "value": true
+      }
+     ],
+     [
+      {
+       "op": "==",
+       "input": "behavior::attention",
+       "value": true
+      }
+     ],
+     [
+      {
+       "op": "==",
+       "input": "behavior::interact",
+       "value": true
+      }
+     ],
+     [
+      {
+       "op": "==",
+       "input": "behavior::focus",
+       "value": true
+      }
+     ],
+     [
+      {
+       "op": "==",
+       "input": "behavior::waiting",
+       "value": true
+      }
+     ],
+     [
+      {
+       "op": "==",
+       "input": "behavior::celebrate",
+       "value": true
+      }
+     ],
+     [
+      {
+       "op": "==",
+       "input": "behavior::error",
+       "value": true
+      }
+     ],
+     [
+      {
+       "op": "==",
+       "input": "behavior::rhythm",
+       "value": true
+      }
+     ]
+    ]
+   },
+   {
+    "id": "loop-coffee-grind",
+    "name": "Ko morning coffee grind fresh",
+    "speed": 1,
+    "isLoop": true,
+    "source": "coffee-grind",
+    "target": "coffee-grind",
+    "videos": {
+     "hevc": "https://example.invalid/loop-coffee-grind.mov"
+    },
+    "duration": 4,
+    "conditions": []
+   },
+   {
+    "id": "loop-coffee-brew",
+    "name": "Ko V60 coffee preparing fresh",
+    "speed": 1,
+    "isLoop": true,
+    "source": "coffee-brew",
+    "target": "coffee-brew",
+    "videos": {
+     "hevc": "https://example.invalid/loop-coffee-brew.mov"
+    },
+    "duration": 4,
+    "conditions": []
+   },
+   {
+    "id": "loop-coffee-sip",
+    "name": "Coffee sip continuity",
+    "speed": 1,
+    "isLoop": true,
+    "source": "coffee-sip",
+    "target": "coffee-sip",
+    "videos": {
+     "hevc": "https://example.invalid/loop-coffee-sip.mov"
+    },
+    "duration": 4,
+    "conditions": []
+   },
+   {
+    "id": "loop-night-yawn",
+    "name": "Night yawn",
+    "speed": 1,
+    "isLoop": true,
+    "source": "night-yawn",
+    "target": "night-yawn",
+    "videos": {
+     "hevc": "https://example.invalid/loop-night-yawn.mov"
+    },
+    "duration": 4,
+    "conditions": []
+   },
+   {
+    "id": "loop-night-bonnet",
+    "name": "Night bonnet",
+    "speed": 1,
+    "isLoop": true,
+    "source": "night-bonnet",
+    "target": "night-bonnet",
+    "videos": {
+     "hevc": "https://example.invalid/loop-night-bonnet.mov"
+    },
+    "duration": 4,
+    "conditions": []
+   },
+   {
+    "id": "loop-night-doze",
+    "name": "Night doze continuity",
+    "speed": 1,
+    "isLoop": true,
+    "source": "night-doze",
+    "target": "night-doze",
+    "videos": {
+     "hevc": "https://example.invalid/loop-night-doze.mov"
+    },
+    "duration": 4,
+    "conditions": []
+   },
+   {
+    "id": "loop-paper-fold",
+    "name": "Paper fold",
+    "speed": 1,
+    "isLoop": true,
+    "source": "paper-fold",
+    "target": "paper-fold",
+    "videos": {
+     "hevc": "https://example.invalid/loop-paper-fold.mov"
+    },
+    "duration": 4,
+    "conditions": []
+   },
+   {
+    "id": "loop-paper-crane",
+    "name": "Paper crane continuity",
+    "speed": 1,
+    "isLoop": true,
+    "source": "paper-crane",
+    "target": "paper-crane",
+    "videos": {
+     "hevc": "https://example.invalid/loop-paper-crane.mov"
+    },
+    "duration": 4,
+    "conditions": []
+   },
+   {
+    "id": "loop-paper-crane-fly",
+    "name": "Paper crane fly continuity",
+    "speed": 1,
+    "isLoop": true,
+    "source": "paper-crane-fly",
+    "target": "paper-crane-fly",
+    "videos": {
+     "hevc": "https://example.invalid/loop-paper-crane-fly.mov"
+    },
+    "duration": 4,
+    "conditions": []
+   },
+   {
+    "id": "loop-ink-dip",
+    "name": "Ink dip",
+    "speed": 1,
+    "isLoop": true,
+    "source": "ink-dip",
+    "target": "ink-dip",
+    "videos": {
+     "hevc": "https://example.invalid/loop-ink-dip.mov"
+    },
+    "duration": 4,
+    "conditions": []
+   },
+   {
+    "id": "loop-ink-blot",
+    "name": "Ink blot",
+    "speed": 1,
+    "isLoop": true,
+    "source": "ink-blot",
+    "target": "ink-blot",
+    "videos": {
+     "hevc": "https://example.invalid/loop-ink-blot.mov"
+    },
+    "duration": 4,
+    "conditions": []
+   },
+   {
+    "id": "loop-ink-fix",
+    "name": "Ink fix",
+    "speed": 1,
+    "isLoop": true,
+    "source": "ink-fix",
+    "target": "ink-fix",
+    "videos": {
+     "hevc": "https://example.invalid/loop-ink-fix.mov"
+    },
+    "duration": 4,
+    "conditions": []
+   },
+   {
+    "id": "loop-idle-stretch",
+    "name": "Idle stretch stronger",
+    "speed": 1.65,
+    "isLoop": true,
+    "source": "idle-stretch",
+    "target": "idle-stretch",
+    "videos": {
+     "hevc": "https://example.invalid/loop-idle-stretch.mov"
+    },
+    "duration": 4,
+    "conditions": []
+   },
+   {
+    "id": "loop-idle-paper-fidget",
+    "name": "Idle paper fidget stronger",
+    "speed": 1,
+    "isLoop": true,
+    "source": "idle-paper-fidget",
+    "target": "idle-paper-fidget",
+    "videos": {
+     "hevc": "https://example.invalid/loop-idle-paper-fidget.mov"
+    },
+    "duration": 4,
+    "conditions": []
+   },
+   {
+    "id": "loop-idle-handstand",
+    "name": "Idle handstands",
+    "speed": 1,
+    "isLoop": true,
+    "source": "71f3b9dc-ca3a-4642-aace-4608ff92c968",
+    "target": "71f3b9dc-ca3a-4642-aace-4608ff92c968",
+    "videos": {
+     "hevc": "https://example.invalid/loop-idle-handstand.mov"
+    },
+    "duration": 4,
+    "conditions": []
+   },
+   {
+    "id": "enter-laptop-working",
+    "name": "idle -> laptop-working",
+    "speed": 1.75,
+    "isLoop": false,
+    "source": "idle",
+    "target": "laptop-working",
+    "videos": {
+     "hevc": "https://example.invalid/enter-laptop-working.mov"
+    },
+    "duration": 4,
+    "conditions": [
+     {
+      "input": "behavior::working",
+      "value": true,
+      "op": "=="
+     }
+    ]
+   },
+   {
+    "id": "loop-laptop-working",
+    "name": "laptop-working",
+    "speed": 1,
+    "isLoop": true,
+    "source": "laptop-working",
+    "target": "laptop-working",
+    "videos": {
+     "hevc": "https://example.invalid/loop-laptop-working.mov"
+    },
+    "duration": 4,
+    "conditions": []
+   },
+   {
+    "id": "return-laptop-working",
+    "name": "laptop-working -> idle",
+    "speed": 1.45,
+    "isLoop": false,
+    "source": "laptop-working",
+    "target": "idle",
+    "videos": {
+     "hevc": "https://example.invalid/return-laptop-working.mov"
+    },
+    "duration": 4,
+    "conditions": [
+     {
+      "input": "behavior::rest",
+      "value": true,
+      "op": "=="
+     }
+    ]
+   },
+   {
+    "id": "enter-drink-water",
+    "name": "idle -> Drink water",
+    "speed": 2,
+    "isLoop": false,
+    "source": "idle",
+    "target": "drink-water",
+    "videos": {
+     "hevc": "https://example.invalid/enter-drink-water.mov"
+    },
+    "duration": 4,
+    "conditions": [
+     {
+      "op": "==",
+      "input": "action::drinkWater",
+      "value": true
+     }
+    ]
+   },
+   {
+    "id": "loop-drink-water",
+    "name": "Drink water",
+    "speed": 1,
+    "isLoop": true,
+    "source": "drink-water",
+    "target": "drink-water",
+    "videos": {
+     "hevc": "https://example.invalid/loop-drink-water.mov"
+    },
+    "duration": 4,
+    "conditions": []
+   },
+   {
+    "id": "exit-drink-water",
+    "name": "Drink water -> idle",
+    "speed": 2,
+    "isLoop": false,
+    "source": "drink-water",
+    "target": "idle",
+    "videos": {
+     "hevc": "https://example.invalid/exit-drink-water.mov"
+    },
+    "duration": 4,
+    "conditions": [
+     {
+      "op": "==",
+      "input": "action::drinkWater",
+      "value": false
+     }
+    ]
+   },
+   {
+    "id": "loop-held-contact-squish",
+    "name": "Held contact squish",
+    "speed": 2.95,
+    "isLoop": true,
+    "source": "held-contact-squish",
+    "target": "held-contact-squish",
+    "videos": {
+     "hevc": "https://example.invalid/loop-held-contact-squish.mov"
+    },
+    "duration": 4,
+    "conditions": []
+   },
+   {
+    "id": "enter-held-contact-squish",
+    "name": "idle -> Held contact squish",
+    "speed": 3,
+    "isLoop": false,
+    "source": "idle",
+    "target": "held-contact-squish",
+    "videos": {
+     "hevc": "https://example.invalid/enter-held-contact-squish.mov"
+    },
+    "duration": 4,
+    "conditionGroups": [
+     [
+      {
+       "op": "==",
+       "input": "behavior::heldContact",
+       "value": true
+      }
+     ],
+     [
+      {
+       "op": "==",
+       "input": "behavior::interact",
+       "value": true
+      }
+     ]
+    ]
+   },
+   {
+    "id": "return-held-contact-squish",
+    "name": "Held contact squish -> idle",
+    "speed": 2.4,
+    "isLoop": false,
+    "source": "held-contact-squish",
+    "target": "idle",
+    "videos": {
+     "hevc": "https://example.invalid/return-held-contact-squish.mov"
+    },
+    "duration": 4,
+    "conditions": [
+     {
+      "op": "==",
+      "input": "behavior::rest",
+      "value": true
+     }
+    ]
+   },
+   {
+    "id": "loop-hover-perk",
+    "name": "Hover perk",
+    "speed": 1,
+    "isLoop": true,
+    "source": "hover-perk",
+    "target": "hover-perk",
+    "videos": {
+     "hevc": "https://example.invalid/loop-hover-perk.mov"
+    },
+    "duration": 4,
+    "conditions": []
+   },
+   {
+    "id": "enter-hover-perk",
+    "name": "idle -> Hover perk",
+    "speed": 2.5,
+    "isLoop": false,
+    "source": "idle",
+    "target": "hover-perk",
+    "videos": {
+     "hevc": "https://example.invalid/enter-hover-perk.mov"
+    },
+    "duration": 4,
+    "conditions": [
+     {
+      "op": "==",
+      "input": "behavior::pointerHover",
+      "value": true
+     }
+    ]
+   },
+   {
+    "id": "return-hover-perk",
+    "name": "Hover perk -> idle",
+    "speed": 2.2,
+    "isLoop": false,
+    "source": "hover-perk",
+    "target": "idle",
+    "videos": {
+     "hevc": "https://example.invalid/return-hover-perk.mov"
+    },
+    "duration": 4,
+    "conditions": [
+     {
+      "op": "==",
+      "input": "behavior::pointerHover",
+      "value": false
+     }
+    ]
+   },
+   {
+    "id": "loop-held-shake-squish",
+    "name": "Held shake squish stable body",
+    "speed": 1,
+    "isLoop": true,
+    "source": "held-shake-squish",
+    "target": "held-shake-squish",
+    "videos": {
+     "hevc": "https://example.invalid/loop-held-shake-squish.mov"
+    },
+    "duration": 4,
+    "conditions": []
+   },
+   {
+    "id": "enter-held-shake-squish-from-held-contact",
+    "name": "Held contact squish -> Held shake squish stable body",
+    "speed": 3,
+    "isLoop": false,
+    "source": "held-contact-squish",
+    "target": "held-shake-squish",
+    "videos": {
+     "hevc": "https://example.invalid/enter-held-shake-squish-from-held-contact.mov"
+    },
+    "duration": 4,
+    "conditions": [],
+    "conditionGroups": [
+     [
+      {
+       "op": "==",
+       "input": "behavior::heldShake",
+       "value": true
+      }
+     ],
+     [
+      {
+       "op": "==",
+       "input": "action::shakeSquish",
+       "value": true
+      }
+     ]
+    ]
+   },
+   {
+    "id": "return-held-shake-squish-to-held-contact",
+    "name": "Held shake squish stable body -> Held contact squish",
+    "speed": 2.5,
+    "isLoop": false,
+    "source": "held-shake-squish",
+    "target": "held-contact-squish",
+    "videos": {
+     "hevc": "https://example.invalid/return-held-shake-squish-to-held-contact.mov"
+    },
+    "duration": 4,
+    "conditionGroups": [
+     [
+      {
+       "op": ">",
+       "input": "node::nodeTime",
+       "value": 5
+      },
+      {
+       "op": "!=",
+       "input": "behavior::heldShake",
+       "value": true
+      },
+      {
+       "op": "==",
+       "input": "behavior::heldContact",
+       "value": true
+      }
+     ],
+     [
+      {
+       "op": ">",
+       "input": "node::nodeTime",
+       "value": 5
+      },
+      {
+       "op": "!=",
+       "input": "behavior::heldShake",
+       "value": true
+      },
+      {
+       "op": "==",
+       "input": "behavior::interact",
+       "value": true
+      }
+     ]
+    ]
+   },
+   {
+    "id": "return-held-shake-squish-to-idle",
+    "name": "Held shake squish stable body -> idle",
+    "speed": 2.4,
+    "isLoop": false,
+    "source": "held-shake-squish",
+    "target": "idle",
+    "videos": {
+     "hevc": "https://example.invalid/return-held-shake-squish-to-idle.mov"
+    },
+    "duration": 4,
+    "conditions": [
+     {
+      "op": ">",
+      "input": "node::nodeTime",
+      "value": 5
+     },
+     {
+      "op": "!=",
+      "input": "behavior::heldShake",
+      "value": true
+     },
+     {
+      "op": "==",
+      "input": "behavior::rest",
+      "value": true
+     }
+    ]
+   },
+   {
+    "id": "loop-overboop-fluster",
+    "name": "Overboop fluster stronger",
+    "speed": 1,
+    "isLoop": true,
+    "source": "overboop-fluster",
+    "target": "overboop-fluster",
+    "videos": {
+     "hevc": "https://example.invalid/loop-overboop-fluster.mov"
+    },
+    "duration": 4,
+    "conditions": []
+   },
+   {
+    "id": "enter-overboop-fluster",
+    "name": "idle -> Overboop fluster stronger",
+    "speed": 3,
+    "isLoop": false,
+    "source": "idle",
+    "target": "overboop-fluster",
+    "videos": {
+     "hevc": "https://example.invalid/enter-overboop-fluster.mov"
+    },
+    "duration": 4,
+    "conditions": [
+     {
+      "op": "==",
+      "input": "action::boop",
+      "value": true
+     }
+    ]
+   },
+   {
+    "id": "return-overboop-fluster",
+    "name": "Overboop fluster stronger -> idle",
+    "speed": 2.2,
+    "isLoop": false,
+    "source": "overboop-fluster",
+    "target": "idle",
+    "videos": {
+     "hevc": "https://example.invalid/return-overboop-fluster.mov"
+    },
+    "duration": 4,
+    "conditions": [
+     {
+      "op": "!=",
+      "input": "action::boop",
+      "value": true
+     }
+    ]
+   },
+   {
+    "id": "enter-tilt-wobble",
+    "name": "idle -> Ko tilt-wobble balance recovery",
+    "speed": 2,
+    "isLoop": false,
+    "source": "idle",
+    "target": "tilt-wobble",
+    "videos": {
+     "hevc": "https://example.invalid/enter-tilt-wobble.mov"
+    },
+    "duration": 4,
+    "conditions": [
+     {
+      "op": "==",
+      "input": "behavior::falling",
+      "value": true
+     }
+    ]
+   },
+   {
+    "id": "loop-tilt-wobble",
+    "name": "Ko tilt-wobble balance recovery",
+    "speed": 1,
+    "isLoop": true,
+    "source": "tilt-wobble",
+    "target": "tilt-wobble",
+    "videos": {
+     "hevc": "https://example.invalid/loop-tilt-wobble.mov"
+    },
+    "duration": 4
+   },
+   {
+    "id": "return-tilt-wobble",
+    "name": "Ko tilt-wobble balance recovery -> idle",
+    "speed": 2,
+    "isLoop": false,
+    "source": "tilt-wobble",
+    "target": "idle",
+    "videos": {
+     "hevc": "https://example.invalid/return-tilt-wobble.mov"
+    },
+    "duration": 4,
+    "conditions": [
+     {
+      "op": "==",
+      "input": "behavior::falling",
+      "value": false
+     }
+    ]
+   },
+   {
+    "id": "enter-soccer-juggle",
+    "name": "idle -> soccer-juggle",
+    "speed": 2,
+    "isLoop": false,
+    "source": "idle",
+    "target": "soccer-juggle",
+    "videos": {
+     "hevc": "https://example.invalid/enter-soccer-juggle.mov"
+    },
+    "duration": 4,
+    "conditions": [
+     {
+      "op": "==",
+      "input": "action::soccerJuggle",
+      "value": true
+     }
+    ]
+   },
+   {
+    "id": "loop-soccer-juggle",
+    "name": "soccer-juggle",
+    "speed": 1,
+    "isLoop": true,
+    "source": "soccer-juggle",
+    "target": "soccer-juggle",
+    "videos": {
+     "hevc": "https://example.invalid/loop-soccer-juggle.mov"
+    },
+    "duration": 4,
+    "conditions": []
+   },
+   {
+    "id": "return-soccer-juggle",
+    "name": "soccer-juggle -> idle",
+    "speed": 2,
+    "isLoop": false,
+    "source": "soccer-juggle",
+    "target": "idle",
+    "videos": {
+     "hevc": "https://example.invalid/return-soccer-juggle.mov"
+    },
+    "duration": 4,
+    "conditions": [
+     {
+      "op": "==",
+      "input": "action::soccerJuggle",
+      "value": false
+     }
+    ]
+   },
+   {
+    "id": "any-startled-stumble",
+    "name": "Any State -> startled-stumble",
+    "isLoop": false,
+    "source": "*",
+    "target": "startled-stumble",
+    "videos": {},
+    "duration": 0,
+    "priority": 80,
+    "conditions": [
+     {
+      "input": "behavior::error",
+      "value": true,
+      "op": "=="
+     }
+    ]
+   },
+   {
+    "id": "any-bow-greeting",
+    "name": "Any State -> bow-greeting",
+    "isLoop": false,
+    "source": "*",
+    "target": "bow-greeting",
+    "videos": {},
+    "duration": 0,
+    "priority": 40,
+    "conditions": [
+     {
+      "op": "==",
+      "input": "behavior::showcase",
+      "value": true
+     }
+    ]
+   },
+   {
+    "id": "any-fan-wave",
+    "name": "Any State -> fan-wave",
+    "isLoop": false,
+    "source": "*",
+    "target": "fan-wave",
+    "videos": {},
+    "duration": 0,
+    "priority": 60,
+    "conditions": [
+     {
+      "input": "behavior::attention",
+      "value": true,
+      "op": "=="
+     }
+    ]
+   },
+   {
+    "id": "any-victory-clap",
+    "name": "Any State -> victory-clap",
+    "isLoop": false,
+    "source": "*",
+    "target": "victory-clap",
+    "videos": {},
+    "duration": 0,
+    "priority": 50,
+    "conditions": [
+     {
+      "input": "behavior::celebrate",
+      "value": true,
+      "op": "=="
+     }
+    ]
+   },
+   {
+    "id": "any-ink-brushing",
+    "name": "Any State -> ink-brushing",
+    "isLoop": false,
+    "source": "*",
+    "target": "ink-brushing",
+    "videos": {},
+    "duration": 0,
+    "priority": 20,
+    "conditions": [
+     {
+      "input": "behavior::focus",
+      "value": true,
+      "op": "=="
+     }
+    ]
+   },
+   {
+    "id": "any-patient-sit",
+    "name": "Any State -> patient-sit",
+    "isLoop": false,
+    "source": "*",
+    "target": "patient-sit",
+    "videos": {},
+    "duration": 0,
+    "priority": 15,
+    "conditions": [
+     {
+      "input": "behavior::waiting",
+      "value": true,
+      "op": "=="
+     }
+    ]
+   },
+   {
+    "id": "any-origami-fold",
+    "name": "Any State -> origami-fold",
+    "isLoop": false,
+    "source": "*",
+    "target": "origami-fold",
+    "videos": {},
+    "duration": 0,
+    "priority": 5,
+    "conditions": [
+     {
+      "input": "behavior::ambient",
+      "value": true,
+      "op": "=="
+     }
+    ]
+   },
+   {
+    "id": "any-music-walkman",
+    "name": "Any State -> music-walkman",
+    "isLoop": false,
+    "source": "*",
+    "target": "music-walkman",
+    "videos": {},
+    "duration": 0,
+    "priority": 30,
+    "conditions": [
+     {
+      "input": "behavior::rhythm",
+      "value": true,
+      "op": "=="
+     }
+    ]
+   },
+   {
+    "id": "any-laptop-working",
+    "name": "Any State -> laptop-working",
+    "isLoop": false,
+    "source": "*",
+    "target": "laptop-working",
+    "videos": {},
+    "duration": 0,
+    "conditions": [
+     {
+      "input": "behavior::working",
+      "value": true,
+      "op": "=="
+     }
+    ]
+   },
+   {
+    "id": "any-held-contact-squish",
+    "name": "Any State -> Held contact squish",
+    "isLoop": false,
+    "source": "*",
+    "target": "held-contact-squish",
+    "videos": {},
+    "duration": 0,
+    "priority": 74,
+    "conditionGroups": [
+     [
+      {
+       "op": "==",
+       "input": "behavior::heldContact",
+       "value": true
+      }
+     ],
+     [
+      {
+       "op": "==",
+       "input": "behavior::interact",
+       "value": true
+      }
+     ]
+    ]
+   },
+   {
+    "id": "any-held-shake-squish",
+    "name": "Any State -> Held shake squish stable body",
+    "isLoop": false,
+    "source": "*",
+    "target": "held-shake-squish",
+    "videos": {},
+    "duration": 0,
+    "priority": 79,
+    "conditions": [],
+    "conditionGroups": [
+     [
+      {
+       "op": "==",
+       "input": "behavior::heldShake",
+       "value": true
+      }
+     ],
+     [
+      {
+       "op": "==",
+       "input": "action::shakeSquish",
+       "value": true
+      }
+     ]
+    ]
+   },
+   {
+    "id": "any-hover-perk",
+    "name": "Any State -> Hover perk",
+    "isLoop": false,
+    "source": "*",
+    "target": "hover-perk",
+    "videos": {},
+    "duration": 0,
+    "priority": 62,
+    "conditions": [
+     {
+      "op": "==",
+      "input": "behavior::pointerHover",
+      "value": true
+     }
+    ]
+   },
+   {
+    "id": "any-overboop-fluster",
+    "name": "Any State -> Overboop fluster stronger",
+    "isLoop": false,
+    "source": "*",
+    "target": "overboop-fluster",
+    "videos": {},
+    "duration": 0,
+    "priority": 78,
+    "conditions": [
+     {
+      "op": "==",
+      "input": "action::boop",
+      "value": true
+     }
+    ]
+   },
+   {
+    "id": "any-tilt-wobble",
+    "name": "Any State -> Ko tilt-wobble balance recovery",
+    "isLoop": false,
+    "source": "*",
+    "target": "tilt-wobble",
+    "videos": {},
+    "duration": 0,
+    "priority": 68,
+    "conditions": [
+     {
+      "op": "==",
+      "input": "behavior::falling",
+      "value": true
+     }
+    ]
+   },
+   {
+    "id": "any-soccer-juggle",
+    "name": "Any State -> soccer-juggle",
+    "isLoop": false,
+    "source": "*",
+    "target": "soccer-juggle",
+    "videos": {},
+    "duration": 0,
+    "priority": 25,
+    "conditions": [
+     {
+      "op": "==",
+      "input": "action::soccerJuggle",
+      "value": true
+     }
+    ]
+   }
+  ],
+  "nodes": [
+   {
+    "id": "idle",
+    "name": "idle"
+   },
+   {
+    "id": "fan-wave",
+    "name": "fan-wave"
+   },
+   {
+    "id": "bow-greeting",
+    "name": "bow-greeting"
+   },
+   {
+    "id": "ink-brushing",
+    "name": "ink-brushing"
+   },
+   {
+    "id": "patient-sit",
+    "name": "patient-sit"
+   },
+   {
+    "id": "victory-clap",
+    "name": "victory-clap"
+   },
+   {
+    "id": "startled-stumble",
+    "name": "startled-stumble"
+   },
+   {
+    "id": "origami-fold",
+    "name": "origami-fold"
+   },
+   {
+    "id": "music-walkman",
+    "name": "music-walkman"
+   },
+   {
+    "id": "coffee-grind",
+    "name": "Ko morning coffee grind fresh"
+   },
+   {
+    "id": "coffee-brew",
+    "name": "Ko V60 coffee preparing fresh"
+   },
+   {
+    "id": "coffee-sip",
+    "name": "Coffee sip continuity"
+   },
+   {
+    "id": "night-yawn",
+    "name": "Night yawn"
+   },
+   {
+    "id": "night-bonnet",
+    "name": "Night bonnet"
+   },
+   {
+    "id": "night-doze",
+    "name": "Night doze continuity"
+   },
+   {
+    "id": "paper-fold",
+    "name": "Paper fold"
+   },
+   {
+    "id": "paper-crane",
+    "name": "Paper crane continuity"
+   },
+   {
+    "id": "paper-crane-fly",
+    "name": "Paper crane fly continuity"
+   },
+   {
+    "id": "ink-dip",
+    "name": "Ink dip"
+   },
+   {
+    "id": "ink-blot",
+    "name": "Ink blot"
+   },
+   {
+    "id": "ink-fix",
+    "name": "Ink fix"
+   },
+   {
+    "id": "idle-stretch",
+    "name": "Idle stretch stronger"
+   },
+   {
+    "id": "idle-paper-fidget",
+    "name": "Idle paper fidget stronger"
+   },
+   {
+    "id": "71f3b9dc-ca3a-4642-aace-4608ff92c968",
+    "name": "Idle handstands"
+   },
+   {
+    "id": "laptop-working",
+    "name": "laptop-working"
+   },
+   {
+    "id": "drink-water",
+    "name": "Drink water"
+   },
+   {
+    "id": "held-contact-squish",
+    "name": "Held contact squish"
+   },
+   {
+    "id": "hover-perk",
+    "name": "Hover perk"
+   },
+   {
+    "id": "held-shake-squish",
+    "name": "Held shake squish stable body"
+   },
+   {
+    "id": "overboop-fluster",
+    "name": "Overboop fluster stronger"
+   },
+   {
+    "id": "tilt-wobble",
+    "name": "Ko tilt-wobble balance recovery"
+   },
+   {
+    "id": "soccer-juggle",
+    "name": "soccer-juggle"
+   }
+  ],
+  "inputs": [
+   {
+    "name": "behavior::rest",
+    "type": "boolean",
+    "default": true,
+    "system": true
+   },
+   {
+    "name": "behavior::working",
+    "type": "boolean",
+    "default": false,
+    "system": true
+   },
+   {
+    "name": "behavior::attention",
+    "type": "boolean",
+    "default": false,
+    "system": true
+   },
+   {
+    "name": "behavior::interact",
+    "type": "boolean",
+    "default": false,
+    "system": true
+   },
+   {
+    "name": "behavior::celebrate",
+    "type": "boolean",
+    "default": false,
+    "system": true
+   },
+   {
+    "name": "behavior::error",
+    "type": "boolean",
+    "default": false,
+    "system": true
+   },
+   {
+    "name": "behavior::focus",
+    "type": "boolean",
+    "default": false,
+    "system": true
+   },
+   {
+    "name": "behavior::waiting",
+    "type": "boolean",
+    "default": false,
+    "system": true
+   },
+   {
+    "name": "behavior::ambient",
+    "type": "boolean",
+    "default": false,
+    "system": true
+   },
+   {
+    "name": "behavior::showcase",
+    "type": "boolean",
+    "default": false,
+    "system": true
+   },
+   {
+    "name": "node::nodeTime",
+    "type": "number",
+    "default": 0,
+    "system": true
+   },
+   {
+    "name": "behavior::rhythm",
+    "type": "boolean",
+    "default": false,
+    "system": true
+   },
+   {
+    "name": "action::morningCoffeeRitual",
+    "type": "trigger",
+    "default": false,
+    "system": true
+   },
+   {
+    "name": "action::coffeeBreak",
+    "type": "trigger",
+    "default": false,
+    "system": true
+   },
+   {
+    "name": "action::eveningRitual",
+    "type": "trigger",
+    "default": false,
+    "system": true
+   },
+   {
+    "name": "action::papercraftGift",
+    "type": "trigger",
+    "default": false,
+    "system": true
+   },
+   {
+    "name": "action::inkAccident",
+    "type": "trigger",
+    "default": false,
+    "system": true
+   },
+   {
+    "name": "action::idleStretch",
+    "type": "trigger",
+    "default": false,
+    "system": true
+   },
+   {
+    "name": "action::idlePaperFidget",
+    "type": "trigger",
+    "default": false,
+    "system": true
+   },
+   {
+    "name": "action::idleHandstand",
+    "type": "trigger",
+    "default": false,
+    "system": true
+   },
+   {
+    "name": "action::idleCoffeeSip",
+    "type": "trigger",
+    "default": false,
+    "system": true
+   },
+   {
+    "name": "action::idleNightDoze",
+    "type": "trigger",
+    "default": false,
+    "system": true
+   },
+   {
+    "name": "action::drinkWater",
+    "type": "boolean",
+    "default": false,
+    "system": true
+   },
+   {
+    "name": "behavior::heldContact",
+    "type": "boolean",
+    "default": false,
+    "system": true
+   },
+   {
+    "name": "action::shakeSquish",
+    "type": "trigger",
+    "default": false,
+    "system": true
+   },
+   {
+    "name": "behavior::heldShake",
+    "type": "boolean",
+    "default": false,
+    "system": true
+   },
+   {
+    "name": "behavior::pointerHover",
+    "type": "boolean",
+    "default": false,
+    "system": true
+   },
+   {
+    "name": "action::boop",
+    "type": "trigger",
+    "default": false,
+    "system": true
+   },
+   {
+    "name": "behavior::falling",
+    "type": "boolean",
+    "default": false,
+    "system": true
+   },
+   {
+    "name": "action::soccerJuggle",
+    "type": "trigger",
+    "default": false,
+    "system": true
+   },
+   {
+    "name": "node::loopCount",
+    "type": "number",
+    "default": 0,
+    "system": true
+   }
+  ],
+  "version": "2.1",
+  "autoPlay": true,
+  "canvasName": "Ko (\u5e78) - Papercraft Kitsune",
+  "initialNode": "idle",
+  "presentation": {
+   "naturalFacing": "left"
+  },
+  "runtimeGraphSchemaVersion": 1,
+  "target": "macos"
+ }
+}

@@ -1,0 +1,59 @@
+{
+  "name": "reset-restores-defaults",
+  "about": "reset drops values and fires and enters the initial pose again.",
+  "rules": ["11.3", "2.4"],
+  "canvas": "ko-coffee",
+  "steps": [
+    {
+      "start": true,
+      "expect": {
+        "clock": 0,
+        "pose": "idle",
+        "clip": "loop-idle",
+        "next": null,
+        "events": ["pose:idle", "shown:loop-idle"]
+      }
+    },
+    {
+      "set": ["working", true],
+      "expect": {
+        "clock": 0,
+        "pose": "idle",
+        "clip": "loop-idle",
+        "next": {
+          "clip": "enter-laptop-working",
+          "at": "end"
+        },
+        "events": []
+      }
+    },
+    {
+      "fire": "boop",
+      "expect": {
+        "clock": 0,
+        "pose": "idle",
+        "clip": "loop-idle",
+        "next": {
+          "clip": "enter-overboop-fluster",
+          "at": "end"
+        },
+        "events": []
+      }
+    },
+    {
+      "reset": true,
+      "expect": {
+        "clock": 0,
+        "pose": "idle",
+        "clip": "loop-idle",
+        "next": null,
+        "events": ["pose:idle", "shown:loop-idle"],
+        "fired": [],
+        "values": {
+          "working": false,
+          "rest": true
+        }
+      }
+    }
+  ]
+}

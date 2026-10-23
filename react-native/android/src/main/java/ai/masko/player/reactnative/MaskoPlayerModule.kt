@@ -1,0 +1,41 @@
+package ai.masko.player.reactnative
+
+import expo.modules.kotlin.modules.Module
+import expo.modules.kotlin.modules.ModuleDefinition
+
+/**
+ * The `MaskoPlayer` view for React Native. Each call goes to the
+ * [ai.masko.player.MaskoPlayer] of the view, on the main thread, in the order
+ * JavaScript made them.
+ */
+class MaskoPlayerModule : Module() {
+  override fun definition() = ModuleDefinition {
+    Name("MaskoPlayer")
+
+    View(MaskoNativeView::class) {
+      Events("onPose", "onClip", "onReactionDone", "onMovement", "onError", "onDeliveryRequest")
+
+      Prop("delivery") { view: MaskoNativeView, json: String? -> view.delivery = json }
+      Prop("autoPlay") { view: MaskoNativeView, on: Boolean? -> view.autoPlay = on }
+      Prop("sound") { view: MaskoNativeView, on: Boolean? -> view.sound = on ?: false }
+      Prop("refreshes") { view: MaskoNativeView, on: Boolean? -> view.refreshes = on ?: false }
+
+      OnViewDidUpdateProps { view: MaskoNativeView -> view.propsChanged() }
+      OnViewDestroys { view: MaskoNativeView -> view.unload() }
+
+      AsyncFunction("setBool") { view: MaskoNativeView, name: String, value: Boolean -> view.player?.set(name, value) }
+      AsyncFunction("setNumber") { view: MaskoNativeView, name: String, value: Double -> view.player?.set(name, value) }
+      AsyncFunction("fire") { view: MaskoNativeView, name: String -> view.player?.fire(name) }
+      AsyncFunction("reset") { view: MaskoNativeView -> view.player?.reset() }
+      AsyncFunction("play") { view: MaskoNativeView -> view.player?.play() }
+      AsyncFunction("pause") { view: MaskoNativeView -> view.player?.pause() }
+      AsyncFunction("position") { view: MaskoNativeView -> view.position() }
+      AsyncFunction("showPose") { view: MaskoNativeView, id: String -> view.player?.preview?.showPose(id) }
+      AsyncFunction("playMove") { view: MaskoNativeView, id: String -> view.player?.preview?.playMove(id) }
+      AsyncFunction("updateDelivery") { view: MaskoNativeView, json: String -> view.updateDelivery(json) }
+      AsyncFunction("answerDelivery") { view: MaskoNativeView, request: Int, json: String? ->
+        view.answerDelivery(request, json)
+      }
+    }
+  }
+}

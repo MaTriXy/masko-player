@@ -1,0 +1,105 @@
+{
+  "name": "extra-clip-roll",
+  "about": "After the main loop, a roll under 1/3 plays an extra, never the last one twice.",
+  "rules": ["7.2", "7.3"],
+  "canvas": "ko-coffee",
+  "patch": {
+    "addEdges": [
+      {
+        "id": "loop-idle-yawn",
+        "source": "idle",
+        "target": "idle",
+        "isLoop": true,
+        "duration": 4,
+        "videos": {
+          "hevc": "https://example.invalid/loop-idle-yawn.mov",
+          "webm": "https://example.invalid/loop-idle-yawn.webm"
+        }
+      },
+      {
+        "id": "loop-idle-look",
+        "source": "idle",
+        "target": "idle",
+        "isLoop": true,
+        "duration": 4,
+        "videos": {
+          "hevc": "https://example.invalid/loop-idle-look.mov",
+          "webm": "https://example.invalid/loop-idle-look.webm"
+        }
+      }
+    ]
+  },
+  "random": [0.5, 0.2, 0.1, 0.9],
+  "steps": [
+    {
+      "start": true,
+      "expect": {
+        "clock": 0,
+        "pose": "idle",
+        "clip": "loop-idle",
+        "next": null,
+        "events": ["pose:idle", "shown:loop-idle"]
+      }
+    },
+    {
+      "loopEnded": true,
+      "expect": {
+        "clock": 4000,
+        "pose": "idle",
+        "clip": "loop-idle",
+        "next": null,
+        "events": ["shown:loop-idle"]
+      }
+    },
+    {
+      "loopEnded": true,
+      "expect": {
+        "clock": 8000,
+        "pose": "idle",
+        "clip": "loop-idle-look",
+        "next": null,
+        "events": ["shown:loop-idle-look"]
+      }
+    },
+    {
+      "loopEnded": true,
+      "expect": {
+        "clock": 12000,
+        "pose": "idle",
+        "clip": "loop-idle",
+        "next": null,
+        "events": ["shown:loop-idle"]
+      }
+    },
+    {
+      "loopEnded": true,
+      "expect": {
+        "clock": 16000,
+        "pose": "idle",
+        "clip": "loop-idle-yawn",
+        "next": null,
+        "events": ["shown:loop-idle-yawn"]
+      }
+    },
+    {
+      "loopEnded": true,
+      "expect": {
+        "clock": 20000,
+        "pose": "idle",
+        "clip": "loop-idle",
+        "next": null,
+        "events": ["shown:loop-idle"]
+      }
+    },
+    {
+      "loopEnded": true,
+      "expect": {
+        "clock": 24000,
+        "pose": "idle",
+        "clip": "loop-idle",
+        "next": null,
+        "events": ["shown:loop-idle"]
+      }
+    }
+  ]
+}

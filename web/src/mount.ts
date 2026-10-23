@@ -1,0 +1,189 @@
+// mountMascot: the player in a page element, with the click and pointer
+// wiring, the tap-to-play overlay and the click ripple (rules.md 14).
+
+import { preferredFormats, type DeliveryInput } from './delivery.ts';
+import { DomSlot, DomSounds, DomStill, FetchLoader } from './dom.ts';
+import type { Value } from './engine.ts';
+import type { Host } from './media.ts';
+import { Player, type MaskoEventName, type MaskoListener, type PlayerOptions, type Position } from './player.ts';
+
+export interface MountOptions {
+  /** The release delivery, its JSON, or the API response around it. */
+  delivery: DeliveryInput;
+  /** Returns a fresh delivery of the same release, before signed links expire. */
+  getDelivery?: () => DeliveryInput | Promise<DeliveryInput>;
+  /** Lets clips with their own voice be heard. Off by default; edge sounds play either way. */
+  sound?: boolean;
+  /** Starts at once. Defaults to the canvas's `autoPlay`, else true. */
+  autoPlay?: boolean;
+  /** Clicks and pointer enter/leave on the mascot reach the canvas. On by default. */
+  pointer?: boolean;
+}
+
+/** What `mountMascot` returns: the same calls on every platform. */
+export interface MaskoHandle {
+  set(name: string, value: Value): void;
+  fire(name: string): void;
+  reset(): void;
+  play(): void;
+  pause(): void;
+  destroy(): void;
+  /** The clip on screen and its clip time in seconds. */
+  position(): Position;
+  /** Listens to `pose`, `clip`, `reactionDone`, `movement` or `error`; returns the unsubscribe call. */
+  on<K extends MaskoEventName>(event: K, handler: MaskoListener<K>): () => void;
+  preview: { showPose(id: string): void; playMove(id: string): void };
+}
+
+const STYLE_ID = 'masko-player-style';
+const CSS = `
+.masko-player{position:relative;width:100%;height:100%;overflow:visible;-webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none}
+.masko-player>video,.masko-player>img.masko-still{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;pointer-events:none;margin:0;padding:0;border:0;background:transparent}
+.masko-player>.masko-tap{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;margin:0;padding:0;border:0;background:transparent;cursor:pointer}
+.masko-player>.masko-tap[hidden]{display:none}
+.masko-player>.masko-tap>span{display:flex;align-items:center;justify-content:center;width:48px;height:48px;border-radius:50%;background:rgba(0,0,0,.55);box-shadow:0 2px 8px rgba(0,0,0,.25)}
+.masko-player>.masko-ripple{position:absolute;width:12px;height:12px;margin:-6px 0 0 -6px;border-radius:50%;border:2px solid rgba(249,93,2,.8);pointer-events:none;animation:masko-ripple .5s ease-out forwards}
+@keyframes masko-ripple{from{transform:scale(1);opacity:1}to{transform:scale(6);opacity:0}}
+@media (prefers-reduced-motion:reduce){.masko-player>.masko-ripple{animation-duration:.01s}}
+`;
+
+function ensureStyle(doc: Document): void {
+  if (doc.getElementById(STYLE_ID)) return;
+  const style = doc.createElement('style');
+  style.id = STYLE_ID;
+  style.textContent = CSS;
+  (doc.head ?? doc.documentElement).appendChild(style);
+}
+
+/**
+ * Plays a mascot in `element`, which sets its size. Returns at once; the
+ * engine loads in the background and calls made meanwhile are kept.
+ */
+export function mountMascot(element: HTMLElement, options: MountOptions): MaskoHandle {
+  return handleFor(createPlayer(element, options).player);
+}
+
+/** The player and its DOM, for the React component. */
+export function createPlayer(element: HTMLElement, options: MountOptions): { player: Player; root: HTMLElement } {
+  const doc = element.ownerDocument;
+  const win = doc.defaultView ?? window;
+  ensureStyle(doc);
+
+  const root = doc.createElement('div');
+  root.className = 'masko-player';
+  const videos = [doc.createElement('video'), doc.createElement('video')];
+  videos.forEach((v, i) => {
+    v.dataset.slot = String(i);
+    root.appendChild(v);
+  });
+  const img = doc.createElement('img');
+  img.className = 'masko-still';
+  root.appendChild(img);
+  const tap = doc.createElement('button');
+  tap.type = 'button';
+  tap.className = 'masko-tap';
+  tap.hidden = true;
+  tap.setAttribute('aria-label', 'Play');
+  tap.innerHTML =
+    '<span><svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true"><path d="M6 4l10 6-10 6z" fill="#fff"/></svg></span>';
+  root.appendChild(tap);
+  element.appendChild(root);
+  if (root.getBoundingClientRect().height === 0) {
+    // An element without a height: a square mascot as wide as it is.
+    root.style.height = 'auto';
+    root.style.aspectRatio = '1 / 1';
+  }
+
+  const slots: [DomSlot, DomSlot] = [new DomSlot(videos[0]), new DomSlot(videos[1])];
+  const nav = win.navigator;
+  const timers = new Set<number>();
+  const host: Host = {
+    now: () => win.performance.now(),
+    wallNow: () => Date.now(),
+    setTimer: (fn, ms) => {
+      const id = win.setTimeout(() => {
+        timers.delete(id);
+        fn();
+      }, ms);
+      timers.add(id);
+      return id;
+    },
+    clearTimer: (id) => {
+      win.clearTimeout(id as number);
+      timers.delete(id as number);
+    },
+    slots,
+    still: new DomStill(img),
+    sounds: new DomSounds(),
+    files: new FetchLoader(),
+    formats: preferredFormats(nav.userAgent, nav.maxTouchPoints ?? 0),
+    pixels: () => {
+      const r = root.getBoundingClientRect();
+      return Math.max(r.width, r.height) * (win.devicePixelRatio || 1);
+    },
+    blocked: (on) => {
+      tap.hidden = !on;
+    },
+    dispose: () => {
+      for (const c of cleanups) c();
+      for (const id of timers) win.clearTimeout(id);
+      timers.clear();
+      root.remove();
+    }
+  };
+  const cleanups: (() => void)[] = [];
+
+  const playerOptions: PlayerOptions = {
+    delivery: options.delivery,
+    getDelivery: options.getDelivery,
+    sound: options.sound,
+    autoPlay: options.autoPlay
+  };
+  const player = new Player(host, playerOptions);
+
+  const ripple = player.clickEffect() === 'ripple';
+  const listen = (target: EventTarget, type: string, fn: (e: Event) => void) => {
+    target.addEventListener(type, fn);
+    cleanups.push(() => target.removeEventListener(type, fn));
+  };
+  listen(tap, 'click', (e) => {
+    e.stopPropagation();
+    player.play();
+  });
+  if (options.pointer !== false) {
+    listen(root, 'click', (e) => {
+      if (!tap.hidden) return;
+      player.click();
+      if (ripple) {
+        const r = root.getBoundingClientRect();
+        const m = e as MouseEvent;
+        const dot = doc.createElement('span');
+        dot.className = 'masko-ripple';
+        dot.style.left = `${m.clientX - r.left}px`;
+        dot.style.top = `${m.clientY - r.top}px`;
+        dot.addEventListener('animationend', () => dot.remove());
+        root.appendChild(dot);
+      }
+    });
+    listen(root, 'pointerenter', () => player.hover(true));
+    listen(root, 'pointerleave', () => player.hover(false));
+  }
+  listen(doc, 'visibilitychange', () => player.setHidden(doc.visibilityState === 'hidden'));
+  if (doc.visibilityState === 'hidden') player.setHidden(true);
+  return { player, root };
+}
+
+/** The app's handle on a player. */
+export function handleFor(player: Player): MaskoHandle {
+  return {
+    set: (name, value) => player.set(name, value),
+    fire: (name) => player.fire(name),
+    reset: () => player.reset(),
+    play: () => player.play(),
+    pause: () => player.pause(),
+    destroy: () => player.destroy(),
+    position: () => player.position(),
+    on: (event, handler) => player.on(event, handler),
+    preview: player.preview
+  };
+}

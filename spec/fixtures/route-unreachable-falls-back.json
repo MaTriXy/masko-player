@@ -1,0 +1,138 @@
+{
+  "name": "route-unreachable-falls-back",
+  "about": "An Any State target that cannot be reached gives way to the next candidate.",
+  "rules": ["6.3", "4.2"],
+  "canvas": {
+    "deliverySchemaVersion": 1,
+    "playerContract": 1,
+    "requires": ["any-state", "condition-groups"],
+    "target": "web",
+    "mode": "selected",
+    "runtimeGraph": {
+      "runtimeGraphSchemaVersion": 1,
+      "version": "2.1",
+      "name": "scenario",
+      "initialNode": "a",
+      "autoPlay": true,
+      "nodes": [
+        {
+          "id": "a",
+          "name": "a"
+        },
+        {
+          "id": "b",
+          "name": "b"
+        },
+        {
+          "id": "island",
+          "name": "island"
+        }
+      ],
+      "edges": [
+        {
+          "id": "loop-a",
+          "source": "a",
+          "target": "a",
+          "isLoop": true,
+          "duration": 4,
+          "videos": {
+            "hevc": "https://example.invalid/loop-a.mov",
+            "webm": "https://example.invalid/loop-a.webm"
+          }
+        },
+        {
+          "id": "loop-b",
+          "source": "b",
+          "target": "b",
+          "isLoop": true,
+          "duration": 4,
+          "videos": {
+            "hevc": "https://example.invalid/loop-b.mov",
+            "webm": "https://example.invalid/loop-b.webm"
+          }
+        },
+        {
+          "id": "loop-island",
+          "source": "island",
+          "target": "island",
+          "isLoop": true,
+          "duration": 4,
+          "videos": {
+            "hevc": "https://example.invalid/loop-island.mov",
+            "webm": "https://example.invalid/loop-island.webm"
+          }
+        },
+        {
+          "id": "a-to-b",
+          "source": "a",
+          "target": "b",
+          "isLoop": false,
+          "duration": 1,
+          "videos": {
+            "hevc": "https://example.invalid/a-to-b.mov",
+            "webm": "https://example.invalid/a-to-b.webm"
+          },
+          "conditions": [
+            {
+              "input": "action::go",
+              "op": "==",
+              "value": true
+            }
+          ]
+        },
+        {
+          "id": "any-island",
+          "source": "*",
+          "target": "island",
+          "isLoop": false,
+          "duration": 0,
+          "videos": {},
+          "conditions": [
+            {
+              "input": "action::go",
+              "op": "==",
+              "value": true
+            }
+          ],
+          "priority": 10
+        }
+      ],
+      "inputs": []
+    }
+  },
+  "steps": [
+    {
+      "start": true,
+      "expect": {
+        "clock": 0,
+        "pose": "a",
+        "clip": "loop-a",
+        "next": null,
+        "events": ["pose:a", "shown:loop-a"]
+      }
+    },
+    {
+      "fire": "go",
+      "expect": {
+        "clock": 0,
+        "pose": "a",
+        "clip": "loop-a",
+        "next": {
+          "clip": "a-to-b",
+          "at": "end"
+        },
+        "events": []
+      }
+    },
+    {
+      "loopEnded": true,
+      "expect": {
+        "clock": 4000,
+        "pose": "a",
+        "clip": "a-to-b",
+        "next": null,
+        "events": ["shown:a-to-b"]
+      }
+    }
+  ]
+}

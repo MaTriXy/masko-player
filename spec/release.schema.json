@@ -1,0 +1,451 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://masko.ai/schemas/mascot-release-delivery.schema.json",
+  "description": "A Masko mascot release delivery, as every Masko player reads it.",
+  "type": "object",
+  "properties": {
+    "deliverySchemaVersion": {
+      "type": "number",
+      "const": 1
+    },
+    "playerContract": {
+      "description": "The rulebook version. A player refuses a version it does not know.",
+      "type": "number",
+      "const": 1
+    },
+    "requires": {
+      "description": "Features this graph uses. A player refuses one it does not implement.",
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "any-state",
+          "condition-groups"
+        ]
+      }
+    },
+    "target": {
+      "type": "string",
+      "enum": [
+        "android",
+        "apple",
+        "macos",
+        "windows",
+        "web",
+        "full"
+      ]
+    },
+    "mode": {
+      "type": "string",
+      "enum": [
+        "selected",
+        "manifest"
+      ]
+    },
+    "variant": {
+      "type": "object",
+      "properties": {
+        "size": {
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991
+        }
+      },
+      "additionalProperties": {}
+    },
+    "runtimeGraph": {
+      "type": "object",
+      "properties": {
+        "runtimeGraphSchemaVersion": {
+          "type": "number",
+          "const": 1
+        },
+        "version": {
+          "type": "string",
+          "enum": [
+            "2.0",
+            "2.1"
+          ]
+        },
+        "name": {
+          "type": "string"
+        },
+        "canvasName": {
+          "type": "string"
+        },
+        "initialNode": {
+          "type": "string"
+        },
+        "autoPlay": {
+          "type": "boolean"
+        },
+        "clickEffect": {
+          "type": "string",
+          "enum": [
+            "ripple",
+            "none"
+          ]
+        },
+        "target": {
+          "type": "string",
+          "enum": [
+            "android",
+            "apple",
+            "macos",
+            "windows",
+            "web",
+            "full"
+          ]
+        },
+        "nodes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "transparentThumbnailUrl": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "name"
+            ],
+            "additionalProperties": {}
+          }
+        },
+        "edges": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "source": {
+                "description": "A node id, or \"*\" for an Any State edge.",
+                "type": "string"
+              },
+              "target": {
+                "type": "string"
+              },
+              "isLoop": {
+                "type": "boolean"
+              },
+              "duration": {
+                "description": "Seconds.",
+                "type": "number",
+                "minimum": 0
+              },
+              "conditions": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "input": {
+                      "type": "string"
+                    },
+                    "op": {
+                      "type": "string",
+                      "enum": [
+                        "==",
+                        "!=",
+                        ">",
+                        "<",
+                        ">=",
+                        "<="
+                      ]
+                    },
+                    "value": {
+                      "anyOf": [
+                        {
+                          "type": "boolean"
+                        },
+                        {
+                          "type": "number"
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "input"
+                  ],
+                  "additionalProperties": {}
+                }
+              },
+              "conditionGroups": {
+                "description": "When present, replaces conditions: any group whose conditions all hold.",
+                "type": "array",
+                "items": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "input": {
+                        "type": "string"
+                      },
+                      "op": {
+                        "type": "string",
+                        "enum": [
+                          "==",
+                          "!=",
+                          ">",
+                          "<",
+                          ">=",
+                          "<="
+                        ]
+                      },
+                      "value": {
+                        "anyOf": [
+                          {
+                            "type": "boolean"
+                          },
+                          {
+                            "type": "number"
+                          }
+                        ]
+                      }
+                    },
+                    "required": [
+                      "input"
+                    ],
+                    "additionalProperties": {}
+                  }
+                }
+              },
+              "videos": {
+                "type": "object",
+                "properties": {
+                  "webm": {
+                    "type": "string"
+                  },
+                  "hevc": {
+                    "type": "string"
+                  },
+                  "stacked": {
+                    "description": "Colour above, transparency below, for Android players.",
+                    "type": "string"
+                  },
+                  "variants": {
+                    "description": "Size variants by pixel size, in manifest mode.",
+                    "type": "object",
+                    "propertyNames": {
+                      "type": "string"
+                    },
+                    "additionalProperties": {
+                      "type": "object",
+                      "properties": {
+                        "webm": {
+                          "type": "string"
+                        },
+                        "hevc": {
+                          "type": "string"
+                        },
+                        "stacked": {
+                          "description": "Colour above, transparency below, for Android players.",
+                          "type": "string"
+                        }
+                      },
+                      "additionalProperties": {}
+                    }
+                  }
+                },
+                "additionalProperties": {}
+              },
+              "reverse": {
+                "type": "boolean"
+              },
+              "priority": {
+                "type": "number"
+              },
+              "speed": {
+                "type": "number"
+              },
+              "speedInput": {
+                "description": "A number input the clip speed follows: it plays at speed times that value, between 0.2 and 4.",
+                "type": "string"
+              },
+              "movement": {
+                "type": "object",
+                "properties": {},
+                "additionalProperties": {}
+              },
+              "sound": {
+                "type": "object",
+                "properties": {
+                  "url": {
+                    "type": "string"
+                  },
+                  "volume": {
+                    "type": "number"
+                  },
+                  "loop": {
+                    "type": "boolean"
+                  }
+                },
+                "additionalProperties": {}
+              },
+              "anchors": {
+                "type": "object",
+                "properties": {},
+                "additionalProperties": {}
+              },
+              "hasAudio": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "id",
+              "source",
+              "target",
+              "isLoop",
+              "duration",
+              "videos"
+            ],
+            "additionalProperties": {}
+          }
+        },
+        "inputs": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "type": {
+                "type": "string",
+                "enum": [
+                  "boolean",
+                  "number",
+                  "trigger"
+                ]
+              },
+              "default": {
+                "anyOf": [
+                  {
+                    "type": "boolean"
+                  },
+                  {
+                    "type": "number"
+                  }
+                ]
+              },
+              "system": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "name",
+              "type",
+              "default"
+            ],
+            "additionalProperties": {}
+          }
+        },
+        "physics": {
+          "type": "object",
+          "properties": {},
+          "additionalProperties": {}
+        },
+        "defaultAnchors": {
+          "type": "object",
+          "properties": {},
+          "additionalProperties": {}
+        },
+        "nodeAnchors": {
+          "type": "object",
+          "propertyNames": {
+            "type": "string"
+          },
+          "additionalProperties": {
+            "type": "object",
+            "properties": {},
+            "additionalProperties": {}
+          }
+        },
+        "anchors": {
+          "type": "object",
+          "properties": {},
+          "additionalProperties": {}
+        },
+        "capabilities": {
+          "type": "object",
+          "properties": {},
+          "additionalProperties": {}
+        },
+        "motionProfiles": {
+          "type": "object",
+          "propertyNames": {
+            "type": "string"
+          },
+          "additionalProperties": {
+            "type": "object",
+            "properties": {},
+            "additionalProperties": {}
+          }
+        },
+        "presentation": {
+          "type": "object",
+          "properties": {},
+          "additionalProperties": {}
+        }
+      },
+      "required": [
+        "runtimeGraphSchemaVersion",
+        "version",
+        "name",
+        "initialNode",
+        "autoPlay",
+        "nodes",
+        "edges"
+      ],
+      "additionalProperties": {}
+    },
+    "release": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": {}
+    },
+    "deliveryAccess": {
+      "type": "object",
+      "properties": {
+        "urlMode": {
+          "type": "string",
+          "enum": [
+            "signed",
+            "public"
+          ]
+        },
+        "signedUrlExpiresAt": {
+          "type": "string"
+        },
+        "lastFetchedAt": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "urlMode",
+        "lastFetchedAt"
+      ],
+      "additionalProperties": {}
+    }
+  },
+  "required": [
+    "deliverySchemaVersion",
+    "playerContract",
+    "requires",
+    "target",
+    "mode",
+    "runtimeGraph"
+  ],
+  "additionalProperties": {}
+}

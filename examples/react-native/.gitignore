@@ -1,0 +1,7 @@
+node_modules/
+.expo/
+# Made by `expo prebuild`.
+ios/
+android/
+# Made by server/make-clips.sh.
+clips/

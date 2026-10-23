@@ -1,0 +1,49 @@
+{
+  "name": "defaults-apply-at-start",
+  "about": "A declared default holds from the start and can start a move at once.",
+  "rules": ["2.4", "5.3", "5.7"],
+  "canvas": "ko-coffee",
+  "patch": {
+    "defaults": {
+      "action::drinkWater": true
+    }
+  },
+  "steps": [
+    {
+      "start": true,
+      "expect": {
+        "clock": 0,
+        "pose": "idle",
+        "clip": "enter-drink-water",
+        "next": null,
+        "events": ["pose:idle", "shown:enter-drink-water"],
+        "values": {
+          "drinkWater": true
+        }
+      }
+    },
+    {
+      "clipEnded": true,
+      "expect": {
+        "clock": 2000,
+        "pose": "drink-water",
+        "clip": "loop-drink-water",
+        "next": null,
+        "events": ["pose:drink-water", "shown:loop-drink-water"]
+      }
+    },
+    {
+      "set": ["drinkWater", false],
+      "expect": {
+        "clock": 2000,
+        "pose": "drink-water",
+        "clip": "loop-drink-water",
+        "next": {
+          "clip": "exit-drink-water",
+          "at": "end"
+        },
+        "events": []
+      }
+    }
+  ]
+}

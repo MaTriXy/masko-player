@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Masko player example</title>
+    <style>
+      body { margin: 0; padding: 24px; font: 15px/1.5 system-ui, sans-serif; background: #fff; color: #222; }
+      #mascot { width: 240px; height: 240px; }
+      button { font: inherit; padding: 6px 12px; margin-right: 8px; }
+      pre { background: #f7f6f5; padding: 12px; height: 160px; overflow: auto; font-size: 12px; }
+    </style>
+    <!-- The one-file build: run `scripts/build-web.sh --package` first. -->
+    <script src="../../web/dist/masko-player.js"></script>
+  </head>
+  <body>
+    <div id="mascot"></div>
+    <p>
+      <button id="work">Working</button>
+      <button id="rest">Rest</button>
+      <button id="pause">Pause</button>
+      <button id="play">Play</button>
+    </p>
+    <pre id="log"></pre>
+    <script>
+      // A two-pose canvas over public Dumple clips. A real app loads its
+      // release delivery from GET /v1/canvases/{canvasId}/releases/{releaseId}/delivery.
+      var base = 'https://assets.masko.ai/547bbb8e/dumple-vsa8qdhb/';
+      function edge(id, file, source, target, conditions) {
+        return {
+          id: id,
+          source: source,
+          target: target,
+          isLoop: source === target,
+          duration: 4.042,
+          videos: { webm: base + file + '-360.webm' },
+          conditions: conditions || []
+        };
+      }
+      var delivery = {
+        deliverySchemaVersion: 1,
+        playerContract: 1,
+        requires: [],
+        target: 'web',
+        mode: 'selected',
+        runtimeGraph: {
+          runtimeGraphSchemaVersion: 1,
+          version: '2.1',
+          name: 'Dumple',
+          initialNode: 'idle',
+          autoPlay: true,
+          clickEffect: 'ripple',
+          nodes: [
+            { id: 'idle', name: 'Idle' },
+            { id: 'working', name: 'Working' }
+          ],
+          inputs: [{ name: 'behavior::working', type: 'boolean', default: false }],
+          edges: [
+            edge('idle-loop', 'idle-settle-dfce9495', 'idle', 'idle'),
+            edge('work-loop', 'laptop-working-dc398b45', 'working', 'working'),
+            edge('to-work', 'panic-tremble-7863df85', 'idle', 'working', [{ input: 'behavior::working' }]),
+            edge('to-idle', 'dumpling-groove-9fcd9f24', 'working', 'idle', [{ input: 'behavior::working', value: false }])
+          ]
+        }
+      };
+
+      var mascot = MaskoPlayer.mount(document.getElementById('mascot'), { delivery: delivery });
+      var log = document.getElementById('log');
+      ['pose', 'clip', 'reactionDone', 'movement', 'error'].forEach(function (name) {
+        mascot.on(name, function (e) {
+          log.textContent = name + ' ' + JSON.stringify(e) + '\n' + log.textContent;
+        });
+      });
+      document.getElementById('work').onclick = function () { mascot.set('working', true); };
+      document.getElementById('rest').onclick = function () { mascot.set('working', false); };
+      document.getElementById('pause').onclick = function () { mascot.pause(); };
+      document.getElementById('play').onclick = function () { mascot.play(); };
+    </script>
+  </body>
+</html>

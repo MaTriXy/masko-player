@@ -1,0 +1,61 @@
+{
+  "name": "person-move-starts-at-once",
+  "about": "Pointer over the mascot starts its move at once, mid-loop.",
+  "rules": ["3.5", "5.2"],
+  "canvas": "ko-coffee",
+  "steps": [
+    {
+      "start": true,
+      "expect": {
+        "clock": 0,
+        "pose": "idle",
+        "clip": "loop-idle",
+        "next": null,
+        "events": ["pose:idle", "shown:loop-idle"]
+      }
+    },
+    {
+      "advance": 1500,
+      "expect": {
+        "clock": 1500,
+        "pose": "idle",
+        "clip": "loop-idle",
+        "next": null,
+        "events": []
+      }
+    },
+    {
+      "hover": true,
+      "expect": {
+        "clock": 1500,
+        "pose": "idle",
+        "clip": "enter-hover-perk",
+        "next": null,
+        "events": ["shown:enter-hover-perk"]
+      }
+    },
+    {
+      "clipEnded": true,
+      "expect": {
+        "clock": 3100,
+        "pose": "hover-perk",
+        "clip": "loop-hover-perk",
+        "next": null,
+        "events": ["pose:hover-perk", "shown:loop-hover-perk"]
+      }
+    },
+    {
+      "hover": false,
+      "expect": {
+        "clock": 3100,
+        "pose": "hover-perk",
+        "clip": "loop-hover-perk",
+        "next": {
+          "clip": "return-hover-perk",
+          "at": "end"
+        },
+        "events": []
+      }
+    }
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "name": "load-refuses-speed-input-not-a-number",
+  "about": "speedInput must name a declared number input.",
+  "rules": [
+    "1.3",
+    "9.2"
+  ],
+  "canvas": "otto",
+  "patch": {
+    "edges": {
+      "loop-idle": {
+        "speedInput": "behavior::working"
+      }
+    }
+  },
+  "expectLoad": {
+    "refused": "invalid_graph"
+  },
+  "steps": []
+}

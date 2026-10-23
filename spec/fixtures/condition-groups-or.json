@@ -1,0 +1,51 @@
+{
+  "name": "condition-groups-or",
+  "about": "conditionGroups hold when any group holds; Ko is held by interact or heldContact.",
+  "rules": ["2.1", "4.1", "6.1"],
+  "canvas": "ko-coffee",
+  "steps": [
+    {
+      "start": true,
+      "expect": {
+        "clock": 0,
+        "pose": "idle",
+        "clip": "loop-idle",
+        "next": null,
+        "events": ["pose:idle", "shown:loop-idle"]
+      }
+    },
+    {
+      "set": ["interact", true],
+      "expect": {
+        "clock": 0,
+        "pose": "idle",
+        "clip": "loop-idle",
+        "next": {
+          "clip": "enter-held-contact-squish",
+          "at": "end"
+        },
+        "events": []
+      }
+    },
+    {
+      "loopEnded": true,
+      "expect": {
+        "clock": 4000,
+        "pose": "idle",
+        "clip": "enter-held-contact-squish",
+        "next": null,
+        "events": ["shown:enter-held-contact-squish"]
+      }
+    },
+    {
+      "clipEnded": true,
+      "expect": {
+        "clock": 5333,
+        "pose": "held-contact-squish",
+        "clip": "loop-held-contact-squish",
+        "next": null,
+        "events": ["pose:held-contact-squish", "shown:loop-held-contact-squish"]
+      }
+    }
+  ]
+}

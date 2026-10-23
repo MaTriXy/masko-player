@@ -1,0 +1,117 @@
+{
+  "name": "otto-attention-over-working",
+  "about": "Otto: attention preempts working, and working returns when attention ends.",
+  "rules": ["4.1", "5.3"],
+  "canvas": "otto",
+  "steps": [
+    {
+      "start": true,
+      "expect": {
+        "clock": 0,
+        "pose": "idle",
+        "clip": "loop-idle",
+        "next": null,
+        "events": ["pose:idle", "shown:loop-idle"]
+      }
+    },
+    {
+      "set": ["working", true],
+      "expect": {
+        "clock": 0,
+        "pose": "idle",
+        "clip": "loop-idle",
+        "next": {
+          "clip": "idle-to-watching",
+          "at": "end"
+        },
+        "events": []
+      }
+    },
+    {
+      "loopEnded": true,
+      "expect": {
+        "clock": 4000,
+        "pose": "idle",
+        "clip": "idle-to-watching",
+        "next": null,
+        "events": ["shown:idle-to-watching"]
+      }
+    },
+    {
+      "clipEnded": true,
+      "expect": {
+        "clock": 5000,
+        "pose": "watching",
+        "clip": "loop-watching",
+        "next": null,
+        "events": ["pose:watching", "shown:loop-watching"]
+      }
+    },
+    {
+      "set": ["attention", true],
+      "expect": {
+        "clock": 5000,
+        "pose": "watching",
+        "clip": "loop-watching",
+        "next": {
+          "clip": "watching-to-alert",
+          "at": "end"
+        },
+        "events": []
+      }
+    },
+    {
+      "loopEnded": true,
+      "expect": {
+        "clock": 9000,
+        "pose": "watching",
+        "clip": "watching-to-alert",
+        "next": null,
+        "events": ["shown:watching-to-alert"]
+      }
+    },
+    {
+      "clipEnded": true,
+      "expect": {
+        "clock": 10000,
+        "pose": "alert",
+        "clip": "loop-alert",
+        "next": null,
+        "events": ["pose:alert", "shown:loop-alert"]
+      }
+    },
+    {
+      "set": ["attention", false],
+      "expect": {
+        "clock": 10000,
+        "pose": "alert",
+        "clip": "loop-alert",
+        "next": {
+          "clip": "alert-to-watching",
+          "at": "end"
+        },
+        "events": []
+      }
+    },
+    {
+      "loopEnded": true,
+      "expect": {
+        "clock": 14000,
+        "pose": "alert",
+        "clip": "alert-to-watching",
+        "next": null,
+        "events": ["shown:alert-to-watching"]
+      }
+    },
+    {
+      "clipEnded": true,
+      "expect": {
+        "clock": 15000,
+        "pose": "watching",
+        "clip": "loop-watching",
+        "next": null,
+        "events": ["pose:watching", "shown:loop-watching"]
+      }
+    }
+  ]
+}

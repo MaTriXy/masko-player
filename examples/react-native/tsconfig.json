@@ -1,0 +1,9 @@
+{
+  "extends": "expo/tsconfig.base",
+  "compilerOptions": {
+    "strict": true,
+    "paths": {
+      "@masko/player-react-native": ["../../react-native/src"]
+    }
+  }
+}

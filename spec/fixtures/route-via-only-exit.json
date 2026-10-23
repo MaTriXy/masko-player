@@ -1,0 +1,71 @@
+{
+  "name": "route-via-only-exit",
+  "about": "A route takes the only exit toward the target even when its conditions do not hold.",
+  "rules": ["6.2", "6.4"],
+  "canvas": "ko-coffee",
+  "patch": {
+    "delivery": {
+      "runtimeGraph": {
+        "initialNode": "laptop-working"
+      }
+    },
+    "defaults": {
+      "behavior::working": true
+    }
+  },
+  "steps": [
+    {
+      "start": true,
+      "expect": {
+        "clock": 0,
+        "pose": "laptop-working",
+        "clip": "loop-laptop-working",
+        "next": null,
+        "events": ["pose:laptop-working", "shown:loop-laptop-working"]
+      }
+    },
+    {
+      "set": ["attention", true],
+      "expect": {
+        "clock": 0,
+        "pose": "laptop-working",
+        "clip": "loop-laptop-working",
+        "next": {
+          "clip": "return-laptop-working",
+          "at": "end"
+        },
+        "events": []
+      }
+    },
+    {
+      "loopEnded": true,
+      "expect": {
+        "clock": 4000,
+        "pose": "laptop-working",
+        "clip": "return-laptop-working",
+        "next": null,
+        "events": ["shown:return-laptop-working"]
+      }
+    },
+    {
+      "clipEnded": true,
+      "expect": {
+        "clock": 6759,
+        "pose": "idle",
+        "clip": "enter-fan-wave",
+        "next": null,
+        "events": ["pose:idle", "shown:enter-fan-wave"]
+      }
+    },
+    {
+      "clipEnded": true,
+      "expect": {
+        "clock": 8759,
+        "pose": "fan-wave",
+        "clip": "loop-fan-wave",
+        "next": null,
+        "events": ["pose:fan-wave", "shown:loop-fan-wave"]
+      }
+    }
+  ]
+}

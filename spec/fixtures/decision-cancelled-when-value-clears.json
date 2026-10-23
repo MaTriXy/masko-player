@@ -1,0 +1,74 @@
+{
+  "name": "decision-cancelled-when-value-clears",
+  "about": "A decided move is cancelled when its condition stops holding.",
+  "rules": ["5.6"],
+  "canvas": "ko-coffee",
+  "steps": [
+    {
+      "start": true,
+      "expect": {
+        "clock": 0,
+        "pose": "idle",
+        "clip": "loop-idle",
+        "next": null,
+        "events": ["pose:idle", "shown:loop-idle"]
+      }
+    },
+    {
+      "advance": 300,
+      "expect": {
+        "clock": 300,
+        "pose": "idle",
+        "clip": "loop-idle",
+        "next": null,
+        "events": []
+      }
+    },
+    {
+      "set": ["working", true],
+      "expect": {
+        "clock": 300,
+        "pose": "idle",
+        "clip": "loop-idle",
+        "next": {
+          "clip": "enter-laptop-working",
+          "at": "end"
+        },
+        "events": []
+      }
+    },
+    {
+      "advance": 500,
+      "expect": {
+        "clock": 800,
+        "pose": "idle",
+        "clip": "loop-idle",
+        "next": {
+          "clip": "enter-laptop-working",
+          "at": "end"
+        },
+        "events": []
+      }
+    },
+    {
+      "set": ["working", false],
+      "expect": {
+        "clock": 800,
+        "pose": "idle",
+        "clip": "loop-idle",
+        "next": null,
+        "events": []
+      }
+    },
+    {
+      "advance": 1500,
+      "expect": {
+        "clock": 2300,
+        "pose": "idle",
+        "clip": "loop-idle",
+        "next": null,
+        "events": []
+      }
+    }
+  ]
+}

@@ -1,0 +1,64 @@
+{
+  "name": "move-ends-when-its-clip-ends",
+  "about": "A move ends when its file ends, not after its duration; nothing stretches it.",
+  "rules": ["9.1", "9.2"],
+  "canvas": "otto",
+  "files": {
+    "idle-to-watching": 1.5
+  },
+  "steps": [
+    {
+      "start": true,
+      "expect": {
+        "clock": 0,
+        "pose": "idle",
+        "clip": "loop-idle",
+        "next": null,
+        "events": ["pose:idle", "shown:loop-idle"]
+      }
+    },
+    {
+      "set": ["working", true],
+      "expect": {
+        "clock": 0,
+        "pose": "idle",
+        "clip": "loop-idle",
+        "next": {
+          "clip": "idle-to-watching",
+          "at": "end"
+        },
+        "events": []
+      }
+    },
+    {
+      "loopEnded": true,
+      "expect": {
+        "clock": 4000,
+        "pose": "idle",
+        "clip": "idle-to-watching",
+        "next": null,
+        "events": ["shown:idle-to-watching"]
+      }
+    },
+    {
+      "advance": 1000,
+      "expect": {
+        "clock": 5000,
+        "pose": "idle",
+        "clip": "idle-to-watching",
+        "next": null,
+        "events": []
+      }
+    },
+    {
+      "advance": 500,
+      "expect": {
+        "clock": 5500,
+        "pose": "watching",
+        "clip": "loop-watching",
+        "next": null,
+        "events": ["pose:watching", "shown:loop-watching"]
+      }
+    }
+  ]
+}

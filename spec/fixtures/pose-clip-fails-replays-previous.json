@@ -1,0 +1,65 @@
+{
+  "name": "pose-clip-fails-replays-previous",
+  "about": "When a pose's next clip fails, the clip that just played plays again.",
+  "rules": ["9.5"],
+  "canvas": "ko-coffee",
+  "patch": {
+    "addEdges": [
+      {
+        "id": "loop-idle-yawn",
+        "source": "idle",
+        "target": "idle",
+        "isLoop": true,
+        "duration": 4,
+        "videos": {
+          "hevc": "https://example.invalid/loop-idle-yawn.mov",
+          "webm": "https://example.invalid/loop-idle-yawn.webm"
+        }
+      },
+      {
+        "id": "loop-idle-look",
+        "source": "idle",
+        "target": "idle",
+        "isLoop": true,
+        "duration": 4,
+        "videos": {
+          "hevc": "https://example.invalid/loop-idle-look.mov",
+          "webm": "https://example.invalid/loop-idle-look.webm"
+        }
+      }
+    ]
+  },
+  "random": [0.2],
+  "steps": [
+    {
+      "failClip": "loop-idle-look",
+      "expect": {
+        "clock": 0,
+        "pose": null,
+        "clip": null,
+        "next": null,
+        "events": []
+      }
+    },
+    {
+      "start": true,
+      "expect": {
+        "clock": 0,
+        "pose": "idle",
+        "clip": "loop-idle",
+        "next": null,
+        "events": ["pose:idle", "shown:loop-idle"]
+      }
+    },
+    {
+      "loopEnded": true,
+      "expect": {
+        "clock": 4000,
+        "pose": "idle",
+        "clip": "loop-idle",
+        "next": null,
+        "events": ["error:clip_failed", "shown:loop-idle"]
+      }
+    }
+  ]
+}

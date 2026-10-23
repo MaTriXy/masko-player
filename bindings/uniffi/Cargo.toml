@@ -1,0 +1,16 @@
+[package]
+name = "masko-player-ffi"
+version = "0.0.0"
+edition = "2021"
+license = "MIT"
+description = "The Masko player engine for Swift and Kotlin, through UniFFI."
+publish = false
+
+[lib]
+name = "masko_player_ffi"
+crate-type = ["lib", "cdylib", "staticlib"]
+
+[dependencies]
+masko-player-engine = { path = "../../engine" }
+uniffi = "0.32"
+thiserror = "2"

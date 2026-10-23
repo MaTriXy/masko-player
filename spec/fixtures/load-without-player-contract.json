@@ -1,0 +1,57 @@
+{
+  "name": "load-without-player-contract",
+  "about": "A delivery made before playerContract existed reads as contract 1.",
+  "rules": ["1.2"],
+  "canvas": {
+    "deliverySchemaVersion": 1,
+    "playerContract": 1,
+    "requires": ["any-state", "condition-groups"],
+    "target": "web",
+    "mode": "selected",
+    "runtimeGraph": {
+      "runtimeGraphSchemaVersion": 1,
+      "version": "2.1",
+      "name": "scenario",
+      "initialNode": "idle",
+      "autoPlay": true,
+      "nodes": [
+        {
+          "id": "idle",
+          "name": "idle"
+        }
+      ],
+      "edges": [
+        {
+          "id": "loop-idle",
+          "source": "idle",
+          "target": "idle",
+          "isLoop": true,
+          "duration": 4,
+          "videos": {
+            "hevc": "https://example.invalid/loop-idle.mov",
+            "webm": "https://example.invalid/loop-idle.webm"
+          }
+        }
+      ],
+      "inputs": []
+    }
+  },
+  "patch": {
+    "delivery": {
+      "playerContract": null,
+      "requires": null
+    }
+  },
+  "steps": [
+    {
+      "start": true,
+      "expect": {
+        "clock": 0,
+        "pose": "idle",
+        "clip": "loop-idle",
+        "next": null,
+        "events": ["pose:idle", "shown:loop-idle"]
+      }
+    }
+  ]
+}

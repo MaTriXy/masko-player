@@ -1,0 +1,115 @@
+{
+  "name": "unset-name-reads-false",
+  "about": "A name nothing has set reads false, so `!= true` holds.",
+  "rules": ["2.3"],
+  "canvas": {
+    "deliverySchemaVersion": 1,
+    "playerContract": 1,
+    "requires": ["any-state", "condition-groups"],
+    "target": "web",
+    "mode": "selected",
+    "runtimeGraph": {
+      "runtimeGraphSchemaVersion": 1,
+      "version": "2.1",
+      "name": "scenario",
+      "initialNode": "rest",
+      "autoPlay": true,
+      "nodes": [
+        {
+          "id": "rest",
+          "name": "rest"
+        },
+        {
+          "id": "wave",
+          "name": "wave"
+        }
+      ],
+      "edges": [
+        {
+          "id": "loop-rest",
+          "source": "rest",
+          "target": "rest",
+          "isLoop": true,
+          "duration": 4,
+          "videos": {
+            "hevc": "https://example.invalid/loop-rest.mov",
+            "webm": "https://example.invalid/loop-rest.webm"
+          }
+        },
+        {
+          "id": "loop-wave",
+          "source": "wave",
+          "target": "wave",
+          "isLoop": true,
+          "duration": 4,
+          "videos": {
+            "hevc": "https://example.invalid/loop-wave.mov",
+            "webm": "https://example.invalid/loop-wave.webm"
+          }
+        },
+        {
+          "id": "rest-to-wave",
+          "source": "rest",
+          "target": "wave",
+          "isLoop": false,
+          "duration": 1,
+          "videos": {
+            "hevc": "https://example.invalid/rest-to-wave.mov",
+            "webm": "https://example.invalid/rest-to-wave.webm"
+          },
+          "conditions": [
+            {
+              "input": "action::wave",
+              "op": "==",
+              "value": true
+            },
+            {
+              "input": "behavior::heldShake",
+              "op": "!=",
+              "value": true
+            }
+          ]
+        }
+      ],
+      "inputs": []
+    }
+  },
+  "steps": [
+    {
+      "start": true,
+      "expect": {
+        "clock": 0,
+        "pose": "rest",
+        "clip": "loop-rest",
+        "next": null,
+        "events": ["pose:rest", "shown:loop-rest"]
+      }
+    },
+    {
+      "fire": "wave",
+      "expect": {
+        "clock": 0,
+        "pose": "rest",
+        "clip": "loop-rest",
+        "next": {
+          "clip": "rest-to-wave",
+          "at": "end"
+        },
+        "events": [],
+        "values": {
+          "heldShake": false
+        }
+      }
+    },
+    {
+      "loopEnded": true,
+      "expect": {
+        "clock": 4000,
+        "pose": "rest",
+        "clip": "rest-to-wave",
+        "next": null,
+        "events": ["shown:rest-to-wave"]
+      }
+    }
+  ]
+}

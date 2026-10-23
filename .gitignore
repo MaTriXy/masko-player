@@ -1,0 +1,8 @@
+target/
+__pycache__/
+.DS_Store
+.toolchain/
+
+# Swift Package Manager and Xcode (Package.swift at the root)
+.build/
+.swiftpm/

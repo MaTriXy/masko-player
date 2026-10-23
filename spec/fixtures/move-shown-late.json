@@ -1,0 +1,56 @@
+{
+  "name": "move-shown-late",
+  "about": "A move whose first frame takes 2.5 s to show plays in full: its safety net counts from when it shows.",
+  "rules": ["9.1", "9.3"],
+  "canvas": "otto",
+  "loadMs": {
+    "idle-to-watching": 2500
+  },
+  "steps": [
+    {
+      "start": true,
+      "expect": {
+        "clock": 0,
+        "pose": "idle",
+        "clip": "loop-idle",
+        "events": ["pose:idle", "shown:loop-idle"]
+      }
+    },
+    {
+      "set": ["working", true],
+      "expect": {
+        "next": {
+          "clip": "idle-to-watching",
+          "at": "end"
+        }
+      }
+    },
+    {
+      "loopEnded": true,
+      "expect": {
+        "clock": 4000,
+        "pose": "idle",
+        "clip": "idle-to-watching",
+        "events": ["shown:idle-to-watching"]
+      }
+    },
+    {
+      "advance": 3000,
+      "expect": {
+        "clock": 7000,
+        "pose": "idle",
+        "clip": "idle-to-watching",
+        "events": []
+      }
+    },
+    {
+      "clipEnded": true,
+      "expect": {
+        "clock": 7500,
+        "pose": "watching",
+        "clip": "loop-watching",
+        "events": ["pose:watching", "shown:loop-watching"]
+      }
+    }
+  ]
+}

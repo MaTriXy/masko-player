@@ -1,0 +1,2 @@
+# Built by scripts/build-apple.sh; releases publish it as a binary target.
+MaskoPlayerFFI.xcframework/

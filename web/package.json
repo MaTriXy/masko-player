@@ -1,0 +1,64 @@
+{
+  "name": "@masko/player",
+  "version": "0.1.0",
+  "description": "Plays Masko mascots on the web. One engine holds every canvas rule; apps call set and fire.",
+  "license": "MIT",
+  "type": "module",
+  "sideEffects": false,
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/types/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/types/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./react": {
+      "types": "./dist/types/react.d.ts",
+      "default": "./dist/react.js"
+    },
+    "./script": "./dist/masko-player.js",
+    "./masko_player_wasm_bg.wasm": "./dist/masko_player_wasm_bg.wasm",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist",
+    "LICENSE",
+    "THIRD_PARTY_NOTICES.md"
+  ],
+  "peerDependencies": {
+    "react": ">=17"
+  },
+  "peerDependenciesMeta": {
+    "react": {
+      "optional": true
+    }
+  },
+  "scripts": {
+    "build:engine": "../scripts/build-web.sh",
+    "build": "node build.mjs",
+    "prepack": "cp ../LICENSE ../THIRD_PARTY_NOTICES.md . && npm run build",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "node --test test/*.test.ts",
+    "test:browser": "playwright test",
+    "sizes": "node tools/sizes.mjs"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.61.1",
+    "@types/node": "22.18.12",
+    "@types/react": "19.2.2",
+    "@types/react-dom": "19.2.2",
+    "binaryen": "132.0.0",
+    "esbuild": "0.25.11",
+    "react": "19.2.0",
+    "react-dom": "19.2.0",
+    "typescript": "5.9.3"
+  },
+  "keywords": [
+    "masko",
+    "mascot",
+    "animation",
+    "video",
+    "webassembly"
+  ]
+}

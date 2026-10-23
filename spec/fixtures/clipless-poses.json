@@ -1,0 +1,51 @@
+{
+  "name": "clipless-poses",
+  "about": "Poses without clips show their still, and moves without clips enter their target at once.",
+  "rules": ["7.4", "9.4"],
+  "canvas": "otto-noclips",
+  "steps": [
+    {
+      "start": true,
+      "expect": {
+        "clock": 0,
+        "pose": "idle",
+        "clip": "still:idle",
+        "next": null,
+        "events": ["pose:idle", "shown:still:idle"]
+      }
+    },
+    {
+      "set": ["working", true],
+      "expect": {
+        "clock": 0,
+        "pose": "watching",
+        "clip": "still:watching",
+        "next": null,
+        "events": ["error:clip_failed", "pose:watching", "shown:still:watching"]
+      }
+    },
+    {
+      "set": ["attention", true],
+      "expect": {
+        "clock": 0,
+        "pose": "alert",
+        "clip": "still:alert",
+        "next": null,
+        "events": ["error:clip_failed", "pose:alert", "shown:still:alert"]
+      }
+    },
+    {
+      "advance": 1000,
+      "expect": {
+        "clock": 1000,
+        "pose": "alert",
+        "clip": "still:alert",
+        "next": null,
+        "events": ["shown:still:alert"],
+        "values": {
+          "node::loopCount": 1
+        }
+      }
+    }
+  ]
+}

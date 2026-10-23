@@ -1,0 +1,26 @@
+{
+  "expo": {
+    "name": "Masko Player",
+    "slug": "masko-player-example",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "newArchEnabled": true,
+    "ios": {
+      "bundleIdentifier": "ai.masko.player.example",
+      "supportsTablet": true
+    },
+    "android": {
+      "package": "ai.masko.player.example"
+    },
+    "plugins": [
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "usesCleartextTraffic": true
+          }
+        }
+      ]
+    ]
+  }
+}

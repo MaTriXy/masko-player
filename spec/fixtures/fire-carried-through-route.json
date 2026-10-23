@@ -1,0 +1,118 @@
+{
+  "name": "fire-carried-through-route",
+  "about": "A fire that chose an Any State target stays on through every hop of the route.",
+  "rules": ["3.3", "6.2", "6.4"],
+  "canvas": "ko-coffee",
+  "steps": [
+    {
+      "start": true,
+      "expect": {
+        "clock": 0,
+        "pose": "idle",
+        "clip": "loop-idle",
+        "next": null,
+        "events": ["pose:idle", "shown:loop-idle"]
+      }
+    },
+    {
+      "set": ["working", true],
+      "expect": {
+        "clock": 0,
+        "pose": "idle",
+        "clip": "loop-idle",
+        "next": {
+          "clip": "enter-laptop-working",
+          "at": "end"
+        },
+        "events": []
+      }
+    },
+    {
+      "loopEnded": true,
+      "expect": {
+        "clock": 4000,
+        "pose": "idle",
+        "clip": "enter-laptop-working",
+        "next": null,
+        "events": ["shown:enter-laptop-working"]
+      }
+    },
+    {
+      "clipEnded": true,
+      "expect": {
+        "clock": 6286,
+        "pose": "laptop-working",
+        "clip": "loop-laptop-working",
+        "next": null,
+        "events": ["pose:laptop-working", "shown:loop-laptop-working"]
+      }
+    },
+    {
+      "fire": "boop",
+      "expect": {
+        "clock": 6286,
+        "pose": "laptop-working",
+        "clip": "loop-laptop-working",
+        "next": {
+          "clip": "return-laptop-working",
+          "at": "end"
+        },
+        "events": []
+      }
+    },
+    {
+      "loopEnded": true,
+      "expect": {
+        "clock": 10286,
+        "pose": "laptop-working",
+        "clip": "return-laptop-working",
+        "next": null,
+        "events": ["shown:return-laptop-working"],
+        "fired": ["action::boop"]
+      }
+    },
+    {
+      "clipEnded": true,
+      "expect": {
+        "clock": 13045,
+        "pose": "idle",
+        "clip": "enter-overboop-fluster",
+        "next": null,
+        "events": ["pose:idle", "shown:enter-overboop-fluster"],
+        "fired": ["action::boop"]
+      }
+    },
+    {
+      "clipEnded": true,
+      "expect": {
+        "clock": 14378,
+        "pose": "overboop-fluster",
+        "clip": "loop-overboop-fluster",
+        "next": null,
+        "events": ["pose:overboop-fluster", "shown:loop-overboop-fluster"],
+        "fired": ["action::boop"]
+      }
+    },
+    {
+      "loopEnded": true,
+      "expect": {
+        "clock": 18378,
+        "pose": "overboop-fluster",
+        "clip": "return-overboop-fluster",
+        "next": null,
+        "events": ["spent:action::boop", "shown:return-overboop-fluster"],
+        "fired": []
+      }
+    },
+    {
+      "clipEnded": true,
+      "expect": {
+        "clock": 20196,
+        "pose": "idle",
+        "clip": "enter-laptop-working",
+        "next": null,
+        "events": ["pose:idle", "shown:enter-laptop-working"]
+      }
+    }
+  ]
+}

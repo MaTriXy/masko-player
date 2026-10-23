@@ -1,0 +1,71 @@
+{
+  "name": "preview-show-pose",
+  "about": "preview.showPose cuts to a pose's main loop, drops fires, then the rules take over.",
+  "rules": ["13", "5.3"],
+  "canvas": "ko-coffee",
+  "steps": [
+    {
+      "start": true,
+      "expect": {
+        "clock": 0,
+        "pose": "idle",
+        "clip": "loop-idle",
+        "next": null,
+        "events": ["pose:idle", "shown:loop-idle"]
+      }
+    },
+    {
+      "fire": "boop",
+      "expect": {
+        "clock": 0,
+        "pose": "idle",
+        "clip": "loop-idle",
+        "next": {
+          "clip": "enter-overboop-fluster",
+          "at": "end"
+        },
+        "events": []
+      }
+    },
+    {
+      "advance": 1000,
+      "expect": {
+        "clock": 1000,
+        "pose": "idle",
+        "clip": "loop-idle",
+        "next": {
+          "clip": "enter-overboop-fluster",
+          "at": "end"
+        },
+        "events": []
+      }
+    },
+    {
+      "showPose": "fan-wave",
+      "expect": {
+        "clock": 1000,
+        "pose": "fan-wave",
+        "clip": "loop-fan-wave",
+        "next": {
+          "clip": "return-fan-wave",
+          "at": "end"
+        },
+        "events": ["pose:fan-wave", "shown:loop-fan-wave"],
+        "fired": []
+      }
+    },
+    {
+      "showPose": "nowhere",
+      "expect": {
+        "clock": 1000,
+        "pose": "fan-wave",
+        "clip": "loop-fan-wave",
+        "next": {
+          "clip": "return-fan-wave",
+          "at": "end"
+        },
+        "events": ["error:unknown_pose"]
+      }
+    }
+  ]
+}

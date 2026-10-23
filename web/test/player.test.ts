@@ -1,0 +1,772 @@
+// The player against a scripted fake video layer (spec/player.md, test 2):
+// two slots, swap only after the first frame, loop restart, end and failure
+// reports, the preload cache, sounds, events, position, pause and play, and
+// signed-link refresh.
+
+import { test, type TestContext } from 'node:test';
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { Engine, loadWasmSync } from '../src/engine.ts';
+import { Player, type MaskoEventName, type PlayerOptions } from '../src/player.ts';
+import { FakeHost, settle } from './fakes.ts';
+
+loadWasmSync(readFileSync(join(import.meta.dirname, '..', 'src', 'wasm', 'masko_player_wasm_bg.wasm')));
+
+const files = (id: string, sig = '1') => ({
+  webm: `https://cdn.test/${id}.webm?sig=${sig}`,
+  hevc: `https://cdn.test/${id}.mov?sig=${sig}`
+});
+
+function delivery(sig = '1', expires?: string) {
+  return {
+    deliverySchemaVersion: 1,
+    playerContract: 1,
+    requires: ['any-state'],
+    target: 'web',
+    mode: 'selected',
+    ...(expires
+      ? { deliveryAccess: { urlMode: 'signed' as const, signedUrlExpiresAt: expires, lastFetchedAt: '2026-10-23T10:00:00Z' } }
+      : {}),
+    runtimeGraph: {
+      runtimeGraphSchemaVersion: 1,
+      version: '2.1',
+      name: 'Test',
+      initialNode: 'idle',
+      autoPlay: true,
+      nodes: [
+        { id: 'idle', name: 'Idle', transparentThumbnailUrl: `https://cdn.test/idle.png?sig=${sig}` },
+        { id: 'working', name: 'Working' }
+      ],
+      inputs: [{ name: 'behavior::working', type: 'boolean', default: false }],
+      edges: [
+        {
+          id: 'idle-loop',
+          source: 'idle',
+          target: 'idle',
+          isLoop: true,
+          duration: 2,
+          videos: files('idle-loop', sig),
+          sound: { url: `https://cdn.test/hum.mp3?sig=${sig}`, loop: true, volume: 0.5 }
+        },
+        {
+          id: 'work-loop',
+          source: 'working',
+          target: 'working',
+          isLoop: true,
+          duration: 2,
+          hasAudio: true,
+          videos: files('work-loop', sig)
+        },
+        {
+          id: 'to-work',
+          source: 'idle',
+          target: 'working',
+          isLoop: false,
+          duration: 1,
+          conditions: [{ input: 'behavior::working' }],
+          videos: files('to-work', sig),
+          sound: { url: `https://cdn.test/whoosh.mp3?sig=${sig}` },
+          movement: { x: 120 }
+        },
+        {
+          id: 'to-idle',
+          source: 'working',
+          target: 'idle',
+          isLoop: false,
+          duration: 1,
+          conditions: [{ input: 'behavior::working', value: false }],
+          videos: files('to-idle', sig)
+        },
+        {
+          id: 'poke',
+          source: 'idle',
+          target: 'working',
+          isLoop: false,
+          duration: 1,
+          conditions: [{ input: 'action::click' }],
+          videos: files('poke', sig)
+        }
+      ]
+    }
+  };
+}
+
+const EVENTS: MaskoEventName[] = ['pose', 'clip', 'reactionDone', 'movement', 'error'];
+
+async function mount(options: Partial<PlayerOptions> = {}, setup?: (host: FakeHost) => void) {
+  const host = new FakeHost();
+  setup?.(host);
+  const player = new Player(host, { delivery: delivery(), seed: 1, ...options });
+  const events: string[] = [];
+  for (const name of EVENTS) {
+    player.on(name, (e) => {
+      const ev = e as Record<string, unknown>;
+      events.push(
+        name === 'pose'
+          ? `pose:${ev.pose}`
+          : name === 'clip'
+            ? `clip:${ev.clip}`
+            : name === 'error'
+              ? `error:${ev.code}`
+              : name === 'reactionDone'
+                ? `done:${ev.name}:${ev.used}`
+                : `movement:${ev.edge}`
+      );
+    });
+  }
+  await settle();
+  const [a, b] = host.slots;
+  return { host, player, events, a, b };
+}
+
+/** Starts and shows the idle loop in slot 0. */
+async function started(options: Partial<PlayerOptions> = {}, setup?: (host: FakeHost) => void) {
+  const m = await mount(options, setup);
+  m.a.frame();
+  await settle();
+  return m;
+}
+
+/** Records each `clipShown` the player reports, as `edge@now`. */
+function shownReports(t: TestContext): () => string[] {
+  const spy = t.mock.method(Engine.prototype, 'clipShown');
+  return () => spy.mock.calls.map((c) => `${c.arguments[0]}@${c.arguments[1]}`);
+}
+
+const blob = (id: string, ext = 'webm', sig = '1') => `blob:https://cdn.test/${id}.${ext}?sig=${sig}`;
+const url = (id: string, ext = 'webm', sig = '1') => `https://cdn.test/${id}.${ext}?sig=${sig}`;
+
+test('start: the first loop loads in a hidden slot and shows on its first frame', async () => {
+  const { host, events, a, b } = await mount();
+  assert.deepEqual(a.loads, [url('idle-loop')]);
+  assert.equal(a.playing, true);
+  assert.equal(a.muted, true);
+  assert.equal(a.visible, false, 'nothing shows before the first frame');
+  assert.deepEqual(events, ['pose:idle']);
+  a.frame();
+  await settle();
+  assert.equal(a.visible, true);
+  assert.equal(b.visible, false);
+  assert.deepEqual(events, ['pose:idle', 'clip:idle-loop']);
+  // Entering idle preloaded its moves, most important first.
+  assert.deepEqual(host.files.requested, [url('to-work'), url('poke')]);
+});
+
+test('swap only after the next clip has a decoded frame, in one step, no frame without a mascot', async () => {
+  const { host, player, events, a, b } = await started();
+  player.set('working', true);
+  await host.advance(1999);
+  assert.equal(b.loads.length, 0, 'an app move waits for the end of the loop');
+  await host.advance(1);
+  a.end();
+  await settle();
+  assert.deepEqual(b.loads, [blob('to-work')], 'the move comes from the preload cache');
+  assert.equal(b.playing, true);
+  assert.equal(b.visible, false);
+  assert.equal(a.visible, true, 'the old clip stays on screen while the next one decodes');
+  await host.advance(40);
+  assert.equal(b.visible, false);
+  b.frame();
+  assert.equal(b.visible, true);
+  assert.equal(a.visible, false);
+  assert.equal(a.playing, false, 'the old slot is paused after the swap');
+  const swap = host.log.slice(host.log.indexOf('slot1:show') - 0, host.log.indexOf('slot1:show') + 2);
+  assert.deepEqual(swap, ['slot1:show', 'slot0:hide'], 'show the new slot, then hide the old one, in the same step');
+  assert.equal(host.emptyScreens, 0);
+  assert.ok(events.includes('clip:to-work'));
+});
+
+test('a pose clip shown again restarts in its slot, with no swap', async () => {
+  const { host, events, a, b } = await started();
+  await host.advance(2000);
+  a.time = 2;
+  a.end();
+  await settle();
+  assert.equal(a.seeks, 1, 'seek to the first frame');
+  assert.equal(a.loads.length, 1, 'no new load');
+  assert.equal(b.loads.length, 0, 'the other slot is untouched');
+  assert.equal(a.visible, true);
+  assert.equal(a.playing, true);
+  assert.deepEqual(events.filter((e) => e.startsWith('clip:')), ['clip:idle-loop', 'clip:idle-loop']);
+  assert.ok(!events.some((e) => e.startsWith('error:')), 'no missing_end: the end was reported');
+});
+
+test('clipEnded is reported once per showing, on the real end; stale ends are ignored', async () => {
+  const { host, player, events, a, b } = await started();
+  player.set('working', true);
+  await host.advance(2000);
+  a.end();
+  await settle();
+  b.frame();
+  await host.advance(300);
+  a.end(); // the old slot: stale
+  await settle();
+  assert.ok(!events.includes('pose:working'), 'a stale end does not end the move');
+  await host.advance(700);
+  b.end();
+  b.end(); // the same showing again
+  await settle();
+  assert.equal(events.filter((e) => e === 'pose:working').length, 1);
+  assert.deepEqual(a.loads.at(-1), blob('work-loop'), 'the target loop, preloaded with the move, loads in the free slot');
+  assert.ok(!events.some((e) => e.startsWith('error:')));
+});
+
+test('a late end report is covered by the engine safety net, counted from the swap', async () => {
+  const { host, events, a } = await mount();
+  await host.advance(500);
+  a.frame();
+  await host.advance(2999);
+  assert.ok(!events.includes('error:missing_end'));
+  await host.advance(1);
+  assert.ok(events.includes('error:missing_end'), 'the safety net runs on the wake timer, 2 s + 1 s after the first frame');
+});
+
+test('clipShown: at the swap, with the play time of the first frame, and at once on a loop restart', async (t) => {
+  const reports = shownReports(t);
+  const { host, player, a, b } = await mount();
+  await host.advance(120);
+  assert.deepEqual(reports(), [], 'not before the first frame');
+  a.frame();
+  await settle();
+  assert.deepEqual(reports(), ['idle-loop@120']);
+  await host.advance(2000);
+  a.end();
+  await settle();
+  assert.equal(a.seeks, 1, 'the loop restarted in place');
+  assert.deepEqual(reports(), ['idle-loop@120', 'idle-loop@2120'], 'a restart in place is on screen at once');
+  player.set('working', true);
+  await host.advance(2000);
+  a.end();
+  await settle();
+  await host.advance(80);
+  assert.deepEqual(reports().length, 2, 'the move is not shown while it decodes');
+  b.frame();
+  b.frame();
+  await settle();
+  assert.deepEqual(reports().slice(2), ['to-work@4200'], 'once per showing');
+});
+
+test('clipShown is never reported for a showing a later command overtook', async (t) => {
+  const reports = shownReports(t);
+  const { host, player, b } = await started();
+  player.click();
+  await settle();
+  assert.deepEqual(b.loads, [blob('poke')]);
+  await host.advance(300);
+  player.preview.showPose('idle');
+  await settle();
+  b.frame();
+  await settle();
+  assert.deepEqual(reports(), ['idle-loop@0', 'idle-loop@300'], 'the dropped move is not reported');
+  assert.equal(b.visible, false);
+});
+
+test('a report that waits for play is dropped when a call kept from before overtakes it', async (t) => {
+  const reports = shownReports(t);
+  const { host, player, a, b } = await started();
+  player.set('working', true);
+  await host.advance(2000);
+  a.end();
+  await settle();
+  player.pause();
+  player.reset();
+  b.frame();
+  await settle();
+  player.play();
+  await settle();
+  assert.deepEqual(reports(), ['idle-loop@0'], 'the reset asked for the idle loop before the move was reported');
+  assert.deepEqual(a.loads.at(-1), url('idle-loop'));
+  a.frame();
+  await settle();
+  assert.deepEqual(reports(), ['idle-loop@0', 'idle-loop@2000']);
+});
+
+test('a first frame decoded while paused is reported when play resumes, at its play time', async (t) => {
+  const reports = shownReports(t);
+  const { host, player, events, a, b } = await started();
+  player.set('working', true);
+  await host.advance(2000);
+  a.end();
+  await settle();
+  await host.advance(100);
+  player.pause();
+  b.frame();
+  await settle();
+  assert.equal(b.visible, true, 'the first frame shows while paused');
+  assert.deepEqual(reports(), ['idle-loop@0'], 'the engine hears nothing while paused');
+  await host.advance(60_000);
+  player.play();
+  await settle();
+  assert.deepEqual(reports(), ['idle-loop@0', 'to-work@2100']);
+  // The move lasts 1 s: its safety net is at 2100 + 1000 + 1000.
+  await host.advance(1999);
+  assert.ok(!events.includes('error:missing_end'));
+  await host.advance(1);
+  assert.ok(events.includes('error:missing_end'));
+});
+
+test('a slow first frame does not trip missing_end: the safety net counts from the swap', async () => {
+  const { host, player, events, a, b } = await started();
+  player.set('working', true);
+  await host.advance(2000);
+  a.end();
+  await settle();
+  // 2.5 s to the first frame: longer than the move's 1 s and its 1 s safety net.
+  await host.advance(2500);
+  assert.ok(!events.some((e) => e.startsWith('error:')));
+  assert.ok(!events.includes('pose:working'), 'the engine waits for the move to show');
+  assert.equal(a.visible, true, 'the idle loop stays on screen meanwhile');
+  b.frame();
+  await host.advance(1000);
+  b.end();
+  await settle();
+  assert.ok(events.includes('pose:working'));
+  assert.ok(!events.some((e) => e.startsWith('error:')), 'the move played in full');
+});
+
+test('a clip that never shows a frame counts as failed 10 s after it was asked for (clip_timeout)', async () => {
+  const { host, player, events, a, b } = await started();
+  player.set('working', true);
+  await host.advance(2000);
+  a.end();
+  await settle();
+  assert.deepEqual(b.loads, [blob('to-work')]);
+  await host.advance(9999);
+  assert.ok(!events.some((e) => e.startsWith('error:')));
+  assert.ok(!events.includes('pose:working'));
+  await host.advance(1);
+  assert.ok(events.includes('error:clip_timeout'));
+  assert.ok(events.includes('pose:working'), 'a move that times out skips to its target (rules 9.4)');
+  assert.deepEqual(b.loads.at(-1), blob('work-loop'), 'the target loop takes the hidden slot');
+  assert.equal(a.visible, true, 'the idle loop stays until then');
+  b.frame();
+  await settle();
+  assert.equal(b.visible, true);
+  assert.equal(a.visible, false);
+  assert.equal(host.emptyScreens, 0);
+  // Back to idle: the move's file is in the cache, so the move plays again.
+  player.set('working', false);
+  await host.advance(2000);
+  b.end();
+  await settle();
+  a.frame();
+  await host.advance(1000);
+  a.end();
+  await settle();
+  b.frame();
+  events.length = 0;
+  player.set('working', true);
+  await host.advance(2000);
+  b.end();
+  await settle();
+  assert.ok(!events.some((e) => e.startsWith('error:')), 'the timed-out move was marked playable again');
+  assert.deepEqual(a.loads.at(-1), blob('to-work'));
+});
+
+test('a file that fails before it shows: the other format once, then clipFailed', async () => {
+  const { host, player, events, a, b } = await started();
+  player.set('working', true);
+  await host.advance(2000);
+  a.end();
+  await settle();
+  assert.deepEqual(b.loads, [blob('to-work')]);
+  b.fail();
+  await settle();
+  assert.deepEqual(b.loads, [blob('to-work'), url('to-work', 'mov')], 'HEVC after WebM, same hidden slot');
+  assert.equal(a.visible, true, 'the old clip stays meanwhile');
+  b.fail();
+  await settle();
+  assert.ok(events.includes('error:clip_failed'));
+  assert.ok(events.includes('pose:working'), 'a failed move skips to its target (rules 9.4)');
+  assert.deepEqual(b.loads.at(-1), blob('work-loop'), 'the target loop, preloaded with the move, takes the hidden slot');
+  assert.equal(a.visible, true, 'the idle loop stays until then');
+  b.frame();
+  await settle();
+  assert.equal(b.visible, true);
+  assert.equal(a.visible, false);
+  assert.equal(host.emptyScreens, 0);
+});
+
+test('the other format plays when the first fails', async () => {
+  const { host, player, events, a, b } = await started();
+  player.set('working', true);
+  await host.advance(2000);
+  a.end();
+  await settle();
+  b.fail();
+  await settle();
+  b.frame();
+  await settle();
+  assert.equal(b.visible, true);
+  assert.ok(!events.includes('error:clip_failed'));
+  assert.ok(events.includes('clip:to-work'));
+});
+
+test('one failed file reported twice (error event and play refusal) moves on one format only', async () => {
+  const { a, events } = await mount({}, (h) => {
+    const slot = h.slots[0];
+    slot.refuseNext = 'NotSupportedError';
+    slot.onLoad = () => {
+      slot.onLoad = null;
+      queueMicrotask(() => slot.fail());
+    };
+  });
+  assert.deepEqual(a.loads, [url('idle-loop'), url('idle-loop', 'mov')], 'WebM, then HEVC once');
+  a.frame();
+  await settle();
+  assert.equal(a.visible, true);
+  assert.ok(!events.includes('error:clip_failed'));
+});
+
+test('a pose clip that fails on screen becomes the pose still', async () => {
+  const { host, events, a } = await started();
+  a.fail();
+  await settle();
+  assert.ok(events.includes('error:clip_failed'));
+  assert.equal(host.still.visible, true);
+  assert.equal(host.still.url, url('idle', 'png'));
+  assert.equal(a.visible, false);
+  assert.ok(events.includes('clip:still:idle'));
+  assert.equal(host.emptyScreens, 0);
+});
+
+test('a preload that fails marks the clip unplayable, and a later load marks it playable', async () => {
+  const { host, player, events, a, b } = await started({}, (h) => {
+    h.files.broken.add(url('to-work'));
+    h.files.broken.add(url('to-work', 'mov'));
+  });
+  assert.deepEqual(host.files.requested.slice(0, 3), [url('to-work'), url('poke'), url('to-work', 'mov')]);
+  player.set('working', true);
+  await host.advance(2000);
+  a.end();
+  await settle();
+  assert.ok(events.includes('error:clip_failed'), 'the engine skips the move it was told cannot play');
+  assert.ok(events.includes('pose:working'));
+  assert.deepEqual(b.loads, [url('work-loop')], 'the broken move never loaded in a slot');
+  b.frame();
+  // Back to idle: its preloads run again and the file loads this time.
+  host.files.broken.clear();
+  player.set('working', false);
+  await host.advance(2000);
+  b.end();
+  await settle();
+  assert.deepEqual(a.loads.at(-1), blob('to-idle'));
+  a.frame();
+  await host.advance(1000);
+  a.end();
+  await settle();
+  assert.equal(events.filter((e) => e === 'pose:idle').length, 2);
+  assert.deepEqual(b.loads.at(-1), blob('idle-loop'), 'preloaded when the move back started');
+  b.frame();
+  events.length = 0;
+  player.set('working', true);
+  await host.advance(2000);
+  b.end();
+  await settle();
+  assert.ok(!events.includes('error:clip_failed'), 'markPlayable: the move plays again');
+  assert.deepEqual(a.loads.at(-1), blob('to-work'));
+});
+
+test('stills: shown in place of video once decoded, or nothing', async () => {
+  const d = delivery();
+  d.runtimeGraph.edges = d.runtimeGraph.edges.filter((e) => e.id !== 'idle-loop');
+  const { host, events, a } = await mount({ delivery: d });
+  assert.equal(a.loads.length, 0);
+  assert.equal(host.still.visible, true);
+  assert.ok(events.includes('clip:still:idle'));
+  assert.deepEqual(
+    (await mount({ delivery: d }, (h) => h.still.broken.add(url('idle', 'png')))).host.still.visible,
+    false,
+    'an image that cannot load shows nothing'
+  );
+});
+
+test('sounds: looping and one-shot, with the stop rules of 9.6', async () => {
+  const { host, player, a, b } = await started();
+  const sounds = host.sounds.played;
+  assert.equal(sounds.length, 1);
+  assert.deepEqual([sounds[0].url, sounds[0].loop, sounds[0].volume], [url('hum', 'mp3'), true, 0.5]);
+  await host.advance(2000);
+  a.end();
+  await settle();
+  assert.equal(sounds.length, 1, 'the looping sound is not started again on the next loop');
+  player.set('working', true);
+  await host.advance(2000);
+  a.end();
+  await settle();
+  assert.equal(sounds[0].state, 'stopped', 'a move stops every sound before its own');
+  assert.equal(sounds.length, 2);
+  assert.deepEqual([sounds[1].url, sounds[1].loop], [url('whoosh', 'mp3'), false]);
+  b.frame();
+  player.pause();
+  assert.equal(sounds[1].state, 'paused');
+  player.play();
+  assert.equal(sounds[1].state, 'playing');
+  await host.advance(1000);
+  b.end();
+  await settle();
+  assert.equal(sounds[1].state, 'playing', 'entering a pose lets one-shot sounds finish');
+  sounds[1].finish();
+  // Back to idle: the hum starts again and entering working stops it.
+  player.set('working', false);
+  a.frame();
+  await host.advance(2000);
+  a.end();
+  await settle();
+  b.frame();
+  await host.advance(1000);
+  b.end();
+  await settle();
+  const hum = sounds.at(-1)!;
+  assert.equal(hum.url, url('hum', 'mp3'));
+  assert.equal(hum.state, 'playing');
+});
+
+test('events: pose, clip, movement, reactionDone, error', async () => {
+  const { host, player, events, a, b } = await started();
+  player.fire('nothing-listens');
+  await host.advance(2000);
+  a.end();
+  await settle();
+  assert.ok(events.includes('done:action::nothing-listens:false'), 'an unused fire is spent at the loop end');
+  player.set('working', true);
+  await host.advance(2000);
+  a.end();
+  await settle();
+  assert.ok(!events.includes('movement:to-work'), 'movement waits for the move to be on screen');
+  b.frame();
+  assert.ok(events.includes('movement:to-work'));
+  const all: unknown[] = [];
+  player.on('movement', (e) => all.push(e));
+  player.on('error', (e) => all.push(e));
+  player.set('node::loopCount', 1);
+  assert.deepEqual(all, [{ code: 'read_only' }]);
+});
+
+test('movement carries the edge data, its rate and how long it lasts', async () => {
+  const { host, player, a, b } = await started();
+  const got: unknown[] = [];
+  player.on('movement', (e) => got.push(e));
+  player.set('working', true);
+  await host.advance(2000);
+  a.end();
+  await settle();
+  b.frame();
+  assert.deepEqual(got, [{ edge: 'to-work', movement: { x: 120 }, rate: 1, seconds: 1 }]);
+});
+
+test('a refused delivery is an error event with its code, and nothing plays', async () => {
+  const d = { ...delivery(), deliverySchemaVersion: 2 };
+  const { a, events } = await mount({ delivery: d });
+  assert.deepEqual(events, ['error:unsupported_delivery']);
+  assert.equal(a.loads.length, 0);
+  const bad = await mount({ delivery: '{not json' });
+  await bad.host.advance(1);
+  assert.deepEqual(bad.events, ['error:unreadable']);
+});
+
+test('position: the clip on screen and its clip time', async () => {
+  const { player, a } = await mount();
+  assert.deepEqual(player.position(), { clip: null, time: 0 });
+  a.frame();
+  a.time = 0.75;
+  assert.deepEqual(player.position(), { clip: 'idle-loop', time: 0.75 });
+});
+
+test('pause stops the clock, clips and timers; set waits; play resumes where it stopped', async () => {
+  const { host, player, events, a } = await started();
+  await host.advance(1000);
+  player.pause();
+  assert.equal(a.playing, false);
+  assert.equal(host.pendingTimers, 0, 'no wake timer while paused');
+  player.set('working', true);
+  await host.advance(60_000);
+  assert.ok(!events.includes('error:missing_end'), 'play time stopped: no safety net');
+  player.play();
+  assert.equal(a.playing, true);
+  await host.advance(1999);
+  assert.ok(!events.includes('error:missing_end'));
+  await host.advance(1);
+  // 1000 ms before the pause + 2000 after: the safety net at play time 3000.
+  assert.ok(events.includes('error:missing_end'));
+  assert.deepEqual(host.slots[1].loads, [blob('to-work')], 'the set made while paused was applied on play');
+});
+
+test('a hidden page holds play time like pause', async () => {
+  const { host, player, events, a } = await started();
+  player.setHidden(true);
+  assert.equal(a.playing, false);
+  await host.advance(10_000);
+  assert.ok(!events.some((e) => e.startsWith('error:')));
+  player.setHidden(false);
+  assert.equal(a.playing, true);
+});
+
+test('autoplay blocked: first frame, tap-to-play overlay, clock held until play', async () => {
+  const { host, player, events, a } = await mount({}, (h) => (h.slots[0].refuse = 'always'));
+  assert.equal(host.overlay, true);
+  assert.equal(a.visible, false);
+  a.frame();
+  await settle();
+  assert.equal(a.visible, true, 'the first frame shows under the overlay');
+  await host.advance(10_000);
+  assert.ok(!events.includes('error:missing_end'), 'the clock waits for the tap');
+  a.refuse = 'none';
+  player.play();
+  assert.equal(host.overlay, false);
+  assert.equal(a.playing, true);
+  await host.advance(3000);
+  assert.ok(events.includes('error:missing_end'), 'the clock runs after the tap');
+});
+
+test('voices: unmuted only with sound on and hasAudio, muted when the browser refuses', async () => {
+  for (const [sound, refuse, muted] of [
+    [false, 'none', true],
+    [true, 'none', false],
+    [true, 'unmuted', true]
+  ] as const) {
+    const { host, player, a, b } = await started({ sound }, (h) => (h.slots[0].refuse = refuse));
+    player.set('working', true);
+    await host.advance(2000);
+    a.end();
+    await settle();
+    b.frame();
+    await host.advance(1000);
+    b.end();
+    await settle();
+    assert.equal(a.src, blob('work-loop'), 'the voiced loop plays in slot 0');
+    assert.equal(a.muted, muted, `sound ${sound}, refuse ${refuse}`);
+    assert.equal(a.playing, true);
+    assert.equal(host.overlay, false, 'a refused voice is not a blocked autoplay');
+  }
+});
+
+test('autoPlay false: the first frame waits, play() starts on the same slot', async (t) => {
+  const reports = shownReports(t);
+  const { host, player, events, a, b } = await mount({ autoPlay: false });
+  assert.deepEqual(a.loads, [url('idle-loop')]);
+  assert.equal(a.playing, false);
+  a.frame();
+  await settle();
+  assert.equal(a.visible, true, 'the first pose first frame');
+  assert.ok(!events.includes('pose:idle'), 'not started');
+  assert.deepEqual(reports(), [], 'the engine did not ask for the first frame');
+  await host.advance(5000);
+  assert.ok(!events.some((e) => e.startsWith('error:')), 'no clock before play');
+  player.play();
+  await settle();
+  assert.ok(events.includes('pose:idle'));
+  assert.equal(a.loads.length, 1, 'the start restarts the clip already shown');
+  assert.deepEqual(reports(), ['idle-loop@0'], 'and reports it shown at once');
+  assert.equal(a.playing, true);
+  assert.equal(b.loads.length, 0);
+});
+
+test('values set before play are read by the start, at play time 0', async () => {
+  const { player, events, a } = await mount({ autoPlay: false });
+  player.set('working', true);
+  player.play();
+  await settle();
+  assert.deepEqual(events.slice(0, 1), ['pose:idle']);
+  assert.deepEqual(a.loads.at(-1), blob('to-work'), 'the move starts on entry (rules 11.1, 5.1)');
+});
+
+test('click and hover reach the engine as person inputs', async () => {
+  const { player, events, b } = await started();
+  player.click();
+  await settle();
+  assert.deepEqual(b.loads, [blob('poke')], 'a person start begins at once (rules 5.2)');
+  b.frame();
+  assert.ok(events.includes('clip:poke'));
+  player.hover(true);
+  await settle();
+  assert.ok(!events.some((e) => e.startsWith('error:')));
+});
+
+test('signed links: getDelivery before expiry swaps URLs only; cached files keep playing', async () => {
+  let calls = 0;
+  const start = Date.parse('2026-10-23T10:00:00Z');
+  const expires = (ms: number) => new Date(start + ms).toISOString();
+  const { host, player, events, a, b } = await started({
+    delivery: delivery('1', expires(20 * 60_000)),
+    getDelivery: async () => {
+      calls++;
+      return { data: { delivery: delivery('2', expires(40 * 60_000)) } };
+    }
+  });
+  await host.advance(14 * 60_000);
+  assert.equal(calls, 0);
+  events.length = 0;
+  await host.advance(60_000 + 1);
+  assert.equal(calls, 1, 'asked five minutes before expiry');
+  assert.ok(
+    !events.some((e) => e.startsWith('pose:') || e.startsWith('error:refresh')),
+    'the engine keeps running on the same pose'
+  );
+  // The move was cached under the old link: it still plays from the cache.
+  player.set('working', true);
+  a.end();
+  await settle();
+  assert.deepEqual(b.loads.at(-1), blob('to-work', 'webm', '1'));
+  b.frame();
+  b.end();
+  await settle();
+  assert.deepEqual(a.loads.at(-1), blob('work-loop', 'webm', '2'), 'new loads use the fresh links');
+  // The next refresh follows the new expiry: five minutes before 10:40.
+  await host.advance(19 * 60_000);
+  assert.equal(calls, 1);
+  await host.advance(60_000);
+  assert.equal(calls, 2);
+});
+
+test('signed links: another release or a failure is an error, and it tries again', async () => {
+  const start = Date.parse('2026-10-23T10:00:00Z');
+  const other = delivery('2');
+  other.runtimeGraph.edges = other.runtimeGraph.edges.filter((e) => e.id !== 'poke');
+  let fail = true;
+  let calls = 0;
+  const { host, events } = await started({
+    delivery: delivery('1', new Date(start + 15 * 60_000).toISOString()),
+    getDelivery: () => {
+      calls++;
+      if (fail) throw new Error('offline');
+      return other;
+    }
+  });
+  await host.advance(10 * 60_000);
+  assert.ok(events.includes('error:refresh_failed'));
+  assert.equal(calls, 1);
+  fail = false;
+  await host.advance(30_000);
+  assert.ok(events.includes('error:refresh_mismatch'), 'tried again 30 s later');
+  assert.equal(calls, 2);
+});
+
+test('reset and preview calls go through the engine', async () => {
+  const { player, events, b } = await started();
+  events.length = 0;
+  player.preview.playMove('to-work');
+  await settle();
+  assert.deepEqual(b.loads, [blob('to-work')]);
+  player.preview.showPose('nowhere');
+  assert.ok(events.includes('error:unknown_pose'));
+  player.reset();
+  await settle();
+  assert.ok(events.includes('pose:idle'));
+});
+
+test('destroy: timers, sounds, slots and cache go; nothing fires after', async () => {
+  const { host, player, events, a } = await started();
+  const n = events.length;
+  player.destroy();
+  assert.equal(host.disposed, true);
+  assert.equal(host.pendingTimers, 0);
+  assert.equal(host.sounds.played[0].state, 'stopped');
+  assert.equal(a.src, null);
+  assert.deepEqual(host.files.freed.sort(), [blob('poke'), blob('to-work')]);
+  a.end();
+  player.set('working', true);
+  await host.advance(10_000);
+  assert.equal(events.length, n);
+});

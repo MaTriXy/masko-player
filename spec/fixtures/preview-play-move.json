@@ -1,0 +1,71 @@
+{
+  "name": "preview-play-move",
+  "about": "preview.playMove plays one move from the current pose at once, then the rules take over.",
+  "rules": ["13"],
+  "canvas": "ko-coffee",
+  "steps": [
+    {
+      "start": true,
+      "expect": {
+        "clock": 0,
+        "pose": "idle",
+        "clip": "loop-idle",
+        "next": null,
+        "events": ["pose:idle", "shown:loop-idle"]
+      }
+    },
+    {
+      "advance": 1000,
+      "expect": {
+        "clock": 1000,
+        "pose": "idle",
+        "clip": "loop-idle",
+        "next": null,
+        "events": []
+      }
+    },
+    {
+      "playMove": "enter-bow-greeting",
+      "expect": {
+        "clock": 1000,
+        "pose": "idle",
+        "clip": "enter-bow-greeting",
+        "next": null,
+        "events": ["shown:enter-bow-greeting"]
+      }
+    },
+    {
+      "clipEnded": true,
+      "expect": {
+        "clock": 3000,
+        "pose": "bow-greeting",
+        "clip": "loop-bow-greeting",
+        "next": null,
+        "events": ["pose:bow-greeting", "shown:loop-bow-greeting"]
+      }
+    },
+    {
+      "playMove": "enter-fan-wave",
+      "expect": {
+        "clock": 3000,
+        "pose": "bow-greeting",
+        "clip": "loop-bow-greeting",
+        "next": null,
+        "events": ["error:preview_refused"]
+      }
+    },
+    {
+      "advance": 10,
+      "expect": {
+        "clock": 3010,
+        "pose": "bow-greeting",
+        "clip": "loop-bow-greeting",
+        "next": {
+          "clip": "return-bow-greeting",
+          "at": "end"
+        },
+        "events": []
+      }
+    }
+  ]
+}

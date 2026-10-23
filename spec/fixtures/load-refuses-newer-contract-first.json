@@ -1,0 +1,22 @@
+{
+  "name": "load-refuses-newer-contract-first",
+  "about": "A newer player contract is refused for its version, whatever else changed in it.",
+  "rules": ["1.2"],
+  "canvas": "otto",
+  "patch": {
+    "delivery": {
+      "playerContract": 2,
+      "runtimeGraph": {
+        "edges": {
+          "by-id": {
+            "note": "a shape this player does not know"
+          }
+        }
+      }
+    }
+  },
+  "expectLoad": {
+    "refused": "unsupported_contract"
+  },
+  "steps": []
+}

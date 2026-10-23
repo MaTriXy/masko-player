@@ -1,0 +1,75 @@
+import ExpoModulesCore
+
+/// The `MaskoPlayer` view for React Native. Each call goes to the
+/// `MaskoPlayer` of the view, on the main thread, in the order JavaScript made
+/// them.
+public final class MaskoPlayerModule: Module {
+  public func definition() -> ModuleDefinition {
+    Name("MaskoPlayer")
+
+    View(MaskoNativeView.self) {
+      Events("onPose", "onClip", "onReactionDone", "onMovement", "onError", "onDeliveryRequest")
+
+      Prop("delivery") { (view: MaskoNativeView, json: String?) in
+        MainActor.assumeIsolated { view.delivery = json }
+      }
+      Prop("autoPlay") { (view: MaskoNativeView, on: Bool?) in
+        MainActor.assumeIsolated { view.autoPlay = on }
+      }
+      Prop("sound") { (view: MaskoNativeView, on: Bool?) in
+        MainActor.assumeIsolated { view.sound = on ?? false }
+      }
+      Prop("refreshes") { (view: MaskoNativeView, on: Bool?) in
+        MainActor.assumeIsolated { view.refreshes = on ?? false }
+      }
+
+      OnViewDidUpdateProps { (view: MaskoNativeView) in
+        MainActor.assumeIsolated { view.propsChanged() }
+      }
+
+      AsyncFunction("setBool") { (view: MaskoNativeView, name: String, value: Bool) in
+        MainActor.assumeIsolated { view.player?.set(name, value) }
+      }.runOnQueue(.main)
+
+      AsyncFunction("setNumber") { (view: MaskoNativeView, name: String, value: Double) in
+        MainActor.assumeIsolated { view.player?.set(name, value) }
+      }.runOnQueue(.main)
+
+      AsyncFunction("fire") { (view: MaskoNativeView, name: String) in
+        MainActor.assumeIsolated { view.player?.fire(name) }
+      }.runOnQueue(.main)
+
+      AsyncFunction("reset") { (view: MaskoNativeView) in
+        MainActor.assumeIsolated { view.player?.reset() }
+      }.runOnQueue(.main)
+
+      AsyncFunction("play") { (view: MaskoNativeView) in
+        MainActor.assumeIsolated { view.player?.play() }
+      }.runOnQueue(.main)
+
+      AsyncFunction("pause") { (view: MaskoNativeView) in
+        MainActor.assumeIsolated { view.player?.pause() }
+      }.runOnQueue(.main)
+
+      AsyncFunction("position") { (view: MaskoNativeView) -> [String: Any] in
+        MainActor.assumeIsolated { view.position() }
+      }.runOnQueue(.main)
+
+      AsyncFunction("showPose") { (view: MaskoNativeView, id: String) in
+        MainActor.assumeIsolated { view.player?.preview.showPose(id) }
+      }.runOnQueue(.main)
+
+      AsyncFunction("playMove") { (view: MaskoNativeView, id: String) in
+        MainActor.assumeIsolated { view.player?.preview.playMove(id) }
+      }.runOnQueue(.main)
+
+      AsyncFunction("updateDelivery") { (view: MaskoNativeView, json: String) in
+        MainActor.assumeIsolated { view.updateDelivery(json) }
+      }.runOnQueue(.main)
+
+      AsyncFunction("answerDelivery") { (view: MaskoNativeView, request: Int, json: String?) in
+        MainActor.assumeIsolated { view.answerDelivery(request, json: json) }
+      }.runOnQueue(.main)
+    }
+  }
+}

@@ -1,0 +1,10 @@
+[workspace]
+members = ["engine", "bindings/wasm", "bindings/uniffi", "bindings/uniffi-bindgen"]
+resolver = "2"
+
+[profile.release]
+opt-level = "z"
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true

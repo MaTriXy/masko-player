@@ -1,0 +1,223 @@
+{
+ "deliverySchemaVersion": 1,
+ "playerContract": 1,
+ "requires": [
+  "any-state",
+  "condition-groups"
+ ],
+ "target": "web",
+ "mode": "selected",
+ "runtimeGraph": {
+  "version": "2.1",
+  "name": "otto",
+  "initialNode": "idle",
+  "autoPlay": false,
+  "nodes": [
+   {
+    "id": "idle",
+    "name": "Idle"
+   },
+   {
+    "id": "watching",
+    "name": "Watching"
+   },
+   {
+    "id": "alert",
+    "name": "Alert"
+   },
+   {
+    "id": "celebrating",
+    "name": "Celebrating"
+   }
+  ],
+  "edges": [
+   {
+    "id": "idle-to-alert",
+    "source": "idle",
+    "target": "alert",
+    "isLoop": false,
+    "duration": 0.5,
+    "conditionGroups": [
+     [
+      {
+       "op": "==",
+       "input": "behavior::attention",
+       "value": true
+      }
+     ]
+    ],
+    "videos": {},
+    "priority": 30
+   },
+   {
+    "id": "watching-to-alert",
+    "source": "watching",
+    "target": "alert",
+    "isLoop": false,
+    "duration": 0.5,
+    "conditionGroups": [
+     [
+      {
+       "op": "==",
+       "input": "behavior::attention",
+       "value": true
+      }
+     ]
+    ],
+    "videos": {},
+    "priority": 30
+   },
+   {
+    "id": "idle-to-watching",
+    "source": "idle",
+    "target": "watching",
+    "isLoop": false,
+    "duration": 0.5,
+    "conditionGroups": [
+     [
+      {
+       "op": "==",
+       "input": "behavior::working",
+       "value": true
+      }
+     ]
+    ],
+    "videos": {},
+    "priority": 20
+   },
+   {
+    "id": "alert-to-watching",
+    "source": "alert",
+    "target": "watching",
+    "isLoop": false,
+    "duration": 0.5,
+    "conditionGroups": [
+     [
+      {
+       "op": "==",
+       "input": "behavior::attention",
+       "value": false
+      },
+      {
+       "op": "==",
+       "input": "behavior::working",
+       "value": true
+      }
+     ]
+    ],
+    "videos": {},
+    "priority": 20
+   },
+   {
+    "id": "watching-to-celebrating",
+    "source": "watching",
+    "target": "celebrating",
+    "isLoop": false,
+    "duration": 0.5,
+    "conditionGroups": [
+     [
+      {
+       "op": "==",
+       "input": "behavior::working",
+       "value": false
+      },
+      {
+       "op": "==",
+       "input": "behavior::attention",
+       "value": false
+      }
+     ]
+    ],
+    "videos": {},
+    "priority": 10
+   },
+   {
+    "id": "celebrating-to-idle",
+    "source": "celebrating",
+    "target": "idle",
+    "isLoop": false,
+    "duration": 0.5,
+    "conditionGroups": [
+     [
+      {
+       "op": "==",
+       "input": "behavior::working",
+       "value": false
+      },
+      {
+       "op": "==",
+       "input": "behavior::attention",
+       "value": false
+      }
+     ]
+    ],
+    "videos": {},
+    "priority": 5
+   },
+   {
+    "id": "alert-to-idle",
+    "source": "alert",
+    "target": "idle",
+    "isLoop": false,
+    "duration": 0.5,
+    "conditionGroups": [
+     [
+      {
+       "op": "==",
+       "input": "behavior::attention",
+       "value": false
+      },
+      {
+       "op": "==",
+       "input": "behavior::working",
+       "value": false
+      }
+     ]
+    ],
+    "videos": {},
+    "priority": 5
+   },
+   {
+    "id": "watching-to-idle",
+    "source": "watching",
+    "target": "idle",
+    "isLoop": false,
+    "duration": 0.5,
+    "conditionGroups": [
+     [
+      {
+       "op": "==",
+       "input": "behavior::working",
+       "value": false
+      },
+      {
+       "op": "==",
+       "input": "behavior::attention",
+       "value": false
+      }
+     ]
+    ],
+    "videos": {},
+    "priority": 1
+   }
+  ],
+  "inputs": [
+   {
+    "name": "behavior::attention",
+    "type": "boolean",
+    "default": false
+   },
+   {
+    "name": "behavior::working",
+    "type": "boolean",
+    "default": false
+   },
+   {
+    "name": "behavior::rest",
+    "type": "boolean",
+    "default": false
+   }
+  ],
+  "runtimeGraphSchemaVersion": 1
+ }
+}

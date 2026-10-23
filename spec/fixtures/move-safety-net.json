@@ -1,0 +1,71 @@
+{
+  "name": "move-safety-net",
+  "about": "A move whose end is never reported ends one second after its duration.",
+  "rules": ["9.3"],
+  "canvas": "otto",
+  "steps": [
+    {
+      "noEndSignal": "idle-to-watching",
+      "expect": {
+        "clock": 0,
+        "pose": null,
+        "clip": null,
+        "next": null,
+        "events": []
+      }
+    },
+    {
+      "start": true,
+      "expect": {
+        "clock": 0,
+        "pose": "idle",
+        "clip": "loop-idle",
+        "next": null,
+        "events": ["pose:idle", "shown:loop-idle"]
+      }
+    },
+    {
+      "set": ["working", true],
+      "expect": {
+        "clock": 0,
+        "pose": "idle",
+        "clip": "loop-idle",
+        "next": {
+          "clip": "idle-to-watching",
+          "at": "end"
+        },
+        "events": []
+      }
+    },
+    {
+      "loopEnded": true,
+      "expect": {
+        "clock": 4000,
+        "pose": "idle",
+        "clip": "idle-to-watching",
+        "next": null,
+        "events": ["shown:idle-to-watching"]
+      }
+    },
+    {
+      "advance": 1999,
+      "expect": {
+        "clock": 5999,
+        "pose": "idle",
+        "clip": "idle-to-watching",
+        "next": null,
+        "events": []
+      }
+    },
+    {
+      "advance": 1,
+      "expect": {
+        "clock": 6000,
+        "pose": "watching",
+        "clip": "loop-watching",
+        "next": null,
+        "events": ["error:missing_end", "pose:watching", "shown:loop-watching"]
+      }
+    }
+  ]
+}

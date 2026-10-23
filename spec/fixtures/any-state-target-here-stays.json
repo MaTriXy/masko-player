@@ -1,0 +1,171 @@
+{
+  "name": "any-state-target-here-stays",
+  "about": "An Any State edge to the current pose that wins keeps the mascot there.",
+  "rules": ["4.2"],
+  "canvas": {
+    "deliverySchemaVersion": 1,
+    "playerContract": 1,
+    "requires": ["any-state", "condition-groups"],
+    "target": "web",
+    "mode": "selected",
+    "runtimeGraph": {
+      "runtimeGraphSchemaVersion": 1,
+      "version": "2.1",
+      "name": "scenario",
+      "initialNode": "a",
+      "autoPlay": true,
+      "nodes": [
+        {
+          "id": "a",
+          "name": "a"
+        },
+        {
+          "id": "b",
+          "name": "b"
+        }
+      ],
+      "edges": [
+        {
+          "id": "loop-a",
+          "source": "a",
+          "target": "a",
+          "isLoop": true,
+          "duration": 4,
+          "videos": {
+            "hevc": "https://example.invalid/loop-a.mov",
+            "webm": "https://example.invalid/loop-a.webm"
+          }
+        },
+        {
+          "id": "loop-b",
+          "source": "b",
+          "target": "b",
+          "isLoop": true,
+          "duration": 4,
+          "videos": {
+            "hevc": "https://example.invalid/loop-b.mov",
+            "webm": "https://example.invalid/loop-b.webm"
+          }
+        },
+        {
+          "id": "a-to-b",
+          "source": "a",
+          "target": "b",
+          "isLoop": false,
+          "duration": 1,
+          "videos": {
+            "hevc": "https://example.invalid/a-to-b.mov",
+            "webm": "https://example.invalid/a-to-b.webm"
+          },
+          "conditions": [
+            {
+              "input": "node::loopCount",
+              "op": ">=",
+              "value": 1
+            }
+          ]
+        },
+        {
+          "id": "b-to-a",
+          "source": "b",
+          "target": "a",
+          "isLoop": false,
+          "duration": 1,
+          "videos": {
+            "hevc": "https://example.invalid/b-to-a.mov",
+            "webm": "https://example.invalid/b-to-a.webm"
+          },
+          "conditions": [
+            {
+              "input": "node::loopCount",
+              "op": ">=",
+              "value": 1
+            }
+          ]
+        },
+        {
+          "id": "any-a",
+          "source": "*",
+          "target": "a",
+          "isLoop": false,
+          "duration": 0,
+          "videos": {},
+          "conditions": [
+            {
+              "input": "behavior::attention",
+              "op": "==",
+              "value": true
+            }
+          ],
+          "priority": 10
+        }
+      ],
+      "inputs": []
+    }
+  },
+  "steps": [
+    {
+      "start": true,
+      "expect": {
+        "clock": 0,
+        "pose": "a",
+        "clip": "loop-a",
+        "next": null,
+        "events": ["pose:a", "shown:loop-a"]
+      }
+    },
+    {
+      "set": ["attention", true],
+      "expect": {
+        "clock": 0,
+        "pose": "a",
+        "clip": "loop-a",
+        "next": null,
+        "events": []
+      }
+    },
+    {
+      "loopEnded": true,
+      "expect": {
+        "clock": 4000,
+        "pose": "a",
+        "clip": "loop-a",
+        "next": null,
+        "events": ["shown:loop-a"]
+      }
+    },
+    {
+      "loopEnded": true,
+      "expect": {
+        "clock": 8000,
+        "pose": "a",
+        "clip": "loop-a",
+        "next": null,
+        "events": ["shown:loop-a"]
+      }
+    },
+    {
+      "set": ["attention", false],
+      "expect": {
+        "clock": 8000,
+        "pose": "a",
+        "clip": "loop-a",
+        "next": {
+          "clip": "a-to-b",
+          "at": "end"
+        },
+        "events": []
+      }
+    },
+    {
+      "loopEnded": true,
+      "expect": {
+        "clock": 12000,
+        "pose": "a",
+        "clip": "a-to-b",
+        "next": null,
+        "events": ["shown:a-to-b"]
+      }
+    }
+  ]
+}
