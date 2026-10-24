@@ -43,6 +43,8 @@ android {
             it.testLogging {
                 events("passed", "failed", "skipped")
                 showStandardStreams = false
+                // CI keeps no reports: print why a test failed, not only where.
+                exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL
             }
         }
     }
