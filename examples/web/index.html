@@ -23,17 +23,18 @@
     </p>
     <pre id="log"></pre>
     <script>
-      // A two-pose canvas over public Dumple clips. A real app loads its
+      // A two-pose canvas over public Dumple clips, in WebM and in HEVC (Safari,
+      // iPhone and iPad play HEVC with transparency). A real app loads its
       // release delivery from GET /v1/canvases/{canvasId}/releases/{releaseId}/delivery.
       var base = 'https://assets.masko.ai/547bbb8e/dumple-vsa8qdhb/';
-      function edge(id, file, source, target, conditions) {
+      function edge(id, webm, hevc, source, target, conditions) {
         return {
           id: id,
           source: source,
           target: target,
           isLoop: source === target,
           duration: 4.042,
-          videos: { webm: base + file + '-360.webm' },
+          videos: { webm: base + webm + '-360.webm', hevc: base + hevc + '-360.mov' },
           conditions: conditions || []
         };
       }
@@ -56,10 +57,10 @@
           ],
           inputs: [{ name: 'behavior::working', type: 'boolean', default: false }],
           edges: [
-            edge('idle-loop', 'idle-settle-dfce9495', 'idle', 'idle'),
-            edge('work-loop', 'laptop-working-dc398b45', 'working', 'working'),
-            edge('to-work', 'panic-tremble-7863df85', 'idle', 'working', [{ input: 'behavior::working' }]),
-            edge('to-idle', 'dumpling-groove-9fcd9f24', 'working', 'idle', [{ input: 'behavior::working', value: false }])
+            edge('idle-loop', 'idle-settle-dfce9495', 'idle-settle-86ac92a3', 'idle', 'idle'),
+            edge('work-loop', 'laptop-working-dc398b45', 'laptop-working-29387774', 'working', 'working'),
+            edge('to-work', 'panic-tremble-7863df85', 'panic-tremble-203e31a8', 'idle', 'working', [{ input: 'behavior::working' }]),
+            edge('to-idle', 'dumpling-groove-9fcd9f24', 'dumpling-groove-1f47051d', 'working', 'idle', [{ input: 'behavior::working', value: false }])
           ]
         }
       };

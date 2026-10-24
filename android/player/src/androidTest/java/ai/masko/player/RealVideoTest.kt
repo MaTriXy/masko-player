@@ -10,6 +10,7 @@ import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Assert.fail
 import org.junit.Test
@@ -160,12 +161,15 @@ class RealVideoTest {
             Thread.sleep(400)
             var paused = false
             var position = 0.0
+            var decoders = -1
             scenario.onActivity { activity ->
                 activity.root.removeView(view)
                 paused = view.player!!.isPaused
                 position = view.player!!.position().time
+                decoders = view.stage!!.slots.count { it.hasDecoder }
             }
             assertTrue("off screen, the player pauses", paused)
+            assertEquals("detached, the decoders are freed", 0, decoders)
             // Off screen for longer than the clip and its safety net: nothing may happen meanwhile.
             Thread.sleep(2_500)
             var later = 0.0
@@ -173,9 +177,10 @@ class RealVideoTest {
             assertEquals("the clip stays where it stopped", position, later, 0.05)
             assertEquals("nothing played off screen", 1, events().count { it == "clip:loop-red" })
             scenario.onActivity { activity -> activity.root.addView(view, FrameLayout.LayoutParams(SIZE, SIZE)) }
-            // Back on screen: new surfaces, the same clip drawn again from where it stopped.
+            // Back on screen: new surfaces and a new decoder, the same clip drawn again from where it stopped.
             Thread.sleep(600)
             assertEquals("red", screen(view).first)
+            assertTrue("the decoder is made again: ${events()}", events().contains("slot0:restored"))
             // And it plays on: the loop ends and starts again.
             val loops = events().count { it == "clip:loop-red" }
             awaitEvent("clip:loop-red", count = loops + 1, timeoutMs = 4_000)
@@ -183,6 +188,34 @@ class RealVideoTest {
         }
         dump("offscreen")
         assertTrue("errors: ${events()}", events().none { it.startsWith("error:") })
+    }
+
+    @Test
+    fun transparencyIsTheLumaOfTheLowerHalf() {
+        ActivityScenario.launch(TestActivity::class.java).use { scenario ->
+            lateinit var view: MaskoPlayerView
+            scenario.onActivity { activity ->
+                view = MaskoPlayerView(activity)
+                activity.root.addView(view, FrameLayout.LayoutParams(SIZE, SIZE))
+                view.load(TINT).addListener(object : MaskoPlayer.Listener {
+                    override fun onClip(clip: String, kind: MaskoPlayer.ClipKind, rate: Double) = record("clip:$clip")
+                    override fun onError(code: String, detail: String?) = record("error:$code")
+                })
+            }
+            awaitEvent("clip:loop-tint")
+            Thread.sleep(250)
+            // The left half's transparency is pure red: luma about 0.2, so the blue is faint over white.
+            val shot = InstrumentationRegistry.getInstrumentation().uiAutomation.takeScreenshot()
+                .copy(Bitmap.Config.ARGB_8888, false)
+            val at = IntArray(2)
+            InstrumentationRegistry.getInstrumentation().runOnMainSync { view.getLocationOnScreen(at) }
+            val c = shot.getPixel(at[0] + SIZE / 4, at[1] + SIZE / 2)
+            val seen = "#%06x".format(c and 0xffffff)
+            assertTrue("a faint blue, not opaque blue: $seen", Color.red(c) in 150..235 && Color.green(c) in 150..235 && Color.blue(c) > 230)
+            assertEquals("white", colourAt(shot, at[0] + 3 * SIZE / 4, at[1] + SIZE / 2))
+            scenario.onActivity { view.player!!.destroy() }
+        }
+        assertFalse("errors: ${events()}", events().any { it.startsWith("error:") })
     }
 
     private fun dump(name: String) {
@@ -200,7 +233,7 @@ class RealVideoTest {
         return colourAt(shot, at[0] + SIZE / 4, at[1] + SIZE / 2) to colourAt(shot, at[0] + 3 * SIZE / 4, at[1] + SIZE / 2)
     }
 
-    private companion object {
+    internal companion object {
         const val SIZE = 400
 
         fun colourAt(bitmap: Bitmap, x: Int, y: Int): String {
@@ -235,6 +268,23 @@ class RealVideoTest {
                 "videos": { "stacked": "asset:///clips/green.mp4" }, "movement": { "x": 1 } },
               { "id": "loop-blue", "source": "working", "target": "working", "isLoop": true, "duration": 1.0,
                 "videos": { "stacked": "asset:///clips/blue.mp4" } }
+            ]
+          }
+        }
+        """.trimIndent()
+
+        val TINT = """
+        {
+          "deliverySchemaVersion": 1,
+          "playerContract": 1,
+          "requires": [],
+          "runtimeGraph": {
+            "runtimeGraphSchemaVersion": 1,
+            "initialNode": "idle",
+            "nodes": [{ "id": "idle", "name": "Idle" }],
+            "edges": [
+              { "id": "loop-tint", "source": "idle", "target": "idle", "isLoop": true, "duration": 1.0,
+                "videos": { "stacked": "asset:///clips/tint.mp4" } }
             ]
           }
         }

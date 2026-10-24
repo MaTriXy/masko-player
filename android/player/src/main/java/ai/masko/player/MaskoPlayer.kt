@@ -6,14 +6,16 @@ import ai.masko.player.engine.LoadFailure
 import ai.masko.player.engine.MaskoEngine
 import org.json.JSONObject
 import java.util.concurrent.CopyOnWriteArrayList
+import kotlin.random.Random
 
 /**
  * Plays one Masko mascot release. Apps call [set] and [fire]; the canvas,
  * through the shared engine, decides which clip plays (spec/player.md).
  *
- * Make one with [MaskoPlayerView.load]. Call every method on the main thread.
- * Events reach listeners on the main thread, starting on the next main-thread
- * turn, so listeners added right after loading hear the first pose.
+ * Make one with [MaskoPlayerView.load]. Call every method on the main thread:
+ * a call from another thread throws [IllegalStateException]. Events reach
+ * listeners on the main thread, starting on the next main-thread turn, so
+ * listeners added right after loading hear the first pose.
  */
 class MaskoPlayer internal constructor(
     deliveryJson: String,
@@ -23,6 +25,9 @@ class MaskoPlayer internal constructor(
     elapsedMs: () -> Long,
     private val wallClockMs: () -> Long,
     private val options: Options,
+    /** The engine's random source for extra clips (rules.md 7.3): its own for every player. */
+    seed: ULong = randomSeed(),
+    makeEngine: (String) -> MaskoEngine = ::MaskoEngine,
 ) {
     /** How the player starts and refreshes its links. */
     class Options(
@@ -40,7 +45,12 @@ class MaskoPlayer internal constructor(
 
     /** The app's way to fetch the release's delivery again. */
     fun interface DeliverySource {
-        /** Fetch the delivery and call [reply] once, from any thread, with its JSON or null. */
+        /**
+         * Fetch the delivery and call [reply] once, from any thread, with its
+         * JSON or null. Called on the main thread. An exception thrown here, or
+         * no reply within 60 seconds, is a failed refresh (`refresh_failed`),
+         * asked again 30 seconds later; a reply after that is ignored.
+         */
         fun getDelivery(reply: (String?) -> Unit)
     }
 
@@ -77,10 +87,10 @@ class MaskoPlayer internal constructor(
     /** For editors and tools only (rules.md 13). */
     inner class Preview internal constructor() {
         /** Cuts to [pose] at once. */
-        fun showPose(pose: String) = appCall { engine.previewShowPose(pose, it) }
+        fun showPose(pose: String) = appCall("preview.showPose") { engine.previewShowPose(pose, it) }
 
         /** Plays one move from the current pose at once. */
-        fun playMove(edge: String) = appCall { engine.previewPlayMove(edge, it) }
+        fun playMove(edge: String) = appCall("preview.playMove") { engine.previewPlayMove(edge, it) }
     }
 
     val preview = Preview()
@@ -91,6 +101,7 @@ class MaskoPlayer internal constructor(
      */
     var sound: Boolean = options.sound
         set(value) {
+            onMain("sound")
             field = value
             want?.let { slots[it.slot].setVolume(voice(it.edge)) }
             onScreen?.let { slots[it.slot].setVolume(voice(it.edge)) }
@@ -107,6 +118,8 @@ class MaskoPlayer internal constructor(
     private var appPaused: Boolean
     private var hostPaused = false
     private val paused get() = appPaused || hostPaused
+    /** Whether the view is in a window; a detached view keeps nothing queued on the main thread. */
+    private var attached = true
 
     /** App calls made while paused, decided on when play resumes (rules.md 11.2). */
     private val waiting = ArrayDeque<(ULong) -> List<EngineCommand>>()
@@ -141,11 +154,19 @@ class MaskoPlayer internal constructor(
 
     private val wakeTask = Runnable { call { engine.advance(it) } }
     private val refreshTask = Runnable { refresh() }
+    private val replyTimeout = Runnable { if (asking) refreshFailed("getDelivery did not reply within 60 seconds") }
+
+    /** When the next refresh is due, on the wall clock; null while none is (or while one is asked). */
+    private var refreshAt: Long? = null
+    /** Whether getDelivery was asked and has not replied. */
+    private var asking = false
+    /** Counts the asks: a reply to an older one is dropped. */
+    private var asks = 0
 
     init {
         var refusal: Pair<String, String?>? = null
         try {
-            engine = MaskoEngine(deliveryJson)
+            engine = makeEngine(deliveryJson)
         } catch (e: LoadFailure.Refused) {
             // The engine's own reason, as on every platform: `unreadable` for text that is not JSON.
             refusal = e.code to e.detail
@@ -161,12 +182,24 @@ class MaskoPlayer internal constructor(
         appPaused = !(options.autoPlay ?: delivery.autoPlay)
         slots.forEachIndexed { i, slot -> slot.events = SlotEvents(i) }
         if (refusal != null) {
-            // Refusing means playing nothing from the delivery (rules.md 1.2).
+            // Refusing means playing nothing from the delivery (rules.md 1.2): free the decoders at once.
             val (code, detail) = refusal
             destroyed = true
+            stage.release()
+            sounds.release()
             scheduler.post { emit { it.onError(code, detail) } }
         } else {
-            stage.whenReady { scheduler.post { begin() } }
+            try {
+                engine.seed(seed)
+            } catch (e: Exception) {
+                scheduler.post { emit { it.onError("engine_failed", e.message) } }
+            }
+            stage.whenReady(
+                ready = { scheduler.post { begin() } },
+                failed = { detail ->
+                    scheduler.post { if (!destroyed) emit { it.onError("surface_unavailable", detail) } }
+                },
+            )
             scheduleRefresh()
         }
     }
@@ -181,25 +214,27 @@ class MaskoPlayer internal constructor(
         listeners -= listener
     }
 
-    fun set(name: String, value: Boolean) = appCall { engine.setBool(name, value, it) }
+    fun set(name: String, value: Boolean) = appCall("set") { engine.setBool(name, value, it) }
 
-    fun set(name: String, value: Double) = appCall { engine.setNumber(name, value, it) }
+    fun set(name: String, value: Double) = appCall("set") { engine.setNumber(name, value, it) }
 
     fun set(name: String, value: Int) = set(name, value.toDouble())
 
-    fun fire(name: String) = appCall { engine.fire(name, it) }
+    fun fire(name: String) = appCall("fire") { engine.fire(name, it) }
 
     /** Values go back to their defaults and the mascot starts again (rules.md 11.3). */
-    fun reset() = appCall { engine.reset(it) }
+    fun reset() = appCall("reset") { engine.reset(it) }
 
     /** Starts the mascot, or resumes it exactly where it stopped. */
     fun play() {
+        onMain("play")
         appPaused = false
         applyPause()
     }
 
     /** Stops play time, clips, timers and sounds. */
     fun pause() {
+        onMain("pause")
         appPaused = true
         applyPause()
     }
@@ -208,6 +243,7 @@ class MaskoPlayer internal constructor(
 
     /** The clip on screen and its clip time, read only; `clip` is null before anything shows. */
     fun position(): Position {
+        onMain("position")
         onScreen?.let { return Position(it.edge, slots[it.slot].position()) }
         return Position(stillOnScreen?.let { "still:$it" }, 0.0)
     }
@@ -220,6 +256,7 @@ class MaskoPlayer internal constructor(
      * read with `refresh_failed`.
      */
     fun updateDelivery(json: String): Boolean {
+        onMain("updateDelivery")
         if (destroyed) return false
         val fresh = Delivery.parse(json)
         if (fresh == null) {
@@ -237,32 +274,69 @@ class MaskoPlayer internal constructor(
         return true
     }
 
-    /** Stops everything and frees the decoders. The player does nothing afterwards. */
+    /**
+     * Stops everything and frees the decoders, preloads and timers. The
+     * player does nothing afterwards.
+     */
     fun destroy() {
+        onMain("destroy")
         val wasRunning = !destroyed
         destroyed = true
         scheduler.cancel(wakeTask)
         scheduler.cancel(refreshTask)
+        scheduler.cancel(replyTimeout)
         waiting.clear()
         commands.clear()
         stage.release()
         sounds.release()
-        if (wasRunning) engine.destroy()
+        if (wasRunning) {
+            try {
+                engine.destroy()
+            } catch (_: Exception) {
+                // Freed either way.
+            }
+        }
         listeners.clear()
     }
 
     // ------------------------------------------------------------------ input from the view
 
     /** The person tapped the mascot (rules.md 3.5). */
-    internal fun click() = appCall { engine.click(it) }
+    internal fun click() = appCall("click") { engine.click(it) }
 
     /** The pointer entered or left the mascot (rules.md 3.5). */
-    internal fun hover(on: Boolean) = appCall { engine.hover(on, it) }
+    internal fun hover(on: Boolean) = appCall("hover") { engine.hover(on, it) }
 
     /** The view is on screen or not: off screen, the player pauses itself. */
     internal fun setHostActive(active: Boolean) {
+        if (destroyed) return
+        val back = active && hostPaused
         hostPaused = !active
         applyPause()
+        if (back) catchUpRefresh()
+    }
+
+    /**
+     * The view entered or left its window. Detached, nothing stays queued on
+     * the main thread and the sounds' decoders are freed, so a player the app
+     * forgot to destroy holds nothing alive; back in a window, it catches up.
+     */
+    internal fun setHostAttached(attached: Boolean) {
+        if (destroyed || attached == this.attached) return
+        this.attached = attached
+        if (attached) {
+            catchUpRefresh()
+        } else {
+            scheduler.cancel(refreshTask)
+            if (asking) {
+                // A reply that comes while detached is dropped; back in a window, the player asks again at once.
+                asking = false
+                asks++
+                scheduler.cancel(replyTimeout)
+                refreshAt = wallClockMs()
+            }
+            sounds.detach()
+        }
     }
 
     // ------------------------------------------------------------------ engine calls
@@ -274,20 +348,33 @@ class MaskoPlayer internal constructor(
         applyPause()
     }
 
-    private fun appCall(f: (ULong) -> List<EngineCommand>) {
+    private fun appCall(method: String, f: (ULong) -> List<EngineCommand>) {
+        onMain(method)
         if (destroyed) return
         if (started && paused) waiting.addLast(f) else call(f)
+    }
+
+    private fun onMain(method: String) {
+        check(scheduler.isMainThread()) {
+            "MaskoPlayer.$method must be called on the main thread, not on thread \"${Thread.currentThread().name}\""
+        }
+    }
+
+    /**
+     * An engine call. An exception (a Rust panic unwinds into one) is the
+     * other `engine_failed`, reported instead of thrown; the call gives [fallback].
+     */
+    private inline fun <T> engineCall(fallback: T, f: () -> T): T = try {
+        f()
+    } catch (e: Exception) {
+        emit { it.onError("engine_failed", e.message) }
+        fallback
     }
 
     /** Calls the engine at the current play time and carries out its commands in order. */
     private fun call(f: (ULong) -> List<EngineCommand>) {
         if (destroyed) return
-        try {
-            commands.addAll(f(clock.now().toULong()))
-        } catch (e: Exception) {
-            // An engine exception (a Rust panic unwinds into one): the other `engine_failed`.
-            emit { it.onError("engine_failed", e.message) }
-        }
+        commands.addAll(engineCall(emptyList()) { f(clock.now().toULong()) })
         run()
     }
 
@@ -340,7 +427,7 @@ class MaskoPlayer internal constructor(
     private fun scheduleWake() {
         scheduler.cancel(wakeTask)
         if (!started || paused || destroyed) return
-        val at = engine.nextWake()?.toLong() ?: return
+        val at = engineCall(null) { engine.nextWake() }?.toLong() ?: return
         scheduler.postDelayed(wakeTask, (at - clock.now()).coerceAtLeast(0))
     }
 
@@ -464,9 +551,9 @@ class MaskoPlayer internal constructor(
     /** A preload or a warm-up says whether [edge] can load (player.md: markUnplayable, markPlayable). */
     private fun playable(edge: String, ok: Boolean) {
         if (!ok) {
-            if (unplayable.add(edge)) engine.markUnplayable(edge)
+            if (unplayable.add(edge)) engineCall(Unit) { engine.markUnplayable(edge) }
         } else if (unplayable.remove(edge)) {
-            engine.markPlayable(edge)
+            engineCall(Unit) { engine.markPlayable(edge) }
         }
     }
 
@@ -476,7 +563,7 @@ class MaskoPlayer internal constructor(
      */
     private fun warm() {
         if (!started || want !== onScreen) return
-        val state = engine.state()
+        val state = engineCall(null) { engine.state() } ?: return
         val current = onScreen
         val edge = state.nextClip
             ?: current?.takeIf { it.kind == EngineClipKind.MOVE }?.let { m ->
@@ -544,30 +631,67 @@ class MaskoPlayer internal constructor(
     // ------------------------------------------------------------------ signed links
 
     private fun scheduleRefresh() {
-        scheduler.cancel(refreshTask)
         if (destroyed || options.getDelivery == null) return
-        val expires = delivery.expiresAt ?: return
+        val expires = delivery.expiresAt
+        if (expires == null) {
+            scheduler.cancel(refreshTask)
+            refreshAt = null
+            return
+        }
         val left = expires - wallClockMs()
         refreshIn(if (left > 2 * REFRESH_LEAD_MS) left - REFRESH_LEAD_MS else left / 2)
     }
 
     private fun refreshIn(delayMs: Long) {
         scheduler.cancel(refreshTask)
-        scheduler.postDelayed(refreshTask, delayMs.coerceAtLeast(0))
+        val delay = delayMs.coerceAtLeast(0)
+        refreshAt = wallClockMs() + delay
+        // Detached, only the time is kept: catchUpRefresh schedules it when the view is back.
+        if (attached) scheduler.postDelayed(refreshTask, delay)
+    }
+
+    /**
+     * The refresh timer counts uptime, which stops in deep sleep: when the
+     * view is back, the time left is read again from the wall clock, and a
+     * refresh already due starts at once.
+     */
+    private fun catchUpRefresh() {
+        val at = refreshAt ?: return
+        if (destroyed || asking) return
+        refreshIn(at - wallClockMs())
     }
 
     private fun refresh() {
         val source = options.getDelivery ?: return
-        if (destroyed) return
-        var answered = false
-        source.getDelivery { json ->
-            scheduler.post {
-                if (!answered) {
-                    answered = true
-                    applyRefresh(json)
+        if (destroyed || asking) return
+        refreshAt = null
+        asking = true
+        val ask = ++asks
+        scheduler.postDelayed(replyTimeout, REPLY_TIMEOUT_MS)
+        try {
+            source.getDelivery { json ->
+                scheduler.post {
+                    if (ask == asks && asking && !destroyed) {
+                        asking = false
+                        scheduler.cancel(replyTimeout)
+                        applyRefresh(json)
+                    }
                 }
             }
+        } catch (e: Exception) {
+            // The app's getDelivery threw: a failed refresh, not a crash.
+            refreshFailed(e.message ?: e.toString())
         }
+    }
+
+    /** getDelivery threw or never replied: reported, and asked again later; a late reply is dropped. */
+    private fun refreshFailed(detail: String) {
+        if (destroyed) return
+        asking = false
+        asks++
+        scheduler.cancel(replyTimeout)
+        emit { it.onError("refresh_failed", detail) }
+        refreshIn(RETRY_MS)
     }
 
     /** Takes the answer's links ([updateDelivery]); the engine keeps running and cached files keep playing. */
@@ -593,8 +717,13 @@ class MaskoPlayer internal constructor(
         const val REFRESH_LEAD_MS = 5 * 60_000L
         /** Try again this long after a failed refresh. */
         const val RETRY_MS = 30_000L
+        /** A getDelivery that has not replied after this long has failed. */
+        const val REPLY_TIMEOUT_MS = 60_000L
     }
 }
+
+/** A seed for the engine's extra-clip roll; the engine turns 0 into 1. */
+internal fun randomSeed(): ULong = Random.nextLong().toULong()
 
 /** Play time: whole milliseconds from the start, stopped while paused (rules.md 11.2). */
 internal class PlayClock(private val elapsedMs: () -> Long) {

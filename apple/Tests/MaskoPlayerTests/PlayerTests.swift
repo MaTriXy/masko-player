@@ -189,7 +189,9 @@ final class PlayerTests: XCTestCase {
         b.decodeFirstFrame()
         XCTAssertEqual(stage.presented, [.slot(0), .slot(1)])
         XCTAssertEqual(stage.swapsWithoutFrame, 0)
-        XCTAssertEqual(a.log.last, "pause", "the old slot pauses after the swap")
+        XCTAssertEqual(
+            a.log.suffix(2), ["pause", "load work-loop.mov"],
+            "the old slot pauses after the swap, then takes the move's next loop")
         XCTAssertEqual(b.log, ["load to-work.mov", "play 1.0"])
         XCTAssertEqual(events, ["clip:to-work", "movement:to-work"])
         XCTAssertEqual(player.position(), .init(clip: "to-work", time: 0))
@@ -228,6 +230,23 @@ final class PlayerTests: XCTestCase {
         end(a, after: 2)
         XCTAssertEqual(player.engine!.state().clip, "to-work")
         XCTAssertTrue(loader.requested("work-loop.mov"))
+    }
+
+    func testTheTargetLoopDecodesDuringTheMoveAndSwapsInAtItsEnd() {
+        let player = started()
+        player.set("working", true)
+        end(a, after: 2)
+        b.decodeFirstFrame()
+        XCTAssertEqual(player.engine!.state().clip, "to-work")
+        XCTAssertNil(player.engine!.state().nextClip, "nothing is decided during the move")
+        XCTAssertEqual(a.clip, "work-loop", "the target's loop the engine preloads goes in the free slot")
+        a.decodeFirstFrame()
+        XCTAssertEqual(stage.presented, [.slot(0), .slot(1)], "and waits there")
+        end(b, after: 1)
+        XCTAssertEqual(stage.presented, [.slot(0), .slot(1), .slot(0)], "no wait at the move's end")
+        XCTAssertEqual(a.log.suffix(2), ["reuse work-loop.mov", "play 1.0"])
+        XCTAssertEqual(events.suffix(2), ["pose:working", "clip:work-loop"])
+        XCTAssertEqual(stage.swapsWithoutFrame, 0)
     }
 
     func testAClipEndIsReportedOncePerShowing() {
@@ -683,6 +702,33 @@ final class PlayerTests: XCTestCase {
         XCTAssertEqual(a.file?.lastPathComponent, "idle-loop-720.mov")
     }
 
+    func testThePoseClipPicksItsSizeAgainAtItsNextLoopOnceTheViewHasOne() {
+        var delivery = PlayerTests.delivery()
+        var edges = delivery["runtimeGraph"]!["edges"]!.array!
+        edges[0]["videos"] = .object([
+            "hevc": .string("https://cdn.test/idle-loop.mov"),
+            "variants": .object(["720": .object(["hevc": .string("https://cdn.test/idle-loop-720.mov")])]),
+        ])
+        delivery["runtimeGraph"]?["edges"] = .array(edges)
+        let player = makePlayer(delivery)
+        // The player starts before the view's first layout: no size yet.
+        player.boot()
+        a.decodeFirstFrame()
+        XCTAssertEqual(a.file?.lastPathComponent, "idle-loop.mov")
+        events = []
+        player.displayPixels = 400
+        XCTAssertEqual(b.log, ["load idle-loop-720.mov"], "the file for this size decodes ahead")
+        b.decodeFirstFrame()
+        end(a, after: 2)
+        XCTAssertEqual(stage.presented, [.slot(0), .slot(1)], "the next loop swaps to it")
+        XCTAssertEqual(events, ["clip:idle-loop"])
+        XCTAssertEqual(player.engine!.state().shownAt, 2000)
+        end(b, after: 2)
+        XCTAssertEqual(stage.presented, [.slot(0), .slot(1)], "then it loops in place")
+        XCTAssertEqual(b.log.last, "restart 1.0")
+        XCTAssertEqual(stage.swapsWithoutFrame, 0)
+    }
+
     func testMediaFieldsOfTheWrongTypeAreIgnored() throws {
         var delivery = PlayerTests.delivery()
         delivery["deliveryAccess"] = .string("weird")
@@ -827,5 +873,30 @@ final class PlayerTests: XCTestCase {
         XCTAssertEqual(host.pendingTimers, 0, "the wake is cancelled")
         player.set("working", true)
         XCTAssertNil(player.engine)
+    }
+
+    func testNothingStillLoadingShowsOrPlaysAfterDestroy() {
+        let player = started()
+        player.fire("nap")
+        end(a, after: 2)
+        b.decodeFirstFrame()
+        loader.holding = true
+        end(b, after: 1)
+        // The napping still and the way back's file are on their way.
+        XCTAssertEqual(player.engine!.state().clip, "still:napping")
+        player.destroy()
+        loader.release()
+        XCTAssertEqual(stage.presented, [.slot(0), .slot(1)], "the still never shows")
+
+        let other = started()
+        loader.holding = true
+        other.set("working", true)
+        end(a, after: 2)
+        // The move's clip and its sound are on their way.
+        other.destroy()
+        loader.release()
+        XCTAssertEqual(sounds.log.last, "stop all", "the sound never plays")
+        XCTAssertFalse(b.isLoading, "the clip never loads")
+        XCTAssertEqual(stage.presented, [.slot(0)])
     }
 }

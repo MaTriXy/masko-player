@@ -48,6 +48,9 @@ final class AVSounds: SoundOutput {
             }
         }
         sound.player.volume = Float(volume)
+        #if !os(visionOS)
+        sound.player.preventsDisplaySleepDuringVideoPlayback = false
+        #endif
         playing.append(sound)
         if !paused {
             sound.player.play()

@@ -1,0 +1,25 @@
+{
+  "name": "load-refuses-number-operator",
+  "about": "A condition op that is a number is an unknown operator, not an unreadable delivery.",
+  "rules": ["1.3"],
+  "canvas": "otto",
+  "patch": {
+    "edges": {
+      "idle-to-watching": {
+        "conditionGroups": [
+          [
+            {
+              "op": 5,
+              "input": "behavior::working",
+              "value": true
+            }
+          ]
+        ]
+      }
+    }
+  },
+  "expectLoad": {
+    "refused": "unknown_operator"
+  },
+  "steps": []
+}

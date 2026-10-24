@@ -81,8 +81,16 @@ public final class MaskoPlayer {
     public var preview: Preview { Preview(player: self) }
 
     /// The mascot's size on screen in pixels (its longer side), set by the
-    /// view, for size variants.
-    var displayPixels: Double?
+    /// view, for size variants. A new size picks the file of the next clip,
+    /// and of the pose clip on screen at its next loop.
+    var displayPixels: Double? {
+        didSet {
+            if displayPixels != oldValue { prepareNext() }
+        }
+    }
+
+    /// The views showing this player (`MaskoPlayerView`).
+    var hosts = StageHosts()
 
     let stage: Stage
     private let loader: MediaLoader
@@ -102,7 +110,7 @@ public final class MaskoPlayer {
     /// The app called `pause()`.
     private var appPaused = false
     /// The view is off screen or the app is in the background.
-    private var hostPaused = false
+    private(set) var hostPaused = false
     private var paused: Bool { appPaused || hostPaused }
     /// Play time, clips, sounds and timers are stopped.
     private var stopped = false
@@ -130,6 +138,8 @@ public final class MaskoPlayer {
         var token: Int
         var poster: Bool
         var ended = false
+        /// The file loaded for it (`Delivery.file`'s key); none for a still.
+        var key: String?
     }
 
     /// What each slot shows, or is loading.
@@ -146,6 +156,9 @@ public final class MaskoPlayer {
     private var soundToken = 0
     /// Sounds still downloading, and whether each loops.
     private var pendingSounds: [Int: Bool] = [:]
+    /// The pose clip the engine last asked to preload: the main loop of the
+    /// target of the move it shows, decoded in the free slot during the move.
+    private var loopAhead: String?
 
     /// How long before signed links expire the player asks for fresh ones;
     /// halfway there when they expire sooner than twice this.
@@ -360,6 +373,10 @@ public final class MaskoPlayer {
     public func destroy() {
         guard !destroyed else { return }
         destroyed = true
+        // Nothing still loading may show or play afterwards.
+        token += 1
+        current = token
+        pendingSounds = [:]
         wake?.cancel()
         refreshTimer?.cancel()
         sounds.stop(onlyLooping: false)
@@ -476,13 +493,17 @@ public final class MaskoPlayer {
 
     private func show(_ edge: String, move: Bool, rate: Double, poster: Bool = false) {
         token += 1
-        let showing = Showing(edge: edge, move: move, rate: rate, token: token, poster: poster)
+        var showing = Showing(edge: edge, move: move, rate: rate, token: token, poster: poster)
         current = token
-        if let v = visible, let s = shows[v], s.edge == edge, s.poster || (!s.move && !move) {
+        let file = delivery?.file(edge: edge, pixels: displayPixels)
+        if let v = visible, let s = shows[v], s.edge == edge,
+            s.poster || (!s.move && !move && s.key == file?.key)
+        {
             // The same pose clip again (or the poster's clip): its next loop,
-            // with no swap.
+            // with no swap. A size that picks another file swaps to it instead.
             dropPending()
             if poster { return firstFrameShown() }
+            showing.key = s.key
             shows[v] = showing
             let slot = stage.slots[v]
             slot.isMuted = !voiceOn(edge)
@@ -494,8 +515,9 @@ public final class MaskoPlayer {
         }
         // Otherwise the other slot: load, wait for a decoded frame, swap.
         let slot = visible == 0 ? 1 : 0
+        showing.key = file?.key
         shows[slot] = showing
-        guard let file = delivery?.file(edge: edge, pixels: displayPixels) else {
+        guard let file else {
             return clipFailed(showing, slot: slot)
         }
         loader.file(file.url, key: file.key) { [weak self] local in
@@ -590,7 +612,7 @@ public final class MaskoPlayer {
             return presentStill(nil, showing)
         }
         loader.image(url, key: "still:\(pose)") { [weak self] image in
-            guard let self, self.current == showing.token else { return }
+            guard let self, !self.destroyed, self.current == showing.token else { return }
             self.presentStill(image, showing)
         }
     }
@@ -610,21 +632,40 @@ public final class MaskoPlayer {
         }
     }
 
-    /// Loads the decided next clip into the hidden slot ahead of its moment,
-    /// so it swaps in on time.
+    /// Decodes the clip that most likely shows next in the hidden slot, so it
+    /// swaps in on time: the decided next clip; during a move, its target
+    /// pose's loop; else the pose clip on screen, when the mascot's size now
+    /// picks another file for its next loop.
     private func prepareNext() {
-        guard started, !destroyed, let next = engine?.state().nextClip else { return }
+        guard started, !destroyed, let engine else { return }
         let hidden = visible == 0 ? 1 : 0
-        guard shows[hidden] == nil, visible.flatMap({ shows[$0]?.edge }) != next,
-            let file = delivery?.file(edge: next, pixels: displayPixels)
+        guard shows[hidden] == nil else { return }
+        let onScreen = visible.flatMap { shows[$0] }
+        var next = engine.state().nextClip
+        if next == nil, let s = onScreen {
+            if !s.move {
+                next = s.edge
+            } else if let loop = loopAhead,
+                delivery?.edges[loop]?.source == delivery?.edges[s.edge]?.target
+            {
+                next = loop
+            }
+        }
+        guard let next, let file = delivery?.file(edge: next, pixels: displayPixels),
+            onScreen?.edge != next || onScreen?.key != file.key
         else { return }
         loader.file(file.url, key: file.key) { [weak self] local in
-            guard let self, let local, self.shows[hidden] == nil, self.visible != hidden else { return }
+            guard let self, !self.destroyed, let local, self.shows[hidden] == nil, self.visible != hidden else {
+                return
+            }
             self.stage.slots[hidden].load(local) { _ in }
         }
     }
 
     private func preload(_ edge: String) {
+        if delivery?.edges[edge]?.isLoop == true {
+            loopAhead = edge
+        }
         guard let file = delivery?.file(edge: edge, pixels: displayPixels) else {
             return markUnplayable(edge)
         }
@@ -663,7 +704,9 @@ public final class MaskoPlayer {
         let t = soundToken
         pendingSounds[t] = sound.loop
         loader.file(sound.url, key: "sound:\(edge)") { [weak self] local in
-            guard let self, self.pendingSounds.removeValue(forKey: t) != nil, let local else { return }
+            guard let self, !self.destroyed, self.pendingSounds.removeValue(forKey: t) != nil, let local else {
+                return
+            }
             self.sounds.play(local, volume: sound.volume, loop: sound.loop)
         }
     }

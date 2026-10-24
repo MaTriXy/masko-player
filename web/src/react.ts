@@ -12,8 +12,8 @@ import {
   type ForwardedRef
 } from 'react';
 import { readDelivery, releaseShape, type DeliveryInput } from './delivery.ts';
-import { createPlayer, handleFor, type MaskoHandle, type MountOptions } from './mount.ts';
-import type { MaskoEventName, MaskoEvents, Player } from './player.ts';
+import { createPlayer, type MaskoHandle, type MountOptions } from './mount.ts';
+import type { MaskoEventName, MaskoEvents, MaskoListener, Player } from './player.ts';
 
 export type { MaskoHandle, MountOptions } from './mount.ts';
 export type { MaskoEvents, Position } from './player.ts';
@@ -36,6 +36,13 @@ const EVENTS: [MaskoEventName, keyof MaskoPlayerProps][] = [
   ['error', 'onError']
 ];
 
+/** A listener added through the ref, kept across the players of new releases. */
+interface Subscription {
+  event: MaskoEventName;
+  listener: MaskoListener<MaskoEventName>;
+  off: (() => void) | null;
+}
+
 /** Which release a delivery is: a new release mounts a new player, new links only swap URLs. */
 function releaseKey(delivery: DeliveryInput): string {
   try {
@@ -51,6 +58,7 @@ function MaskoPlayerView(props: MaskoPlayerProps, ref: ForwardedRef<MaskoHandle>
   const latest = useRef(props);
   latest.current = props;
   const mounted = useRef<DeliveryInput | null>(null);
+  const subscriptions = useRef(new Set<Subscription>());
   const key = useMemo(() => releaseKey(props.delivery), [props.delivery]);
   const hasRefresh = props.getDelivery !== undefined;
 
@@ -71,11 +79,14 @@ function MaskoPlayerView(props: MaskoPlayerProps, ref: ForwardedRef<MaskoHandle>
         handler?.(e);
       });
     }
+    // Listeners added with `ref.current.on` hear the new player too.
+    for (const s of subscriptions.current) s.off = created.on(s.event, s.listener);
     player.current = created;
     mounted.current = p.delivery;
     return () => {
       created.destroy();
       player.current = null;
+      for (const s of subscriptions.current) s.off = null;
     };
     // A new player only for a new release or new pointer wiring.
   }, [key, props.pointer, hasRefresh]);
@@ -101,7 +112,17 @@ function MaskoPlayerView(props: MaskoPlayerProps, ref: ForwardedRef<MaskoHandle>
       pause: () => player.current?.pause(),
       destroy: () => player.current?.destroy(),
       position: () => player.current?.position() ?? { clip: null, time: 0 },
-      on: (event, handler) => (player.current ? handleFor(player.current).on(event, handler) : () => undefined),
+      updateDelivery: (delivery) => player.current?.updateDelivery(delivery) ?? false,
+      setSound: (on) => player.current?.setSound(on),
+      on: (event, handler) => {
+        const s: Subscription = { event, listener: handler as MaskoListener<MaskoEventName>, off: null };
+        s.off = player.current?.on(event, handler) ?? null;
+        subscriptions.current.add(s);
+        return () => {
+          subscriptions.current.delete(s);
+          s.off?.();
+        };
+      },
       preview: {
         showPose: (id) => player.current?.preview.showPose(id),
         playMove: (id) => player.current?.preview.playMove(id)

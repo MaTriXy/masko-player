@@ -1,0 +1,73 @@
+{
+  "name": "pose-clip-fails-on-screen-replays-previous",
+  "about": "A pose clip that fails after it was asked for gives way to the clip that ended last on the pose, not to the still.",
+  "rules": ["9.3", "9.5", "8.1"],
+  "canvas": "otto",
+  "patch": {
+    "addEdges": [
+      {
+        "id": "idle-look",
+        "source": "idle",
+        "target": "idle",
+        "isLoop": true,
+        "duration": 4,
+        "videos": {
+          "hevc": "https://example.invalid/idle-look.mov",
+          "webm": "https://example.invalid/idle-look.webm"
+        }
+      }
+    ]
+  },
+  "loadMs": {
+    "idle-look": 60000
+  },
+  "random": [0.1, 0.9],
+  "steps": [
+    {
+      "start": true,
+      "expect": {
+        "clock": 0,
+        "pose": "idle",
+        "clip": "loop-idle",
+        "next": null,
+        "events": ["pose:idle", "shown:loop-idle"]
+      }
+    },
+    {
+      "loopEnded": true,
+      "expect": {
+        "clock": 4000,
+        "pose": "idle",
+        "clip": "idle-look",
+        "next": null,
+        "events": ["shown:idle-look"]
+      }
+    },
+    {
+      "advance": 10000,
+      "expect": {
+        "clock": 14000,
+        "pose": "idle",
+        "clip": "loop-idle",
+        "next": null,
+        "events": ["error:clip_timeout", "shown:loop-idle"],
+        "values": {
+          "node::loopCount": 1
+        }
+      }
+    },
+    {
+      "loopEnded": true,
+      "expect": {
+        "clock": 18000,
+        "pose": "idle",
+        "clip": "loop-idle",
+        "next": null,
+        "events": ["shown:loop-idle"],
+        "values": {
+          "node::loopCount": 2
+        }
+      }
+    }
+  ]
+}

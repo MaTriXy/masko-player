@@ -1,0 +1,59 @@
+{
+  "name": "hover-ignores-a-pointer-hover-input",
+  "about": "The pointer over the mascot is always behavior::pointerHover, even when the canvas declares an input named pointerHover.",
+  "rules": ["3.5", "3.1", "5.2"],
+  "canvas": "ko-coffee",
+  "patch": {
+    "addInputs": [
+      {
+        "name": "pointerHover",
+        "type": "boolean",
+        "default": false
+      }
+    ]
+  },
+  "steps": [
+    {
+      "start": true,
+      "expect": {
+        "clock": 0,
+        "pose": "idle",
+        "clip": "loop-idle",
+        "next": null,
+        "events": ["pose:idle", "shown:loop-idle"]
+      }
+    },
+    {
+      "advance": 1000,
+      "expect": {
+        "clock": 1000,
+        "clip": "loop-idle",
+        "events": []
+      }
+    },
+    {
+      "hover": true,
+      "expect": {
+        "clock": 1000,
+        "pose": "idle",
+        "clip": "enter-hover-perk",
+        "next": null,
+        "events": ["shown:enter-hover-perk"],
+        "values": {
+          "pointerHover": false,
+          "behavior::pointerHover": true
+        }
+      }
+    },
+    {
+      "clipEnded": true,
+      "expect": {
+        "clock": 2600,
+        "pose": "hover-perk",
+        "clip": "loop-hover-perk",
+        "next": null,
+        "events": ["pose:hover-perk", "shown:loop-hover-perk"]
+      }
+    }
+  ]
+}

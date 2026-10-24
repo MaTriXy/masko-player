@@ -8,6 +8,7 @@ import {
   forwardRef,
   useEffect,
   useImperativeHandle,
+  useLayoutEffect,
   useMemo,
   useRef,
   type ComponentType,
@@ -80,9 +81,12 @@ function MaskoViewWithRef(props: MaskoViewProps, ref: ForwardedRef<MaskoHandle>)
   latest.current = props;
 
   // A new release loads a new player; new links for the same release keep it.
+  // getDelivery given or taken away loads the release again (the mascot
+  // restarts), with the latest links.
   const key = useMemo(() => releaseKey(delivery), [delivery]);
+  const refreshes = getDelivery !== undefined;
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  const json = useMemo(() => deliveryJson(latest.current.delivery), [key]);
+  const json = useMemo(() => deliveryJson(latest.current.delivery), [key, refreshes]);
 
   // New links for the same release: the native player swaps them in and keeps playing.
   const given = useRef({ key, json });
@@ -93,6 +97,19 @@ function MaskoViewWithRef(props: MaskoViewProps, ref: ForwardedRef<MaskoHandle>)
     if (last.key === key && last.json !== fresh) native.current?.updateDelivery(fresh).catch(() => undefined);
   }, [delivery, key]);
 
+  // getDelivery requests the native view waits on. Unmounting answers them
+  // with null (a view already gone ignores it), and their late answers are
+  // dropped.
+  const waiting = useRef(new Set<number>());
+  useLayoutEffect(() => {
+    const requests = waiting.current;
+    const view = native.current;
+    return () => {
+      for (const request of requests) view?.answerDelivery(request, null).catch(() => undefined);
+      requests.clear();
+    };
+  }, []);
+
   const events = useMemo(
     () => ({
       onPose: (e: NativeEvent<MaskoEvents['pose']>) => latest.current.onPose?.(e.nativeEvent),
@@ -102,6 +119,7 @@ function MaskoViewWithRef(props: MaskoViewProps, ref: ForwardedRef<MaskoHandle>)
       onError: (e: NativeEvent<MaskoEvents['error']>) => latest.current.onError?.(e.nativeEvent),
       onDeliveryRequest: (e: NativeEvent<{ request: number }>) => {
         const { request } = e.nativeEvent;
+        waiting.current.add(request);
         const get = latest.current.getDelivery;
         const fresh = async () => {
           try {
@@ -112,7 +130,9 @@ function MaskoViewWithRef(props: MaskoViewProps, ref: ForwardedRef<MaskoHandle>)
           }
         };
         fresh()
-          .then((answer) => native.current?.answerDelivery(request, answer))
+          .then((answer) => {
+            if (waiting.current.delete(request)) return native.current?.answerDelivery(request, answer);
+          })
           .catch(() => undefined);
       }
     }),
@@ -154,7 +174,7 @@ function MaskoViewWithRef(props: MaskoViewProps, ref: ForwardedRef<MaskoHandle>)
     delivery: json,
     autoPlay,
     sound: sound ?? false,
-    refreshes: getDelivery !== undefined
+    refreshes
   });
 }
 

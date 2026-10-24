@@ -2,11 +2,11 @@
 // `MaskoPlayer.mount(element, { delivery })`. The engine's WebAssembly is
 // inlined, so nothing else is fetched but the clips.
 
-import wasm from './wasm/masko_player_wasm_bg.wasm';
-import { setWasmSource } from './engine.ts';
+import wasm from './inline.ts';
+import { fromBase64, setWasmSource } from './engine.ts';
 import { mountMascot } from './mount.ts';
 
-setWasmSource(wasm);
+setWasmSource(fromBase64(wasm));
 
 export { mountMascot as mount, mountMascot };
 export const version = __VERSION__;

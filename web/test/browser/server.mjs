@@ -1,7 +1,9 @@
 // A static server for the browser tests: the built package (/dist), the test
 // pages (/pages), bundles made for them (/build), generated clips (/clips)
 // and downloaded Masko clips (/real). Range requests work as for any media
-// host; `?delay=ms` slows a response down, `?status=404` fails it.
+// host; `?delay=ms` slows a response down, `?status=404` fails it. /moved
+// serves the package as a dev server that moved it away from its .wasm
+// (Vite pre-bundling): the .wasm is the app's HTML page.
 import { createServer } from 'node:http';
 import { existsSync, readFileSync, statSync } from 'node:fs';
 import { dirname, extname, join, normalize } from 'node:path';
@@ -11,6 +13,7 @@ const here = dirname(fileURLToPath(import.meta.url));
 const web = join(here, '..', '..');
 const roots = {
   dist: join(web, 'dist'),
+  moved: join(web, 'dist'),
   pages: join(here, 'pages'),
   build: join(here, '.build'),
   clips: join(here, '.clips'),
@@ -34,6 +37,10 @@ const port = Number(process.env.PORT ?? 4174);
 createServer(async (req, res) => {
   const url = new URL(req.url ?? '/', 'http://localhost');
   const [, top, ...rest] = url.pathname.split('/');
+  if (top === 'moved' && url.pathname.endsWith('.wasm')) {
+    res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' }).end('<!doctype html><title>An app</title>');
+    return;
+  }
   const root = roots[top];
   const file = root ? normalize(join(root, ...rest)) : null;
   if (!file || !file.startsWith(root) || !existsSync(file) || statSync(file).isDirectory()) {

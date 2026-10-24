@@ -1,0 +1,149 @@
+{
+  "name": "clipless-cycle-waits-for-its-second",
+  "about": "After 32 poses entered in one second, no event starts a move until the second is over, and the engine decides again then.",
+  "rules": ["9.4", "5.1", "13"],
+  "canvas": {
+    "deliverySchemaVersion": 1,
+    "playerContract": 1,
+    "requires": [],
+    "target": "web",
+    "mode": "selected",
+    "runtimeGraph": {
+      "runtimeGraphSchemaVersion": 1,
+      "version": "2.1",
+      "name": "scenario",
+      "initialNode": "a",
+      "autoPlay": true,
+      "nodes": [
+        {
+          "id": "a",
+          "name": "a"
+        },
+        {
+          "id": "b",
+          "name": "b"
+        }
+      ],
+      "inputs": [
+        {
+          "name": "behavior::working",
+          "type": "boolean",
+          "default": false
+        }
+      ],
+      "edges": [
+        {
+          "id": "loop-b",
+          "source": "b",
+          "target": "b",
+          "isLoop": true,
+          "duration": 4,
+          "videos": {
+            "hevc": "https://example.invalid/loop-b.mov",
+            "webm": "https://example.invalid/loop-b.webm"
+          }
+        },
+        {
+          "id": "a-to-b",
+          "source": "a",
+          "target": "b",
+          "isLoop": false,
+          "duration": 1,
+          "conditions": [
+            {
+              "input": "behavior::working",
+              "op": "==",
+              "value": true
+            }
+          ]
+        },
+        {
+          "id": "b-to-a",
+          "source": "b",
+          "target": "a",
+          "isLoop": false,
+          "duration": 1,
+          "conditions": [
+            {
+              "input": "behavior::working",
+              "op": "==",
+              "value": true
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "steps": [
+    {
+      "start": true,
+      "expect": {
+        "clock": 0,
+        "pose": "a",
+        "clip": "still:a",
+        "next": null,
+        "events": ["pose:a", "shown:still:a"]
+      }
+    },
+    {
+      "set": ["working", true],
+      "expect": {
+        "clock": 0,
+        "pose": "a",
+        "clip": "still:a",
+        "next": null
+      }
+    },
+    {
+      "advance": 1000,
+      "expect": {
+        "clock": 1000,
+        "pose": "b",
+        "clip": "loop-b",
+        "next": null
+      }
+    },
+    {
+      "set": ["attention", true],
+      "expect": {
+        "clock": 1000,
+        "pose": "b",
+        "clip": "loop-b",
+        "next": null,
+        "events": []
+      }
+    },
+    {
+      "playMove": "b-to-a",
+      "expect": {
+        "clock": 1000,
+        "pose": "b",
+        "clip": "loop-b",
+        "next": null,
+        "events": ["error:clipless_cycle"]
+      }
+    },
+    {
+      "advance": 1000,
+      "expect": {
+        "clock": 2000,
+        "pose": "b",
+        "clip": "loop-b",
+        "next": {
+          "clip": "b-to-a",
+          "at": "end"
+        },
+        "events": []
+      }
+    },
+    {
+      "loopEnded": true,
+      "expect": {
+        "clock": 5000,
+        "pose": "a",
+        "clip": "still:a",
+        "next": null
+      }
+    }
+  ]
+}

@@ -1,7 +1,9 @@
 package ai.masko.player
 
+import ai.masko.player.engine.MaskoEngine
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -431,6 +433,7 @@ class MaskoPlayerTest {
     @Test
     fun aRefusedDeliveryReportsItsCodeAndPlaysNothing() {
         val rig = Rig(delivery = TestDelivery.json(contract = 2))
+        assertTrue("the decoders are freed at once", rig.stage.released && rig.sounds.released)
         rig.turn()
         assertEquals(listOf("error:unsupported_contract"), rig.heard.events)
         assertEquals(listOf("playerContract 2"), rig.heard.details)
@@ -451,6 +454,117 @@ class MaskoPlayerTest {
         rig.advance(10_000)
         assertTrue(rig.slot0.loads.isEmpty() && rig.slot1.loads.isEmpty())
         assertEquals(MaskoPlayer.Position(null, 0.0), rig.player.position())
+    }
+
+    @Test
+    fun everyPlayerRollsItsOwnExtraClips() {
+        val delivery = TestDelivery.json(extras = listOf("yawn-idle", "look-idle"))
+        fun clips(rig: Rig): List<String> {
+            rig.started()
+            rig.playClips(40, 2_000)
+            assertFalse(rig.heard.events.any { it.startsWith("error:") })
+            return rig.heard.clips.map { it.substringBefore(' ') }
+        }
+        val first = clips(Rig(delivery))
+        assertTrue("extras play: $first", first.any { it == "yawn-idle" || it == "look-idle" })
+        assertNotEquals("two players roll their own extras", first, clips(Rig(delivery)))
+        assertEquals("the same seed rolls the same", clips(Rig(delivery, seed = 7u)), clips(Rig(delivery, seed = 7u)))
+    }
+
+    @Test
+    fun anEnginePanicInAnyCallIsReportedNotThrown() {
+        val triggers = mapOf<String, (Rig) -> Unit>(
+            "nextWake" to { it.started() },
+            "state" to { it.started() },
+            "markUnplayable" to { it.started(); it.stage.preloads.single().second(false) },
+            "markPlayable" to {
+                it.started()
+                it.stage.preloads.single().second(false)
+                it.player.updateDelivery(TestDelivery.json(sig = 2))
+                it.stage.preloads.last().second(true)
+            },
+            "setBool" to { it.started(); it.player.set("working", true) },
+        )
+        for ((call, trigger) in triggers) {
+            lateinit var engine: FaultyEngine
+            val rig = Rig(makeEngine = { json -> FaultyEngine(MaskoEngine(json)).also { engine = it } })
+            engine.failing += call
+            trigger(rig)
+            assertTrue("$call: ${rig.heard.events}", rig.heard.events.contains("error:engine_failed"))
+            assertTrue("$call: ${rig.heard.details}", rig.heard.details.contains("panicked in $call"))
+        }
+    }
+
+    @Test
+    fun callsFromAnotherThreadThrowAClearError() {
+        val rig = Rig().started()
+        val calls = mapOf<String, () -> Unit>(
+            "set" to { rig.player.set("working", true) },
+            "fire" to { rig.player.fire("boop") },
+            "reset" to { rig.player.reset() },
+            "play" to { rig.player.play() },
+            "pause" to { rig.player.pause() },
+            "position" to { rig.player.position() },
+            "sound" to { rig.player.sound = true },
+            "updateDelivery" to { rig.player.updateDelivery(TestDelivery.json(sig = 2)) },
+            "preview.showPose" to { rig.player.preview.showPose("idle") },
+            "destroy" to { rig.player.destroy() },
+        )
+        for ((name, call) in calls) {
+            var error: Throwable? = null
+            val thread = Thread({ error = runCatching(call).exceptionOrNull() }, "worker")
+            thread.start()
+            thread.join()
+            assertTrue("$name: $error", error is IllegalStateException)
+            assertEquals("MaskoPlayer.$name must be called on the main thread, not on thread \"worker\"", error!!.message)
+        }
+        assertTrue("nothing happened", rig.slot1.loads.isEmpty() && !rig.player.isPaused && !rig.stage.released)
+    }
+
+    @Test
+    fun aViewWithoutASurfaceIsReportedAndPlaysOnceItHasOne() {
+        val rig = Rig(ready = false)
+        rig.stage.fail("the view is 300 x 0 pixels")
+        rig.turn()
+        assertEquals(listOf("error:surface_unavailable"), rig.heard.events)
+        assertEquals(listOf("the view is 300 x 0 pixels"), rig.heard.details)
+        rig.stage.becomeReady()
+        rig.turn()
+        assertEquals("pose:idle", rig.heard.events.last())
+    }
+
+    @Test
+    fun aDetachedViewKeepsNothingQueuedAndCatchesUpWhenBack() {
+        var asked = 0
+        val rig = Rig(options = MaskoPlayer.Options(getDelivery = { asked++ })).started()
+        rig.player.setHostActive(false)
+        rig.player.setHostAttached(false)
+        assertTrue("the sounds' decoders are freed", rig.sounds.detached)
+        assertTrue("nothing is queued on the main thread", rig.scheduler.dueAt().isEmpty())
+        // An hour away, past the refresh due at 55 minutes.
+        rig.advance(60 * 60_000L)
+        assertEquals(0, asked)
+        rig.player.setHostAttached(true)
+        rig.player.setHostActive(true)
+        rig.turn()
+        assertEquals("the refresh that came due runs at once", 1, asked)
+        assertTrue(rig.slot0.playing)
+
+        // Detached while getDelivery is asked: nothing waits for the reply, and the player asks again when back.
+        val replies = ArrayList<(String?) -> Unit>()
+        val asking = Rig(options = MaskoPlayer.Options(getDelivery = { r -> replies += r })).started()
+        asking.advance(55 * 60_000L)
+        assertEquals(1, replies.size)
+        asking.player.setHostActive(false)
+        asking.player.setHostAttached(false)
+        assertTrue(asking.scheduler.dueAt().isEmpty())
+        replies[0](TestDelivery.json(sig = 2, expires = "2026-10-23T14:00:00Z"))
+        asking.turn()
+        asking.player.setHostAttached(true)
+        asking.player.setHostActive(true)
+        asking.turn()
+        assertEquals(2, replies.size)
+        assertFalse(asking.heard.events.any { it.startsWith("error:refresh") })
     }
 
     // ------------------------------------------------------------------ position, pause and play
@@ -628,6 +742,71 @@ class MaskoPlayerTest {
         assertEquals(listOf("error:refresh_mismatch", "error:refresh_mismatch", "error:refresh_failed"), rig.heard.events)
         rig.player.set("working", true)
         assertEquals("the old links stay", "https://cdn.test/m/to-work.mp4?sig=1", rig.slot1.loads.last())
+    }
+
+    @Test
+    fun aGetDeliveryThatThrowsIsAFailedRefreshNotACrash() {
+        var asked = 0
+        val rig = Rig(options = MaskoPlayer.Options(getDelivery = { asked++; throw IllegalStateException("offline") })).started()
+        rig.player.pause()
+        rig.advance(55 * 60_000L)
+        assertEquals(1, asked)
+        assertEquals("error:refresh_failed", rig.heard.events.last())
+        assertEquals("offline", rig.heard.details.last())
+        rig.advance(30_000 - 1)
+        assertEquals(1, asked)
+        rig.advance(1)
+        assertEquals(2, asked)
+    }
+
+    @Test
+    fun aReplyThatNeverComesTimesOutAndALateOneIsIgnored() {
+        val replies = ArrayList<(String?) -> Unit>()
+        val rig = Rig(options = MaskoPlayer.Options(getDelivery = { r -> replies += r })).started()
+        rig.player.pause()
+        rig.advance(55 * 60_000L)
+        assertEquals(1, replies.size)
+        rig.advance(60_000 - 1)
+        assertFalse(rig.heard.events.contains("error:refresh_failed"))
+        rig.advance(1)
+        assertEquals("error:refresh_failed", rig.heard.events.last())
+        assertEquals("getDelivery did not reply within 60 seconds", rig.heard.details.last())
+        rig.advance(30_000)
+        assertEquals("asked again 30 s later", 2, replies.size)
+        // The first reply comes now: too late, dropped. The second is taken.
+        replies[0](TestDelivery.json(sig = 3, expires = "2026-10-23T15:00:00Z"))
+        replies[1](TestDelivery.json(sig = 2, expires = "2026-10-23T14:00:00Z"))
+        rig.turn()
+        assertEquals(1, rig.heard.events.count { it.startsWith("error:") })
+        rig.player.play()
+        rig.player.set("working", true)
+        assertEquals("https://cdn.test/m/to-work.mp4?sig=2", rig.slot1.loads.last())
+    }
+
+    @Test
+    fun linksAreCheckedAgainstTheWallClockWhenTheViewIsBack() {
+        // Deep sleep past the refresh: the wall clock moves on, the uptime timer does not.
+        var asked = 0
+        val slept = Rig(options = MaskoPlayer.Options(getDelivery = { asked++ })).started()
+        slept.player.setHostActive(false)
+        slept.slept = 56 * 60_000L
+        slept.advance(1_000)
+        assertEquals(0, asked)
+        slept.player.setHostActive(true)
+        slept.turn()
+        assertEquals("due on the wall clock: asked at once", 1, asked)
+
+        // Deep sleep for half an hour: the refresh is still at 12:55 on the wall clock.
+        var later = 0
+        val rig = Rig(options = MaskoPlayer.Options(getDelivery = { later++ })).started()
+        rig.player.setHostActive(false)
+        rig.slept = 30 * 60_000L
+        rig.advance(1_000)
+        rig.player.setHostActive(true)
+        rig.advance(25 * 60_000L - rig.time.now - 1)
+        assertEquals(0, later)
+        rig.advance(1)
+        assertEquals(1, later)
     }
 
     // ------------------------------------------------------------------ the file and the size

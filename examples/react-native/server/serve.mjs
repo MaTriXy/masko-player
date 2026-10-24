@@ -31,11 +31,17 @@ let served = 0;
 const commands = [];
 let reader = null;
 
-function relay() {
-  if (!reader || commands.length === 0) return;
-  clearTimeout(reader.timer);
-  reader.res.writeHead(200, { 'content-type': 'text/plain' }).end(commands.shift());
+/** Answers the waiting request: with a command, or with nothing (204). */
+function answer(command) {
+  const { res, timer } = reader;
   reader = null;
+  clearTimeout(timer);
+  if (command === undefined) res.writeHead(204).end();
+  else res.writeHead(200, { 'content-type': 'text/plain' }).end(command);
+}
+
+function relay() {
+  if (reader && commands.length > 0) answer(commands.shift());
 }
 
 /** One delivery, its links on the host the app asked. */
@@ -131,12 +137,17 @@ createServer((req, res) => {
     return;
   }
   if (url.pathname === '/next') {
-    if (reader) reader.res.writeHead(204).end();
-    const timer = setTimeout(() => {
-      if (reader?.res === res) reader = null;
-      res.writeHead(204).end();
-    }, 20_000);
-    reader = { res, timer };
+    // A newer request replaces the one waiting; each waits 20 seconds at most.
+    if (reader) answer();
+    const waiting = { res, timer: setTimeout(() => reader === waiting && answer(), 20_000) };
+    reader = waiting;
+    // The app went away (a reload): commands wait for its next request.
+    res.on('close', () => {
+      if (reader === waiting) {
+        clearTimeout(waiting.timer);
+        reader = null;
+      }
+    });
     relay();
     return;
   }

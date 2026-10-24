@@ -4,7 +4,7 @@
 import { act, render } from '@testing-library/react-native';
 import { createRef } from 'react';
 
-import { MaskoView, type MaskoHandle } from '../src';
+import { MaskoView, type DeliveryInput, type MaskoHandle } from '../src';
 import type { NativeCalls, NativeProps } from '../src/MaskoView';
 
 type Calls = { [K in keyof NativeCalls]: jest.Mock };
@@ -139,6 +139,20 @@ describe('props', () => {
     view.rerender(<MaskoView delivery={next} />);
     expect(JSON.parse(props().delivery)).toEqual(next);
     expect(fake.calls.updateDelivery).not.toHaveBeenCalled();
+  });
+
+  it('reloads with the latest links when getDelivery is given or taken away', () => {
+    const view = render(<MaskoView delivery={delivery} />);
+    view.rerender(<MaskoView delivery={withLinks('b')} />);
+    expect(JSON.parse(props().delivery)).toEqual(delivery);
+    view.rerender(<MaskoView delivery={withLinks('b')} getDelivery={() => delivery} />);
+    expect(props().refreshes).toBe(true);
+    expect(props().delivery).toBe(JSON.stringify(withLinks('b')));
+    view.rerender(<MaskoView delivery={withLinks('c')} getDelivery={() => delivery} />);
+    expect(props().delivery).toBe(JSON.stringify(withLinks('b')));
+    view.rerender(<MaskoView delivery={withLinks('c')} />);
+    expect(props().refreshes).toBe(false);
+    expect(props().delivery).toBe(JSON.stringify(withLinks('c')));
   });
 
   it('passes sound, autoPlay and whether getDelivery is given', () => {
@@ -290,6 +304,20 @@ describe('getDelivery', () => {
     props().onDeliveryRequest({ nativeEvent: { request: 3 } });
     await settle();
     expect(fake.calls.answerDelivery.mock.calls).toEqual([[3, null]]);
+  });
+
+  it('answers waiting requests with null on unmount, and drops their late answers', async () => {
+    let answer: (value: DeliveryInput) => void = () => undefined;
+    const getDelivery = jest.fn(() => new Promise<DeliveryInput>((resolve) => (answer = resolve)));
+    const view = render(<MaskoView delivery={delivery} getDelivery={getDelivery} />);
+    props().onDeliveryRequest({ nativeEvent: { request: 5 } });
+    await settle();
+    expect(fake.calls.answerDelivery).not.toHaveBeenCalled();
+    view.unmount();
+    expect(fake.calls.answerDelivery.mock.calls).toEqual([[5, null]]);
+    answer(withLinks('late'));
+    await settle();
+    expect(fake.calls.answerDelivery).toHaveBeenCalledTimes(1);
   });
 
   it('answers null when getDelivery is gone', async () => {

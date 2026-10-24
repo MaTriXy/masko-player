@@ -58,6 +58,32 @@ test('cache: files in use by a slot stay; failures are reported; dropped loads a
   await settle();
 });
 
+test('cache: a file asked for again, then dropped while it loads, is not a file that fails', async () => {
+  const files = new FakeFiles();
+  files.hold = true;
+  const cache = new ClipCache(files);
+  const first = cache.preload('k', 'k');
+  cache.nextBatch();
+  const again = cache.preload('k', 'k');
+  cache.nextBatch();
+  // A later pose fills the cache: the file still loading makes room.
+  const later = ['a', 'b', 'c', 'd', 'e', 'f'].map((f) => cache.preload(f, f));
+  files.release();
+  assert.deepEqual(await Promise.all([first, again]), [false, false]);
+  assert.deepEqual(await Promise.all(later), [true, true, true, true, true, true]);
+});
+
+test('cache: a file the loader left in the browser cache plays from the current link', async () => {
+  const files = new FakeFiles();
+  files.load = (url: string) => Promise.resolve(url);
+  const cache = new ClipCache(files);
+  await cache.preload('k', 'k.webm?sig=1');
+  assert.equal(await cache.acquire('k', 'k.webm?sig=2'), 'k.webm?sig=2', 'not the link it was loaded with');
+  const copies = new ClipCache(new FakeFiles());
+  await copies.preload('k', 'k.webm?sig=1');
+  assert.equal(await copies.acquire('k', 'k.webm?sig=2'), 'blob:k.webm?sig=1', 'an in-memory copy plays as is');
+});
+
 const edge = (videos: DeliveryEdge['videos']): DeliveryEdge => ({
   id: 'e',
   source: 'a',
@@ -107,12 +133,21 @@ test('format: HEVC on Safari and every iPhone or iPad browser, WebM elsewhere', 
     iosChrome:
       'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) CriOS/141.0 Mobile/15E148 Safari/604.1',
     android:
-      'Mozilla/5.0 (Linux; Android 15) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36'
+      'Mozilla/5.0 (Linux; Android 15) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36',
+    // A Mac app's WKWebView (Tauri): WebKit, with no Safari/ in its user agent.
+    macWebView: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko)',
+    electron:
+      'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) app/1.0.0 Chrome/140.0.0.0 Electron/38.0.0 Safari/537.36',
+    opera:
+      'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 OPR/124.0.0.0',
+    // WebKitGTK on Linux: no HEVC with transparency.
+    epiphany: 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Safari/605.1.15'
   };
   assert.deepEqual(preferredFormats(ua.safari), ['hevc', 'webm']);
   assert.deepEqual(preferredFormats(ua.iosChrome), ['hevc', 'webm']);
   assert.deepEqual(preferredFormats(ua.safari.replace('Macintosh', 'Macintosh'), 5), ['hevc', 'webm'], 'iPad as Mac');
-  for (const name of ['chrome', 'edge', 'firefox', 'android'] as const) {
+  assert.deepEqual(preferredFormats(ua.macWebView), ['hevc', 'webm'], 'a WebKit view in a Mac app');
+  for (const name of ['chrome', 'edge', 'firefox', 'android', 'electron', 'opera', 'epiphany'] as const) {
     assert.deepEqual(preferredFormats(ua[name]), ['webm', 'hevc'], name);
   }
 });

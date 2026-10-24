@@ -3,6 +3,16 @@
   "version": "0.1.0",
   "description": "Plays Masko mascots in React Native and Expo apps, with the Masko player for iOS and Android.",
   "license": "MIT",
+  "author": "Masko",
+  "homepage": "https://github.com/masko-ai/masko-player/tree/main/react-native#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/masko-ai/masko-player.git",
+    "directory": "react-native"
+  },
+  "bugs": {
+    "url": "https://github.com/masko-ai/masko-player/issues"
+  },
   "main": "build/index.js",
   "types": "build/index.d.ts",
   "react-native": "src/index.ts",
@@ -51,6 +61,8 @@
     "animation",
     "video",
     "react-native",
-    "expo"
+    "expo",
+    "ios",
+    "android"
   ]
 }

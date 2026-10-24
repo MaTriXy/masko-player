@@ -58,11 +58,11 @@ final class AVSlot: VideoSlot {
     private var output: AVPlayerItemVideoOutput?
     private var ready: (@MainActor (Bool) -> Void)?
     private var played = false
-    private var poll: Timer?
+    /// The load's poll timer and file observers.
+    let watch = Watch()
     private var loadStarted = Date()
     /// When the video output first held a decoded frame.
     private var decodedAt: Date?
-    private var observers: [NSObjectProtocol] = []
     /// A file that never shows a frame counts as failed after this long.
     private let loadTimeout: TimeInterval = 10
     /// The layer reports its frame within a millisecond of the output; one
@@ -72,6 +72,10 @@ final class AVSlot: VideoSlot {
     init() {
         player.actionAtItemEnd = .pause
         player.automaticallyWaitsToMinimizeStalling = false
+        #if !os(visionOS)
+        // A mascot never keeps the screen awake: the device still locks.
+        player.preventsDisplaySleepDuringVideoPlayback = false
+        #endif
         player.isMuted = true
         layer = AVPlayerLayer(player: player)
         layer.videoGravity = .resizeAspect
@@ -113,7 +117,7 @@ final class AVSlot: VideoSlot {
         item.add(output)
         self.output = output
         let center = NotificationCenter.default
-        observers = [
+        watch.observers = [
             center.addObserver(forName: .AVPlayerItemDidPlayToEndTime, object: item, queue: .main) { [weak self] _ in
                 MainActor.assumeIsolated { self?.onEnd?() }
             },
@@ -126,7 +130,7 @@ final class AVSlot: VideoSlot {
             MainActor.assumeIsolated { self?.check() }
         }
         RunLoop.main.add(timer, forMode: .common)
-        poll = timer
+        watch.timer = timer
     }
 
     private func check() {
@@ -152,8 +156,8 @@ final class AVSlot: VideoSlot {
     }
 
     private func finishLoad(_ ok: Bool) {
-        poll?.invalidate()
-        poll = nil
+        watch.timer?.invalidate()
+        watch.timer = nil
         if !ok {
             stopWatching()
             file = nil
@@ -191,12 +195,28 @@ final class AVSlot: VideoSlot {
     }
 
     private func stopWatching() {
-        poll?.invalidate()
-        poll = nil
+        watch.end()
         output = nil
         firstFrame = nil
+    }
+}
+
+/// A slot's poll timer and file observers. They end with the load, or with
+/// the slot: a slot let go of without `unload` stops polling and observing,
+/// since the run loop and the notification center would keep them forever.
+final class Watch {
+    var timer: Timer?
+    var observers: [NSObjectProtocol] = []
+
+    func end() {
+        timer?.invalidate()
+        timer = nil
         observers.forEach(NotificationCenter.default.removeObserver)
         observers = []
+    }
+
+    deinit {
+        end()
     }
 }
 

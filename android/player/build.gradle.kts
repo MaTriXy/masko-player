@@ -1,7 +1,10 @@
+import java.security.MessageDigest
+
 plugins {
     id("com.android.library")
     id("org.jetbrains.kotlin.android")
-    `maven-publish`
+    id("com.vanniktech.maven.publish.base")
+    signing
 }
 
 group = "ai.masko"
@@ -51,6 +54,7 @@ android {
     publishing {
         singleVariant("release") {
             withSourcesJar()
+            withJavadocJar()
         }
     }
 }
@@ -79,36 +83,200 @@ dependencies {
     androidTestImplementation("androidx.test.ext:junit:1.2.1")
 }
 
-// The engine is built outside Gradle; say so clearly instead of failing on a missing class.
-val checkEngine by tasks.registering {
-    val generated = file("src/main/generated/ai/masko/player/engine/masko_player_ffi.kt")
-    val abis = listOf("arm64-v8a", "armeabi-v7a", "x86_64").map { file("src/main/jniLibs/$it/libmasko_player_ffi.so") }
-    doLast {
-        val missing = (listOf(generated) + abis).filterNot { it.exists() }
-        if (missing.isNotEmpty()) {
-            throw GradleException(
-                "Missing engine files (run scripts/build-android.sh from the repository root):\n" +
-                    missing.joinToString("\n") { "  $it" }
-            )
+// ------------------------------------------------------------------ the engine
+
+// scripts/build-android.sh builds the engine outside Gradle and writes engine.stamp: a
+// hash of the engine sources, then the hash of each file it built from them. Builds check
+// both, so files built from other sources, or changed since, are never packaged or
+// published. The script lists the same sources and hashes them the same way.
+val repositoryRoot: File = rootProject.projectDir.parentFile
+val playerDir: File = projectDir
+
+fun sha256(bytes: ByteArray): String =
+    MessageDigest.getInstance("SHA-256").digest(bytes).joinToString("") { "%02x".format(it) }
+
+fun engineSources(root: File): List<String> {
+    val files = mutableListOf("Cargo.toml", "Cargo.lock", "rust-toolchain.toml", "android/uniffi.toml", "scripts/build-android.sh")
+    for (crate in listOf("engine", "bindings/uniffi", "bindings/uniffi-bindgen")) {
+        files += "$crate/Cargo.toml"
+        if (File(root, "$crate/build.rs").isFile) files += "$crate/build.rs"
+        File(root, "$crate/src").walkTopDown()
+            .filter { it.isFile && it.extension == "rs" }
+            .forEach { files += it.relativeTo(root).invariantSeparatorsPath }
+    }
+    return files.sorted()
+}
+
+fun engineSourcesHash(root: File): String =
+    sha256(engineSources(root).joinToString("") { "${sha256(File(root, it).readBytes())}  $it\n" }.toByteArray())
+
+/** Fails unless the engine files were built by scripts/build-android.sh from the current sources. */
+fun verifyEngine(libraries: Boolean) {
+    val rebuild = "Run scripts/build-android.sh from the repository root."
+    val stamp = File(playerDir, "engine.stamp")
+    if (!stamp.isFile) throw GradleException("The engine is not built (no android/player/engine.stamp). $rebuild")
+    val lines = stamp.readLines().filter { it.isNotBlank() && !it.startsWith("#") }
+    val recorded = lines.firstOrNull { it.startsWith("sources ") }?.removePrefix("sources ")
+    if (recorded != engineSourcesHash(repositoryRoot)) {
+        throw GradleException(
+            "The engine was built from other sources than the ones in this repository " +
+                "(engine/, bindings/uniffi/, Cargo.lock, ...). $rebuild"
+        )
+    }
+    val built = lines.filterNot { it.startsWith("sources ") }.associate { line ->
+        line.substringAfter("  ") to line.substringBefore("  ")
+    }
+    val needed = mutableListOf("src/main/generated/ai/masko/player/engine/masko_player_ffi.kt")
+    // The host library of the JVM tests, when this machine built one.
+    needed += built.keys.filter { it.startsWith("src/test/resources/") }
+    if (libraries) {
+        needed += listOf("arm64-v8a", "armeabi-v7a", "x86_64").map { "src/main/jniLibs/$it/libmasko_player_ffi.so" }
+        // Any other engine library in jniLibs would be packaged too.
+        File(playerDir, "src/main/jniLibs").listFiles()?.forEach { abi ->
+            val so = File(abi, "libmasko_player_ffi.so")
+            if (so.isFile) needed += so.relativeTo(playerDir).invariantSeparatorsPath
+        }
+    }
+    for (path in needed.distinct()) {
+        val file = File(playerDir, path)
+        val hash = built[path]
+            ?: throw GradleException("android/player/$path was not built with these sources. $rebuild")
+        if (!file.isFile) throw GradleException("android/player/$path is missing. $rebuild")
+        if (sha256(file.readBytes()) != hash) {
+            throw GradleException("android/player/$path changed after scripts/build-android.sh built it. $rebuild")
         }
     }
 }
+
+// Compiling and the JVM tests need the bindings (and the host library); scripts/build-android.sh --host-only is enough.
+val checkEngine by tasks.registering {
+    description = "Checks that the engine bindings were built from the current engine sources."
+    doLast { verifyEngine(libraries = false) }
+}
 tasks.named("preBuild") { dependsOn(checkEngine) }
+
+// Packaging an AAR or an APK, and publishing, also need the libraries of every ABI.
+val checkEngineLibraries by tasks.registering {
+    description = "Checks that the engine libraries and bindings were built from the current engine sources."
+    doLast { verifyEngine(libraries = true) }
+}
+tasks.matching { it.name.startsWith("merge") && it.name.endsWith("JniLibFolders") }.configureEach {
+    dependsOn(checkEngineLibraries)
+}
+tasks.withType<PublishToMavenRepository>().configureEach { dependsOn(checkEngineLibraries) }
+
+// ------------------------------------------------------------------ licenses in the AAR
+
+/** Copies LICENSE and THIRD_PARTY_NOTICES.md to META-INF/ai.masko.player/ in the AAR's classes.jar. */
+abstract class Notices : DefaultTask() {
+    @get:InputFiles
+    @get:PathSensitive(PathSensitivity.NAME_ONLY)
+    abstract val notices: ConfigurableFileCollection
+
+    @get:OutputDirectory
+    abstract val output: DirectoryProperty
+
+    @TaskAction
+    fun copy() {
+        val dir = output.get().dir("META-INF/ai.masko.player").asFile
+        dir.deleteRecursively()
+        dir.mkdirs()
+        notices.forEach { it.copyTo(File(dir, it.name), overwrite = true) }
+    }
+}
+
+val notices = tasks.register<Notices>("notices") {
+    notices.from(File(repositoryRoot, "LICENSE"), File(repositoryRoot, "THIRD_PARTY_NOTICES.md"))
+}
+
+androidComponents {
+    onVariants { variant ->
+        variant.sources.resources?.addGeneratedSourceDirectory(notices, Notices::output)
+    }
+}
+
+// ------------------------------------------------------------------ publishing
 
 publishing {
     publications {
         register<MavenPublication>("release") {
-            groupId = "ai.masko"
-            artifactId = "player"
-            version = project.version.toString()
             afterEvaluate { from(components["release"]) }
         }
     }
     repositories {
-        // `./gradlew :player:publishReleasePublicationToLocalRepository` writes build/repo.
+        // `./gradlew :player:publishReleasePublicationToLocalRepository` writes build/repo,
+        // where the React Native package's Gradle build finds the library.
         maven {
             name = "local"
             url = uri(layout.buildDirectory.dir("repo"))
         }
     }
+}
+
+// `./gradlew :player:publishToMavenCentral` uploads ai.masko:player to the Central Portal
+// (central.sonatype.com) as a deployment to check and publish there; README, "Publish".
+// It reads the Central Portal user token from the Gradle properties mavenCentralUsername
+// and mavenCentralPassword, and the signing key from signingInMemoryKey,
+// signingInMemoryKeyId and signingInMemoryKeyPassword (or ORG_GRADLE_PROJECT_<name>).
+mavenPublishing {
+    coordinates("ai.masko", "player", version.toString())
+    publishToMavenCentral(automaticRelease = false)
+    signAllPublications()
+    pom {
+        name.set("Masko player")
+        description.set(
+            "Plays Masko mascot releases in Android apps: a view that shows the mascot with transparency, " +
+                "and a player that apps drive with set and fire. Every canvas rule runs in the shared Rust engine."
+        )
+        url.set("https://github.com/masko-ai/masko-player")
+        inceptionYear.set("2026")
+        licenses {
+            license {
+                name.set("MIT License")
+                url.set("https://github.com/masko-ai/masko-player/blob/main/LICENSE")
+                distribution.set("repo")
+            }
+            license {
+                name.set("Mozilla Public License 2.0")
+                url.set("https://www.mozilla.org/MPL/2.0/")
+                distribution.set("repo")
+                comments.set("The uniffi crates, compiled unmodified into libmasko_player_ffi.so; see THIRD_PARTY_NOTICES.md.")
+            }
+            license {
+                name.set("Third-party notices")
+                url.set("https://github.com/masko-ai/masko-player/blob/main/THIRD_PARTY_NOTICES.md")
+                distribution.set("repo")
+                comments.set(
+                    "Each Rust crate compiled into the engine, with its license. The AAR carries LICENSE and " +
+                        "THIRD_PARTY_NOTICES.md in META-INF/ai.masko.player/."
+                )
+            }
+        }
+        developers {
+            developer {
+                id.set("masko")
+                name.set("Masko")
+                url.set("https://masko.ai")
+            }
+        }
+        scm {
+            url.set("https://github.com/masko-ai/masko-player")
+            connection.set("scm:git:https://github.com/masko-ai/masko-player.git")
+            developerConnection.set("scm:git:ssh://git@github.com/masko-ai/masko-player.git")
+        }
+        issueManagement {
+            system.set("GitHub")
+            url.set("https://github.com/masko-ai/masko-player/issues")
+        }
+    }
+}
+
+// Maven Central takes signed files only, so publishing there fails without a key. Other
+// publications (build/repo) are signed when a key is set and left unsigned otherwise.
+signing {
+    setRequired(
+        provider {
+            gradle.taskGraph.allTasks.any { it is PublishToMavenRepository && it.repository.name == "mavenCentral" }
+        }
+    )
 }

@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Moved package page</title>
+    <style>
+      body { margin: 0; background: #fff; }
+      #m { width: 240px; height: 240px; }
+    </style>
+  </head>
+  <body>
+    <div id="m"></div>
+    <script type="module">
+      // The package where its .wasm is a web page, as in Vite's dev server.
+      import { mountMascot, setWasmSource } from '/moved/index.js';
+      import { record, testDelivery, watch } from '/pages/harness.js';
+
+      const wasm = new URLSearchParams(location.search).get('wasm');
+      if (wasm) setWasmSource(wasm);
+      window.start = (options = {}) => {
+        const element = document.getElementById('m');
+        window.handle = mountMascot(element, { delivery: testDelivery(options) });
+        window.events = record(window.handle);
+        window.watcher = watch(element.querySelector('.masko-player'));
+        return true;
+      };
+      window.ready = true;
+    </script>
+  </body>
+</html>

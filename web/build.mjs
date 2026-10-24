@@ -1,7 +1,8 @@
 // Builds @masko/player into dist/: the ES modules ("." and "./react") with
-// the engine's .wasm beside them, the one-file script build with the
-// WebAssembly inlined, and the type declarations. Run scripts/build-web.sh
-// first: it puts the engine in src/wasm/.
+// the engine's .wasm beside them (and an inlined copy in a chunk of its own,
+// loaded only when the .wasm is not there), the one-file script build with
+// the WebAssembly inlined, and the type declarations. Run
+// scripts/build-web.sh first: it puts the engine in src/wasm/.
 import { build } from 'esbuild';
 import { execFileSync } from 'node:child_process';
 import { copyFileSync, existsSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
@@ -19,21 +20,25 @@ if (!existsSync(wasm)) {
 }
 rmSync(dist, { recursive: true, force: true });
 
+// The engine's WebAssembly needs bulk memory, non-trapping float-to-int and
+// sign extension: Firefox 79 and Safari 15 (iOS 15) are the first with all.
 const common = {
   bundle: true,
-  target: ['es2020', 'chrome87', 'firefox78', 'safari14'],
+  target: ['es2020', 'chrome87', 'firefox79', 'safari15'],
+  loader: { '.wasm': 'base64' },
   legalComments: 'none',
   logLevel: 'warning'
 };
 
-// The ES modules: the core and the React component share one chunk.
+// The ES modules: the core and the React component share a chunk, and the
+// inlined engine is a chunk of its own (inline-<hash>.js).
 await build({
   ...common,
   entryPoints: { index: 'src/index.ts', react: 'src/react.ts' },
   outdir: dist,
   format: 'esm',
   splitting: true,
-  chunkNames: 'core-[hash]',
+  chunkNames: '[name]-[hash]',
   external: ['react', 'react-dom'],
   platform: 'browser'
 });
@@ -49,7 +54,6 @@ await build({
   format: 'iife',
   globalName: 'MaskoPlayer',
   minify: true,
-  loader: { '.wasm': 'binary' },
   define: { __VERSION__: JSON.stringify(version) },
   logOverride: { 'empty-import-meta': 'silent' },
   banner: { js: `/*! @masko/player ${version} | MIT */` }

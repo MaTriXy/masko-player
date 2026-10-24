@@ -1,0 +1,25 @@
+{
+  "name": "load-refuses-null-operator",
+  "about": "A condition op of null is refused; only a missing op reads ==.",
+  "rules": ["1.3", "2.2"],
+  "canvas": "otto",
+  "patch": {
+    "edges": {
+      "idle-to-watching": {
+        "conditionGroups": [
+          [
+            {
+              "op": null,
+              "input": "behavior::working",
+              "value": true
+            }
+          ]
+        ]
+      }
+    }
+  },
+  "expectLoad": {
+    "refused": "unknown_operator"
+  },
+  "steps": []
+}

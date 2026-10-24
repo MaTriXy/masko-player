@@ -64,7 +64,7 @@ export function setWasmSource(source: WasmSource): void {
 export function loadWasm(): Promise<void> {
   if (!ready) {
     const source = wasmSource;
-    ready = init(source === undefined ? undefined : { module_or_path: source }).then(
+    ready = (source === undefined ? loadBeside() : loadFrom(source)).then(
       () => undefined,
       (error: unknown) => {
         ready = null;
@@ -73,6 +73,57 @@ export function loadWasm(): Promise<void> {
     );
   }
   return ready;
+}
+
+async function loadFrom(source: WasmSource): Promise<void> {
+  const url = typeof source === 'string' || source instanceof URL;
+  await init({ module_or_path: url ? await fetchWasm(source, 'check the URL given to setWasmSource') : source });
+}
+
+/**
+ * The `.wasm` file next to this module, else the copy inlined in a chunk of
+ * its own, loaded only then. A dev server that moves this module away from
+ * the file (Vite pre-bundling dependencies) answers with its page instead.
+ */
+async function loadBeside(): Promise<void> {
+  let beside: unknown;
+  try {
+    const url = new URL('masko_player_wasm_bg.wasm', import.meta.url);
+    await init({
+      module_or_path: await fetchWasm(url, "with Vite, add optimizeDeps: { exclude: ['@masko/player'] } to its config")
+    });
+    return;
+  } catch (error) {
+    beside = error;
+  }
+  try {
+    const { default: base64 } = await import('./inline.ts');
+    await init({ module_or_path: fromBase64(base64) });
+  } catch (error) {
+    throw new Error(`${message(beside)}; the inlined engine did not load either: ${message(error)}`);
+  }
+}
+
+/** Fetches the engine's WebAssembly. A page in its place, a server's answer for a missing file, says so. */
+async function fetchWasm(url: string | URL, hint: string): Promise<Response> {
+  const response = await fetch(url);
+  if (!response.ok) throw new Error(`${response.status} for the engine's WebAssembly at ${url} (${hint})`);
+  if (/^text\/html/i.test(response.headers.get('content-type') ?? '')) {
+    throw new Error(`${url} is a web page, not the engine's WebAssembly (${hint})`);
+  }
+  return response;
+}
+
+/** The inlined engine's bytes. */
+export function fromBase64(base64: string): Uint8Array {
+  const text = atob(base64);
+  const bytes = new Uint8Array(text.length);
+  for (let i = 0; i < text.length; i++) bytes[i] = text.charCodeAt(i);
+  return bytes;
+}
+
+function message(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
 }
 
 /** Loads the engine from bytes at once, for Node and tests. */
@@ -98,9 +149,9 @@ export class Engine {
     try {
       return new Engine(new MaskoEngine(delivery));
     } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      const match = /^([a-z_]+): ?([\s\S]*)$/.exec(message);
-      throw match ? new LoadError(match[1], match[2]) : new LoadError('unreadable', message);
+      const text = message(error);
+      const match = /^([a-z_]+): ?([\s\S]*)$/.exec(text);
+      throw match ? new LoadError(match[1], match[2]) : new LoadError('unreadable', text);
     }
   }
 

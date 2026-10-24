@@ -26,6 +26,7 @@ if File.exist?(File.join(apple, 'Sources', 'MaskoPlayer', 'MaskoPlayer.swift'))
   Dir.glob(File.join(sources, '**', '*.swift')).sort.each do |file|
     link.call(file, File.join(vendor, 'MaskoPlayer', Pathname.new(file).relative_path_from(Pathname.new(sources)).to_s))
   end
+  link.call(File.join(sources, 'PrivacyInfo.xcprivacy'), File.join(vendor, 'MaskoPlayer', 'PrivacyInfo.xcprivacy'))
   link.call(ffi, File.join(vendor, 'MaskoPlayerFFI.xcframework'))
 end
 
@@ -50,5 +51,7 @@ Pod::Spec.new do |s|
 
   s.source_files = '*.swift', 'vendor/MaskoPlayer/**/*.swift'
   s.vendored_frameworks = 'vendor/MaskoPlayerFFI.xcframework'
+  # The player reads system uptime, a required-reason API for the App Store.
+  s.resource_bundles = { 'MaskoPlayerPrivacy' => ['vendor/MaskoPlayer/PrivacyInfo.xcprivacy'] }
   s.frameworks = 'AVFoundation', 'QuartzCore'
 end

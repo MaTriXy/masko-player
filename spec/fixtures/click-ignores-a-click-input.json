@@ -1,0 +1,70 @@
+{
+  "name": "click-ignores-a-click-input",
+  "about": "The person's click is always action::click, even when the canvas declares an input named click.",
+  "rules": ["3.5", "3.1", "5.2"],
+  "canvas": "ko-coffee",
+  "patch": {
+    "addInputs": [
+      {
+        "name": "click",
+        "type": "trigger",
+        "default": false
+      }
+    ],
+    "addEdges": [
+      {
+        "id": "enter-click-bow",
+        "source": "idle",
+        "target": "bow-greeting",
+        "isLoop": false,
+        "duration": 4,
+        "videos": {
+          "hevc": "https://example.invalid/enter-click-bow.mov",
+          "webm": "https://example.invalid/enter-click-bow.webm"
+        },
+        "conditions": [
+          {
+            "input": "action::click",
+            "op": "==",
+            "value": true
+          }
+        ]
+      }
+    ]
+  },
+  "steps": [
+    {
+      "start": true,
+      "expect": {
+        "clock": 0,
+        "pose": "idle",
+        "clip": "loop-idle",
+        "next": null,
+        "events": ["pose:idle", "shown:loop-idle"]
+      }
+    },
+    {
+      "advance": 2000,
+      "expect": {
+        "clock": 2000,
+        "clip": "loop-idle",
+        "events": []
+      }
+    },
+    {
+      "click": true,
+      "expect": {
+        "clock": 2000,
+        "pose": "idle",
+        "clip": "enter-click-bow",
+        "next": null,
+        "events": ["shown:enter-click-bow"],
+        "fired": ["action::click"],
+        "values": {
+          "click": false,
+          "action::click": true
+        }
+      }
+    }
+  ]
+}

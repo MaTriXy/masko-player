@@ -97,11 +97,19 @@ export function chooseFiles(edge: DeliveryEdge | undefined, formats: Format[], p
   return out;
 }
 
-/** HEVC on Safari and on every iPhone and iPad browser, WebM elsewhere. */
+/**
+ * HEVC on Safari and on every iPhone and iPad browser, WebM elsewhere. On the
+ * Mac, any WebKit counts as Safari, also an app's web view (WKWebView, as in
+ * Tauri) whose user agent has no `Safari/`; Chrome, Edge, Opera and
+ * Electron say `AppleWebKit/` too but are Blink.
+ */
 export function preferredFormats(userAgent: string, maxTouchPoints = 0): Format[] {
-  const apple = /iPad|iPhone|iPod/.test(userAgent) || (/Macintosh/.test(userAgent) && maxTouchPoints > 1);
-  const safari = /Safari\//.test(userAgent) && !/(Chrome|Chromium|CriOS|FxiOS|EdgiOS|Edg|OPR|Android|Firefox)\//.test(userAgent);
-  return apple || safari ? ['hevc', 'webm'] : ['webm', 'hevc'];
+  const mobile = /iPad|iPhone|iPod/.test(userAgent) || (/Macintosh/.test(userAgent) && maxTouchPoints > 1);
+  const macWebKit =
+    /Macintosh/.test(userAgent) &&
+    /AppleWebKit\//.test(userAgent) &&
+    !/(Chrome|Chromium|Edg|OPR|Electron|Firefox)\//.test(userAgent);
+  return mobile || macWebKit ? ['hevc', 'webm'] : ['webm', 'hevc'];
 }
 
 /** When the signed links expire, in wall-clock milliseconds, if they do. */
@@ -109,6 +117,13 @@ export function expiresAt(delivery: Delivery): number | null {
   const access = delivery.deliveryAccess;
   if (!access?.signedUrlExpiresAt) return null;
   const t = Date.parse(access.signedUrlExpiresAt);
+  return Number.isFinite(t) ? t : null;
+}
+
+/** When the server made the delivery (`lastFetchedAt`), on the server's clock, if it says. */
+export function fetchedAt(delivery: Delivery): number | null {
+  const at = delivery.deliveryAccess?.lastFetchedAt;
+  const t = at ? Date.parse(at) : NaN;
   return Number.isFinite(t) ? t : null;
 }
 

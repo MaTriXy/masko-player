@@ -1,0 +1,25 @@
+{
+  "name": "load-refuses-string-condition-value",
+  "about": "A condition value that is a string is an invalid graph, not an unreadable delivery.",
+  "rules": ["1.3"],
+  "canvas": "otto",
+  "patch": {
+    "edges": {
+      "idle-to-watching": {
+        "conditionGroups": [
+          [
+            {
+              "op": "==",
+              "input": "behavior::working",
+              "value": "true"
+            }
+          ]
+        ]
+      }
+    }
+  },
+  "expectLoad": {
+    "refused": "invalid_graph"
+  },
+  "steps": []
+}

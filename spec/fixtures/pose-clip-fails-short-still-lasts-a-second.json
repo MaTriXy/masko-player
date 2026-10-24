@@ -1,0 +1,58 @@
+{
+  "name": "pose-clip-fails-short-still-lasts-a-second",
+  "about": "The still that stands in for a failed pose clip shorter than 1 s lasts 1 s, as a still of its own.",
+  "rules": ["9.5", "7.4", "8.1"],
+  "canvas": "otto",
+  "patch": {
+    "edges": {
+      "loop-idle": {
+        "duration": 0.25
+      }
+    }
+  },
+  "steps": [
+    {
+      "failClip": "loop-idle",
+      "expect": {
+        "clock": 0,
+        "pose": null,
+        "clip": null,
+        "events": []
+      }
+    },
+    {
+      "start": true,
+      "expect": {
+        "clock": 0,
+        "pose": "idle",
+        "clip": "still:idle",
+        "next": null,
+        "events": ["pose:idle", "error:clip_failed", "shown:still:idle"]
+      }
+    },
+    {
+      "advance": 999,
+      "expect": {
+        "clock": 999,
+        "pose": "idle",
+        "clip": "still:idle",
+        "events": [],
+        "values": {
+          "node::loopCount": 0
+        }
+      }
+    },
+    {
+      "advance": 1,
+      "expect": {
+        "clock": 1000,
+        "pose": "idle",
+        "clip": "still:idle",
+        "events": ["error:clip_failed", "shown:still:idle"],
+        "values": {
+          "node::loopCount": 1
+        }
+      }
+    }
+  ]
+}

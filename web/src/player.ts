@@ -8,6 +8,7 @@ import { PlayClock } from './clock.ts';
 import {
   chooseFiles,
   expiresAt,
+  fetchedAt,
   indexDelivery,
   readDelivery,
   sameRelease,
@@ -56,8 +57,14 @@ export interface Position {
   time: number;
 }
 
-type Call = (now: number) => Command[];
+type Call = (engine: Engine, now: number) => Command[];
 type Hold = 'app' | 'blocked' | 'hidden';
+
+/** A call kept for later, with the name it sets (`set:<name>`) or fires (`fire:<name>`), if any. */
+interface Kept {
+  fn: Call;
+  key?: string;
+}
 
 /** One showing of one clip in one slot. */
 interface Showing {
@@ -69,7 +76,11 @@ interface Showing {
   ask: number;
   files: FileChoice[];
   tried: number;
+  /** The file of this attempt is in the slot (`load` may wait for the cache first). */
+  loaded: boolean;
   muted: boolean;
+  /** The browser refused this clip's voice: its loops stay muted until the app turns sound on again. */
+  voiceRefused: boolean;
   /** Its end was reported for this loop. */
   ended: boolean;
   cancelled: boolean;
@@ -82,6 +93,10 @@ type Screen = { type: 'clip'; showing: Showing } | { type: 'still'; pose: string
 const REFRESH_RETRY_MS = 30_000;
 /** Refresh this long before signed links expire, or halfway when they expire sooner than twice this. */
 const REFRESH_LEAD_MS = 5 * 60_000;
+/** The most calls kept while the engine loads or the mascot is paused; the oldest go first. */
+const MAX_KEPT = 1000;
+/** App calls that event handlers chain in one go; the rest waits for the next task. */
+const MAX_CHAINED = 100;
 
 export class Player {
   private readonly host: Host;
@@ -96,15 +111,33 @@ export class Player {
   private nodes = new Map<string, DeliveryNode>();
   private engine: Engine | null = null;
 
+  private readonly seed: number;
   private started = false;
   private wantStart: boolean | null = null;
   private destroyed = false;
-  /** The delivery was refused: nothing plays and calls are dropped. */
-  private refused = false;
+  /** Nothing can play (the delivery was refused, or the engine cannot run): calls are dropped. */
+  private dead = false;
   private readonly holds = new Set<Hold>();
-  private queue: Call[] = [];
+  /** Calls kept until the engine loads, or until the mascot plays again. */
+  private queue: Kept[] = [];
+  /** The app's calls before the start, for the first frame (rules.md 11.1). */
+  private early: Kept[] = [];
+  /** With `autoPlay` false: the first frame is on screen, and which command it came from. */
+  private firstFrame = false;
+  private firstKey: string | null = null;
+  /** Steps running now (`step`): app calls their event handlers make wait in `deferred`. */
+  private depth = 0;
+  private deferred: (() => void)[] = [];
+  private draining = false;
   private wakeTimer: unknown = null;
   private refreshTimer: unknown = null;
+  /** When the refresh timer is due, on the wall clock: timers can sleep with the device. */
+  private refreshAt: number | null = null;
+  /** When `getDelivery` was last asked, on the monotonic clock. */
+  private lastAsk: number | null = null;
+  private asking = false;
+  /** When the current delivery was taken, on the wall clock. */
+  private takenAt = 0;
 
   private screen: Screen = { type: 'none' };
   private pending: Showing | null = null;
@@ -122,9 +155,9 @@ export class Player {
 
   readonly preview = {
     /** Editors and tools: cut to a pose at once (rules.md 13). */
-    showPose: (pose: string): void => this.call((now) => this.engine!.previewShowPose(pose, now)),
+    showPose: (pose: string): void => this.appCall((e, now) => e.previewShowPose(pose, now)),
     /** Editors and tools: play one move from the current pose (rules.md 13). */
-    playMove: (edge: string): void => this.call((now) => this.engine!.previewPlayMove(edge, now))
+    playMove: (edge: string): void => this.appCall((e, now) => e.previewPlayMove(edge, now))
   };
 
   constructor(host: Host, options: PlayerOptions) {
@@ -133,12 +166,13 @@ export class Player {
     this.clock = new PlayClock(() => host.now());
     this.cache = new ClipCache(host.files);
     this.voices = options.sound ?? false;
+    this.seed = options.seed ?? Math.floor(Math.random() * 2 ** 52) + 1;
     try {
       const { delivery, json } = readDelivery(options.delivery);
       this.useDelivery(delivery);
       this.json = json;
     } catch (error) {
-      this.refused = true;
+      this.dead = true;
       this.later(() => this.emit('error', { code: 'unreadable', detail: message(error) }));
       return;
     }
@@ -153,30 +187,38 @@ export class Player {
       this.later(() => this.emit('error', { code: 'bad_value', detail: `set(${name}) takes a boolean or a number` }));
       return;
     }
-    this.call((now) => this.engine!.set(name, value, now));
+    this.appCall((e, now) => e.set(name, value, now), `set:${name}`);
   }
 
   fire(name: string): void {
-    this.call((now) => this.engine!.fire(name, now));
+    this.appCall((e, now) => e.fire(name, now), `fire:${name}`);
   }
 
   /** The person clicked the mascot. Ignored while the mascot is not playing. */
   click(): void {
-    if (this.running()) this.call((now) => this.engine!.click(now));
+    if (!this.running()) return;
+    // A click lets the browser play sound: a refused voice may be heard from the next loop.
+    const screen = this.screen;
+    if (screen.type === 'clip') screen.showing.voiceRefused = false;
+    this.appCall((e, now) => e.click(now));
   }
 
   /** The pointer entered or left the mascot. */
   hover(on: boolean): void {
-    this.call((now) => this.engine!.hover(on, now));
+    this.appCall((e, now) => e.hover(on, now), 'set:pointerHover');
   }
 
   reset(): void {
-    this.call((now) => this.engine!.reset(now));
+    this.appCall((e, now) => e.reset(now));
   }
 
   /** Starts the mascot, or resumes it where it stopped. */
   play(): void {
     if (this.destroyed) return;
+    if (this.depth > 0) {
+      this.deferred.push(() => this.play());
+      return;
+    }
     if (!this.started) {
       this.wantStart = true;
       if (this.engine) this.start();
@@ -190,6 +232,10 @@ export class Player {
   /** Stops play time, clips, timers and sounds; `set` and `fire` wait for `play`. */
   pause(): void {
     if (this.destroyed) return;
+    if (this.depth > 0) {
+      this.deferred.push(() => this.pause());
+      return;
+    }
     if (!this.started) {
       this.wantStart = false;
       return;
@@ -199,12 +245,31 @@ export class Player {
 
   /** The page is hidden or shown again: play time stops while hidden. */
   setHidden(hidden: boolean): void {
-    if (!this.destroyed) this.setHold('hidden', hidden);
+    if (this.destroyed) return;
+    if (this.depth > 0) {
+      this.deferred.push(() => this.setHidden(hidden));
+      return;
+    }
+    this.setHold('hidden', hidden);
+    if (!hidden) this.checkLinks();
   }
 
-  /** Lets clip voices be heard, from the next clip on. */
+  /** Lets clip voices be heard, from the next clip or loop on. */
   setSound(on: boolean): void {
     this.voices = on;
+    // The app asks again: a voice the browser refused may be allowed now.
+    const screen = this.screen;
+    if (screen.type === 'clip') screen.showing.voiceRefused = false;
+    if (this.pending) this.pending.voiceRefused = false;
+  }
+
+  /**
+   * Checks the signed links again, for when the page is shown again or the
+   * device is back online: the refresh timer may have slept with the device.
+   */
+  checkLinks(): void {
+    if (this.destroyed || this.asking || this.refreshAt === null) return;
+    this.refreshIn(this.refreshAt - this.host.wallNow());
   }
 
   position(): Position {
@@ -247,8 +312,7 @@ export class Player {
     if (this.destroyed) return;
     this.destroyed = true;
     this.cancelWake();
-    if (this.refreshTimer !== null) this.host.clearTimer(this.refreshTimer);
-    this.refreshTimer = null;
+    this.cancelRefresh();
     for (const s of this.sounds) s.sound.stop();
     this.sounds = [];
     if (this.pending) this.cancel(this.pending);
@@ -265,6 +329,8 @@ export class Player {
     this.engine?.free();
     this.engine = null;
     this.queue = [];
+    this.early = [];
+    this.deferred = [];
     this.listeners.clear();
     this.host.dispose();
   }
@@ -274,30 +340,44 @@ export class Player {
     return this.delivery?.runtimeGraph?.clickEffect;
   }
 
+  /** The canvas's name, for the mascot's accessible label. */
+  name(): string | undefined {
+    const name = this.delivery?.runtimeGraph?.name;
+    return typeof name === 'string' && name.trim() !== '' ? name : undefined;
+  }
+
   // ------------------------------------------------------------- engine
 
   private async boot(): Promise<void> {
     try {
       await loadWasm();
     } catch (error) {
-      if (!this.destroyed) this.emit('error', { code: 'engine_unavailable', detail: message(error) });
+      if (this.destroyed) return;
+      // It never loads now: calls are dropped rather than kept.
+      this.dead = true;
+      this.queue = [];
+      this.early = [];
+      this.emit('error', { code: 'engine_unavailable', detail: message(error) });
       return;
     }
     if (this.destroyed) return;
+    let engine: Engine;
     try {
-      this.engine = Engine.load(this.json);
+      engine = Engine.load(this.json);
     } catch (error) {
       const e = error instanceof LoadError ? error : new LoadError('unreadable', message(error));
-      this.refused = true;
+      this.dead = true;
       this.queue = [];
+      this.early = [];
       this.emit('error', { code: e.code, detail: e.detail });
       return;
     }
-    this.engine.seed(this.options.seed ?? Math.floor(Math.random() * 2 ** 52) + 1);
+    this.engine = engine;
+    engine.seed(this.seed);
     // Values set or fired before the start, at play time 0 (rules.md 11.1).
     const early = this.queue;
     this.queue = [];
-    for (const call of early) this.exec(call(0));
+    for (const k of early) this.exec(this.ask(k.fn, engine, 0));
     const autoPlay = this.wantStart ?? this.delivery?.runtimeGraph.autoPlay ?? true;
     if (autoPlay) this.start();
     else this.showFirstFrame();
@@ -307,50 +387,144 @@ export class Player {
   private start(): void {
     if (this.started || this.destroyed || !this.engine) return;
     this.started = true;
+    this.early = [];
+    this.firstFrame = false;
     if (this.holds.size === 0) this.clock.play();
     this.exec(this.engine.start(0));
     this.sync();
   }
 
-  /** With `autoPlay` false: the first pose's first frame, from a throwaway engine. */
+  /**
+   * With `autoPlay` false: the first pose's first frame, from a throwaway
+   * engine that heard the same calls before the start. Shown again when a
+   * later call changes it.
+   */
   private showFirstFrame(): void {
-    let probe: Engine;
+    let first: Command | undefined;
     try {
-      probe = Engine.load(this.json);
+      const probe = Engine.load(this.json);
+      try {
+        probe.seed(this.seed);
+        for (const k of this.early) k.fn(probe, 0);
+        first = probe.start(0).find((c) => c.type === 'showClip' || c.type === 'showStill');
+      } finally {
+        probe.free();
+      }
     } catch {
       return;
     }
-    const first = probe.start(0).find((c) => c.type === 'showClip' || c.type === 'showStill');
-    probe.free();
-    if (first) this.run(first);
-    // The engine that plays did not ask for it: its first frame is not reported.
-    if (this.pending) this.pending.ask = 0;
+    this.firstFrame = true;
+    const key = first ? JSON.stringify(first) : null;
+    if (!first || key === this.firstKey) return;
+    this.firstKey = key;
+    const shown = first;
+    this.step(() => {
+      this.run(shown);
+      // The engine that plays did not ask for it: its first frame is not reported.
+      this.restarted = null;
+      if (this.pending) this.pending.ask = 0;
+    });
   }
 
   private running(): boolean {
     return this.started && !this.destroyed && this.holds.size === 0;
   }
 
-  /** Runs an engine call now, or keeps it for when the mascot plays. */
-  private call(fn: Call): void {
-    if (this.destroyed || this.refused) return;
-    if (!this.engine || (this.started && !this.running())) {
-      this.queue.push(fn);
+  /** An app call. Before the start, it also decides the first frame (rules.md 11.1). */
+  private appCall(fn: Call, key?: string): void {
+    if (this.destroyed || this.dead) return;
+    if (this.depth > 0) {
+      this.deferred.push(() => this.appCall(fn, key));
       return;
     }
-    this.exec(fn(this.started ? this.clock.now() : 0));
+    if (!this.started) keep(this.early, fn, key);
+    this.call(fn, key);
+    if (!this.started && this.firstFrame) this.showFirstFrame();
+  }
+
+  /**
+   * Runs an engine call now, or keeps it: until the step running now is done
+   * (`inOrder` runs it at once, at the end of a step), or for when the mascot
+   * plays.
+   */
+  private call(fn: Call, key?: string, inOrder = false): void {
+    if (this.destroyed || this.dead) return;
+    if (this.depth > 0 && !inOrder) {
+      this.deferred.push(() => this.call(fn, key));
+      return;
+    }
+    const engine = this.engine;
+    if (!engine || (this.started && !this.running())) {
+      keep(this.queue, fn, key);
+      return;
+    }
+    this.exec(this.ask(fn, engine, this.started ? this.clock.now() : 0));
+  }
+
+  /** One engine call; one that throws is reported outside and gives no commands. */
+  private ask(fn: Call, engine: Engine, now: number): Command[] {
+    try {
+      return fn(engine, now);
+    } catch (error) {
+      this.later(() => {
+        throw error;
+      });
+      return [];
+    }
   }
 
   private exec(commands: Command[]): void {
-    for (const c of commands) {
-      if (this.destroyed) return;
-      this.run(c);
+    this.step(() => {
+      for (const c of commands) {
+        if (this.destroyed) return;
+        try {
+          this.run(c);
+        } catch (error) {
+          // One command that throws must not skip the rest: report it outside.
+          this.later(() => {
+            throw error;
+          });
+        }
+      }
+      // A pose clip restarted in place is on screen at once, after the commands that restarted it.
+      const restarted = this.restarted;
+      this.restarted = null;
+      if (restarted) this.reportShown(restarted);
+      this.scheduleWake();
+    });
+  }
+
+  /**
+   * Runs one step: a batch of commands, or a swap and its report. App calls
+   * the event handlers make meanwhile wait until it is done, then run in
+   * order, so they never run inside the batch that told them.
+   */
+  private step(fn: () => void): void {
+    this.depth++;
+    try {
+      fn();
+    } finally {
+      this.depth--;
     }
-    // A pose clip restarted in place is on screen at once, after the commands that restarted it.
-    const restarted = this.restarted;
-    this.restarted = null;
-    if (restarted) this.reportShown(restarted);
-    this.scheduleWake();
+    if (this.depth === 0) this.drain();
+  }
+
+  private drain(): void {
+    if (this.draining) return;
+    this.draining = true;
+    try {
+      let chained = 0;
+      while (this.deferred.length > 0 && !this.destroyed) {
+        if (++chained > MAX_CHAINED) {
+          // Handlers that keep calling back: the rest waits, the page goes on.
+          this.later(() => this.drain());
+          return;
+        }
+        this.deferred.shift()!();
+      }
+    } finally {
+      this.draining = false;
+    }
   }
 
   private run(c: Command): void {
@@ -401,7 +575,7 @@ export class Player {
     if (at === undefined) return;
     this.wakeTimer = this.host.setTimer(() => {
       this.wakeTimer = null;
-      this.call((now) => this.engine!.advance(now));
+      this.call((e, now) => e.advance(now));
     }, Math.max(0, at - this.clock.now()));
   }
 
@@ -425,14 +599,16 @@ export class Player {
       // Calls kept while paused first, then the clips and sounds go on.
       const queued = this.queue;
       this.queue = [];
-      for (const call of queued) {
-        if (this.running()) this.exec(call(this.clock.now()));
-        else this.queue.push(call);
+      while (queued.length > 0 && this.running() && this.engine) {
+        this.exec(this.ask(queued.shift()!.fn, this.engine, this.clock.now()));
       }
+      // Paused again by a handler: the rest stays first in line.
+      if (queued.length > 0) this.queue = [...queued, ...this.queue];
       if (!this.running()) return;
       const screen = this.screen;
       if (screen.type === 'clip' && !screen.showing.ended) this.playShowing(screen.showing);
-      if (this.pending) this.playShowing(this.pending);
+      // A clip still waiting for its file plays once it is in its slot.
+      if (this.pending?.loaded) this.playShowing(this.pending);
       for (const s of this.sounds) s.sound.resume();
       this.scheduleWake();
     } else {
@@ -443,8 +619,9 @@ export class Player {
       if (this.pending) {
         const p = this.pending;
         this.host.slots[p.slot].pause();
-        // Shows its first frame while paused.
-        p.off.push(this.host.slots[p.slot].onReady(() => this.swapIn(p)));
+        // Shows its first frame while paused, once its file is in the slot: until
+        // then the slot still holds an older clip (`load` waits for it otherwise).
+        if (p.loaded) p.off.push(this.host.slots[p.slot].onReady(() => this.swapIn(p)));
       }
       for (const s of this.sounds) s.sound.pause();
     }
@@ -468,6 +645,8 @@ export class Player {
       s.ask = this.showToken;
       s.ended = false;
       s.rate = rate;
+      // Sound turned on or off since the last loop.
+      s.muted = this.muted(edge) || s.voiceRefused;
       this.restarted = s;
       this.host.slots[s.slot].load(this.host.slots[s.slot].src ?? s.files[s.tried].url);
       if (this.running()) this.playShowing(s);
@@ -486,7 +665,9 @@ export class Player {
       ask: this.showToken,
       files,
       tried: 0,
-      muted: !(this.voices && this.edges.get(edge)?.hasAudio === true),
+      loaded: false,
+      muted: this.muted(edge),
+      voiceRefused: false,
       ended: false,
       cancelled: false,
       off: []
@@ -495,7 +676,13 @@ export class Player {
     void this.load(s);
   }
 
+  /** Whether this edge's clip plays muted: its own voice only with sound on (rules.md 9.6). */
+  private muted(edge: string): boolean {
+    return !(this.voices && this.edges.get(edge)?.hasAudio === true);
+  }
+
   private async load(s: Showing): Promise<void> {
+    s.loaded = false;
     const file = s.files[s.tried];
     if (!file) {
       this.fail(s, s.tried);
@@ -503,7 +690,7 @@ export class Player {
     }
     const slot = this.host.slots[s.slot];
     let src = file.url;
-    const cached = this.cache.acquire(file.key);
+    const cached = this.cache.acquire(file.key, file.url);
     if (cached) {
       try {
         src = await cached;
@@ -519,6 +706,7 @@ export class Player {
     if (previous !== null) this.cache.release(previous);
     this.slotKeys[s.slot] = cached ? file.key : null;
     slot.load(src);
+    s.loaded = true;
     const attempt = s.tried;
     s.off.push(
       slot.onFrame(() => this.swapIn(s)),
@@ -540,6 +728,7 @@ export class Player {
         if (!s.muted) {
           // The browser refuses sound without a gesture: play muted.
           s.muted = true;
+          s.voiceRefused = true;
           if (this.running()) this.playShowing(s);
           return;
         }
@@ -555,6 +744,10 @@ export class Player {
   /** The showing's first frame is decoded: make it visible and hide the old one, in one frame. */
   private swapIn(s: Showing): void {
     if (this.pending !== s || s.cancelled || this.destroyed) return;
+    this.step(() => this.swap(s));
+  }
+
+  private swap(s: Showing): void {
     this.pending = null;
     const old = this.screen;
     this.host.slots[s.slot].setVisible(true);
@@ -587,16 +780,19 @@ export class Player {
     const ask = s.ask;
     const current = () => ask === this.showToken && !s.cancelled;
     if (!current()) return;
-    this.call((now) => (current() ? this.engine!.clipShown(s.edge, now) : []));
+    // At the end of the step that put it on screen, before the app calls it led to.
+    this.call((e, now) => (current() ? e.clipShown(s.edge, now) : []), undefined, true);
   }
 
   private ended(s: Showing): void {
     if (s.cancelled || s.ended || this.destroyed) return;
-    // A clip that ends before its frame callback is on screen by now.
-    if (this.pending === s) this.swapIn(s);
-    if (this.screen.type !== 'clip' || this.screen.showing !== s) return;
-    s.ended = true;
-    this.call((now) => this.engine!.clipEnded(s.edge, now));
+    this.step(() => {
+      // A clip that ends before its frame callback is on screen by now.
+      if (this.pending === s) this.swapIn(s);
+      if (this.screen.type !== 'clip' || this.screen.showing !== s) return;
+      s.ended = true;
+      this.call((e, now) => e.clipEnded(s.edge, now), undefined, true);
+    });
   }
 
   /** The file of this attempt failed: try the other format once, then report the clip failed. */
@@ -615,7 +811,7 @@ export class Player {
     s.cancelled = true;
     if (this.pending === s) this.pending = null;
     this.unplayable.add(s.edge);
-    this.call((now) => this.engine!.clipFailed(s.edge, now));
+    this.call((e, now) => e.clipFailed(s.edge, now));
   }
 
   private showStill(pose: string): void {
@@ -624,16 +820,18 @@ export class Player {
     const url = this.nodes.get(pose)?.transparentThumbnailUrl;
     const reveal = (shown: boolean) => {
       if (token !== this.showToken || this.destroyed) return;
-      this.host.still.setVisible(shown);
-      if (this.screen.type === 'clip') {
-        const o = this.screen.showing;
-        this.host.slots[o.slot].setVisible(false);
-        this.host.slots[o.slot].pause();
-        this.detach(o);
-        o.cancelled = true;
-      }
-      this.screen = { type: 'still', pose };
-      this.emit('clip', { clip: `still:${pose}`, kind: 'still', rate: 1 });
+      this.step(() => {
+        this.host.still.setVisible(shown);
+        if (this.screen.type === 'clip') {
+          const o = this.screen.showing;
+          this.host.slots[o.slot].setVisible(false);
+          this.host.slots[o.slot].pause();
+          this.detach(o);
+          o.cancelled = true;
+        }
+        this.screen = { type: 'still', pose };
+        this.emit('clip', { clip: `still:${pose}`, kind: 'still', rate: 1 });
+      });
     };
     if (url) {
       this.host.still.load(url).then(
@@ -692,7 +890,8 @@ export class Player {
     const s = this.edges.get(edgeId)?.sound;
     if (!s?.url) return;
     const loop = s.loop === true;
-    const volume = Math.min(1, Math.max(0, s.volume ?? 1));
+    // A browser throws on a volume that is not a number from 0 to 1.
+    const volume = typeof s.volume === 'number' && Number.isFinite(s.volume) ? Math.min(1, Math.max(0, s.volume)) : 1;
     const entry = { sound: this.host.sounds.play(s.url, volume, loop), loop };
     this.sounds.push(entry);
     if (!loop) entry.sound.onEnded(() => (this.sounds = this.sounds.filter((x) => x !== entry)));
@@ -710,6 +909,7 @@ export class Player {
   // ------------------------------------------------------------- delivery
 
   private useDelivery(delivery: Delivery): void {
+    this.takenAt = this.host.wallNow();
     if (!delivery || typeof delivery !== 'object' || !delivery.runtimeGraph) {
       // The engine refuses it with its own code.
       this.delivery = delivery ?? null;
@@ -721,39 +921,65 @@ export class Player {
     this.nodes = index.nodes;
   }
 
+  /**
+   * How long the signed links last from now, or null when they do not
+   * expire. With `lastFetchedAt`, both times are the server's, so a device
+   * clock that is off does not matter.
+   */
+  private linksLeft(): number | null {
+    const d = this.delivery;
+    const at = d ? expiresAt(d) : null;
+    if (!d || at === null) return null;
+    const fetched = fetchedAt(d);
+    if (fetched !== null && fetched <= at) return at - fetched - (this.host.wallNow() - this.takenAt);
+    return at - this.host.wallNow();
+  }
+
   /** Asks `getDelivery` for fresh links before the signed ones expire. */
   private scheduleRefresh(): void {
-    if (this.refreshTimer !== null) this.host.clearTimer(this.refreshTimer);
-    this.refreshTimer = null;
-    if (this.destroyed || !this.options.getDelivery || !this.delivery) return;
-    const at = expiresAt(this.delivery);
-    if (at === null) return;
-    const left = at - this.host.wallNow();
-    const delay = left > 2 * REFRESH_LEAD_MS ? left - REFRESH_LEAD_MS : Math.max(left / 2, 0);
-    this.refreshIn(delay);
+    this.cancelRefresh();
+    if (this.destroyed || !this.options.getDelivery) return;
+    const left = this.linksLeft();
+    if (left === null) return;
+    this.refreshIn(left > 2 * REFRESH_LEAD_MS ? left - REFRESH_LEAD_MS : left / 2);
   }
 
   private refreshIn(delay: number): void {
-    if (this.refreshTimer !== null) this.host.clearTimer(this.refreshTimer);
+    this.cancelRefresh();
+    // Never sooner than 30 s after the last ask: links that look expired at once cannot loop.
+    const soonest = this.lastAsk === null ? 0 : this.lastAsk + REFRESH_RETRY_MS - this.host.now();
+    const wait = Math.min(Math.max(0, delay, soonest), 2 ** 31 - 1);
+    this.refreshAt = this.host.wallNow() + wait;
     this.refreshTimer = this.host.setTimer(() => {
       this.refreshTimer = null;
+      this.refreshAt = null;
       void this.refresh();
-    }, Math.min(Math.max(0, delay), 2 ** 31 - 1));
+    }, wait);
+  }
+
+  private cancelRefresh(): void {
+    if (this.refreshTimer !== null) this.host.clearTimer(this.refreshTimer);
+    this.refreshTimer = null;
+    this.refreshAt = null;
   }
 
   private async refresh(): Promise<void> {
     const get = this.options.getDelivery;
     if (!get || this.destroyed || !this.delivery) return;
     const before = expiresAt(this.delivery);
+    this.lastAsk = this.host.now();
+    this.asking = true;
     let input: DeliveryInput;
     try {
       input = await get();
     } catch (error) {
+      this.asking = false;
       if (this.destroyed) return;
       this.emit('error', { code: 'refresh_failed', detail: message(error) });
       this.refreshIn(REFRESH_RETRY_MS);
       return;
     }
+    this.asking = false;
     if (this.destroyed) return;
     if (!this.updateDelivery(input)) {
       this.refreshIn(REFRESH_RETRY_MS);
@@ -784,6 +1010,25 @@ export class Player {
   private later(fn: () => void): void {
     this.host.setTimer(fn, 0);
   }
+}
+
+/**
+ * Keeps a call for later. Calls kept are applied at one play time, so among
+ * the app's calls since the last other one, a `set` of a name replaces the
+ * one kept before and a name already fired stays fired once (rules.md 3.2,
+ * 3.3). Past `MAX_KEPT`, the oldest go first.
+ */
+function keep(list: Kept[], fn: Call, key?: string): void {
+  if (key) {
+    for (let i = list.length - 1; i >= 0 && list[i].key; i--) {
+      if (list[i].key !== key) continue;
+      if (key.startsWith('fire:')) return;
+      list.splice(i, 1);
+      break;
+    }
+  }
+  list.push({ fn, key });
+  if (list.length > MAX_KEPT) list.splice(0, list.length - MAX_KEPT);
 }
 
 function message(error: unknown): string {

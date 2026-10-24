@@ -58,7 +58,10 @@ export interface MaskoHandle {
 export interface MaskoViewProps extends ViewProps {
   /** The release delivery, its JSON, or the API response around it. */
   delivery: DeliveryInput;
-  /** Returns a fresh delivery of the same release, before signed links expire. */
+  /**
+   * Returns a fresh delivery of the same release, before signed links expire.
+   * Giving or taking it away loads the release again, which restarts the mascot.
+   */
   getDelivery?: () => DeliveryInput | Promise<DeliveryInput>;
   /** Lets clips with their own voice be heard. Off by default; edge sounds play either way. */
   sound?: boolean;

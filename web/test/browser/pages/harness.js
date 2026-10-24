@@ -17,9 +17,22 @@ export const PALETTE = {
  * and a poke on click. `query` adds a query string per clip (`?delay=600`),
  * `broken` lists clips whose WebM fails (their `hevc` is a WebM that plays),
  * `dead` clips whose files all fail, `version` a query string on every clip
- * (new links for the same release).
+ * (new links for the same release), `name` the canvas name (another name is
+ * another release). `hum` gives the idle loop a looping sound, `tick` the
+ * working loop a one-shot sound.
  */
-export function testDelivery({ ripple = false, autoPlay = true, query = {}, broken = [], dead = [], sound = false, version = '' } = {}) {
+export function testDelivery({
+  ripple = false,
+  autoPlay = true,
+  query = {},
+  broken = [],
+  dead = [],
+  sound = false,
+  version = '',
+  name = 'Test bot',
+  hum = false,
+  tick = false
+} = {}) {
   const videos = (id) => {
     const q = query[id] ?? version;
     if (dead.includes(id)) return { webm: CLIP(id, '?status=404'), hevc: CLIP(id, '?status=404&f=mov') };
@@ -45,7 +58,7 @@ export function testDelivery({ ripple = false, autoPlay = true, query = {}, brok
     runtimeGraph: {
       runtimeGraphSchemaVersion: 1,
       version: '2.1',
-      name: 'Test bot',
+      name,
       initialNode: 'idle',
       autoPlay,
       ...(ripple ? { clickEffect: 'ripple' } : {}),
@@ -55,8 +68,8 @@ export function testDelivery({ ripple = false, autoPlay = true, query = {}, brok
       ],
       inputs: [{ name: 'behavior::working', type: 'boolean', default: false }],
       edges: [
-        edge('idle-loop', 'idle', 'idle', 2),
-        edge('work-loop', 'working', 'working', 2),
+        edge('idle-loop', 'idle', 'idle', 2, hum ? { sound: { url: `${location.origin}/clips/tick.wav?hum`, loop: true } } : {}),
+        edge('work-loop', 'working', 'working', 2, tick ? { sound: { url: `${location.origin}/clips/tick.wav?tick` } } : {}),
         edge('to-work', 'idle', 'working', 1, {
           conditions: [{ input: 'behavior::working' }],
           movement: { x: 40 },

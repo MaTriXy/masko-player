@@ -1,5 +1,7 @@
 # Masko player
 
+[![CI](https://github.com/masko-ai/masko-player/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/masko-ai/masko-player/actions/workflows/ci.yml)
+
 One player for Masko mascots on every platform. One Rust engine holds every
 canvas rule; each platform adds only its video players and its view. Apps
 call `set` and `fire`, and the canvas decides which clip plays.
@@ -11,19 +13,20 @@ call `set` and `fire`, and the canvas decides which clip plays.
 | Android               | `ai.masko:player`            | `android/`      |
 | React Native and Expo | `@masko/player-react-native` | `react-native/` |
 
-None of them is published yet. To use one now, build it from this
-repository (see Set up first):
+Install:
 
-- **Web**: `scripts/build-web.sh --package`, then `npm pack` in `web/`, and
-  `npm install` the `.tgz` it writes in your app.
-- **Apple**: `scripts/build-apple.sh`, then add this repository as a local
-  Swift package; `Package.swift` is at the root.
-- **Android**: `scripts/build-android.sh`, then
+- **Web**: `npm install @masko/player` ([web/README.md](web/README.md)).
+- **Apple**: add `https://github.com/masko-ai/masko-player` from `0.1.0` in
+  Xcode or `Package.swift`, product `MaskoPlayer`
+  ([apple/README.md](apple/README.md)).
+- **React Native and Expo**: `npm install @masko/player-react-native`
+  ([react-native/README.md](react-native/README.md)); it carries the iOS and
+  Android players.
+- **Android**: not on Maven Central yet. Build it from this repository
+  ([android/README.md](android/README.md)): `scripts/build-android.sh`, then
   `./gradlew :player:publishReleasePublicationToLocalRepository` in
   `android/` writes `ai.masko:player:0.1.0` to `android/player/build/repo`;
   add that folder to your app's Maven repositories.
-- **React Native**: `scripts/build-react-native.sh`, then `npm install` the
-  `react-native/` folder in your app, as `examples/react-native` does.
 
 The React Native package wraps the Swift and Kotlin players; it adds no
 rules of its own.
@@ -38,7 +41,7 @@ platform plays.
 - `spec/rules.md`: the rulebook every player follows.
 - `spec/player.md`: what every platform's player does with the engine's
   commands, the file it picks, what the app sees, and the tests it runs.
-- `spec/fixtures/`: 64 scenarios that prove the rulebook, run by the engine
+- `spec/fixtures/`: the scenarios that prove the rulebook, run by the engine
   and by every platform through its own binding.
 - `spec/release.schema.json`: the JSON Schema of the release delivery.
 - `engine/`: the Rust engine; `engine/SIZE.md` has its size.
@@ -47,6 +50,7 @@ platform plays.
 - `examples/`: a small app per platform.
 - `scripts/`: `setup.sh` and `env.sh` (the Rust toolchain, the Android SDK),
   the engine builds for each platform, and `third-party-notices.mjs`.
+- `.github/workflows/ci.yml`: the checks below, on GitHub Actions.
 
 ## Set up
 
@@ -73,13 +77,19 @@ Rust. Then it lists which of the tools above this machine has.
 `scripts/env.sh` uses `.toolchain/` when it exists, and your own rustup
 otherwise.
 
-Each check below runs from the repository root.
+Each check below runs from the repository root. GitHub Actions runs them
+on every push to `main` and every pull request (`.github/workflows/ci.yml`):
+the engine, web, Android and React Native on Ubuntu, Apple on macOS 15. The
+iOS simulator tests and each platform's device checks run by hand.
 
-The engine, with the 64 scenarios and the engine tests:
+The engine, with the scenarios and the engine tests, its formatting and
+its lints:
 
 ```bash
 source scripts/env.sh
 cargo test -p masko-player-engine
+cargo fmt --check
+cargo clippy --workspace --all-targets -- -D warnings
 ```
 
 Web:
@@ -105,10 +115,10 @@ scripts/build-android.sh
 (cd android && ./gradlew :player:testDebugUnitTest)
 ```
 
-React Native, after the Apple and Android builds:
+React Native (these checks need no native build; the example app needs
+`scripts/build-react-native.sh` first):
 
 ```bash
-scripts/build-react-native.sh
 (cd react-native && npm install && npm run typecheck && npm run lint && npm test)
 ```
 

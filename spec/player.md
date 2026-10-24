@@ -24,8 +24,8 @@ rule itself.
 | The mascot starts (`autoPlay`, or `play()`)  | `start(0)`                            |
 | The app calls `set(name, value)`             | `set(name, value, now)`               |
 | The app calls `fire(name)`                   | `fire(name, now)`                     |
-| The person clicks the mascot                 | `click(now)`                          |
-| The pointer enters or leaves the mascot      | `hover(true/false, now)`              |
+| The person clicks the mascot                 | `click(now)` (always `action::click`) |
+| The pointer enters or leaves the mascot      | `hover(true/false, now)` (always `behavior::pointerHover`) |
 | The engine's `nextWake()` time arrives       | `advance(now)`; then read `nextWake()` again |
 | A clip's first frame is on screen            | `clipShown(edge, now)`                |
 | The clip on screen plays its last frame      | `clipEnded(edge, now)`                |
@@ -63,11 +63,13 @@ runs everything that was due first.
 - **`preload { edge }`**: load that edge's file into a small cache (a few
   clips) so a later `showClip` swaps without waiting.
 - **`playSound { edge }`**: play the edge's `sound.url` at `sound.volume`,
-  looping when `sound.loop` is true.
+  looping when `sound.loop` is true. The engine never asks again for a
+  looping sound that is still playing (rules 9.6).
 - **`stopSounds { onlyLooping }`**: stop looping sounds, or every sound.
 - **`poseEntered { pose }`**: tell the app (`pose` event).
-- **`interrupted { edge }`**: the move on screen is cut by a person's move;
-  the next `showClip` replaces it at once.
+- **`interrupted { edge }`**: the move on screen is cut, by a person's move
+  (rules 10.1) or by `reset`, a second `start` or `preview.showPose` (rules
+  11.4); the next `showClip` or `showStill` replaces it at once.
 - **`spent { name, used }`**: tell the app a fire is done (`reactionDone`
   event, with `used`).
 - **`error { code }`**: tell the app (`error` event).

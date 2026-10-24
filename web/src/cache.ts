@@ -2,6 +2,8 @@ import type { FileLoader } from './media.ts';
 
 interface Entry {
   key: string;
+  /** The URL it was loaded from. */
+  url: string;
   load: Promise<string>;
   src: string | null;
   batch: number;
@@ -39,11 +41,11 @@ export class ClipCache {
       known.batch = this.batch;
       this.entries.delete(key);
       this.entries.set(key, known);
-      return known.load.then(() => true);
+      return outcome(known);
     }
     if (!this.makeRoom()) return Promise.resolve(false);
     const abort = new AbortController();
-    const entry: Entry = { key, src: null, batch: this.batch, users: 0, abort, load: Promise.resolve('') };
+    const entry: Entry = { key, url, src: null, batch: this.batch, users: 0, abort, load: Promise.resolve('') };
     entry.load = this.files.load(url, abort.signal).then(
       (src) => {
         if (this.entries.get(key) === entry) entry.src = src;
@@ -56,22 +58,20 @@ export class ClipCache {
       }
     );
     this.entries.set(key, entry);
-    return entry.load.then(
-      () => true,
-      (error: unknown) => {
-        // Dropped to make room or by `clear`: not a file that fails.
-        if (abort.signal.aborted) return false;
-        throw error;
-      }
-    );
+    return outcome(entry);
   }
 
-  /** The cached or loading file for a slot to play, kept until `release`. */
-  acquire(key: string): Promise<string> | null {
+  /**
+   * The cached or loading file for a slot to play, kept until `release`. A
+   * file the loader left in the browser's cache (no in-memory copy) plays
+   * from `url`, the current link, not the one it was loaded with, which a
+   * refresh may have replaced since.
+   */
+  acquire(key: string, url?: string): Promise<string> | null {
     const entry = this.entries.get(key);
     if (!entry) return null;
     entry.users++;
-    return entry.load;
+    return entry.load.then((src) => (url !== undefined && src === entry.url ? url : src));
   }
 
   release(key: string): void {
@@ -108,4 +108,15 @@ export class ClipCache {
     entry.abort.abort();
     if (entry.src) this.files.free(entry.src);
   }
+}
+
+/** True once cached; false when dropped to make room or by `clear`, which is not a file that fails. */
+function outcome(entry: Entry): Promise<boolean> {
+  return entry.load.then(
+    () => true,
+    (error: unknown) => {
+      if (entry.abort.signal.aborted) return false;
+      throw error;
+    }
+  );
 }

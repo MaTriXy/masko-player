@@ -46,10 +46,14 @@ internal interface ClipSlot {
 internal interface Stage {
     val slots: List<ClipSlot>
 
-    /** Calls [ready] once clips can be drawn (the view is laid out and has surfaces). */
-    fun whenReady(ready: () -> Unit)
+    /**
+     * Calls [ready] once clips can be drawn (the view is laid out and has
+     * surfaces). Calls [failed] at most once, with what is wrong, when the view
+     * cannot get a surface; [ready] may still follow when it gets one later.
+     */
+    fun whenReady(ready: () -> Unit, failed: (detail: String) -> Unit)
 
-    /** The mascot's size on screen in pixels (density included), 0 when unknown. */
+    /** The mascot's size on screen in pixels (its longer side, density included), 0 when unknown. */
     fun sizePx(): Int
 
     /**
@@ -65,9 +69,13 @@ internal interface Stage {
     /** Takes the still off screen. */
     fun hideStill()
 
-    /** Loads [url] into the clip cache, then calls [done] with whether it worked. */
+    /**
+     * Loads [url] into the clip cache, then calls [done] with whether the file
+     * can be read. A file that loads but cannot be cached (a full disk) can.
+     */
     fun preload(url: String, done: (Boolean) -> Unit)
 
+    /** Frees the slots and cancels preloads and still loads; nothing is called back afterwards. */
     fun release()
 }
 
@@ -83,6 +91,12 @@ internal interface Sounds {
 
     fun resume()
 
+    /**
+     * The view left its window: frees every sound's decoder. Looping sounds
+     * play again at the next [resume]; one-shot sounds are dropped.
+     */
+    fun detach()
+
     fun release()
 }
 
@@ -91,4 +105,7 @@ internal interface Scheduler {
     fun post(task: Runnable)
     fun postDelayed(task: Runnable, delayMs: Long)
     fun cancel(task: Runnable)
+
+    /** Whether the caller runs on the main thread. */
+    fun isMainThread(): Boolean
 }

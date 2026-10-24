@@ -16,6 +16,86 @@ final class ViewTests: XCTestCase {
         Data(PlayerTests.deliveryText.utf8)
     }
 
+    func makePlayer(_ host: FakeHost? = nil, stage: Stage? = nil) -> MaskoPlayer {
+        MaskoPlayer(
+            delivery: delivery(), autoPlay: nil, stage: stage ?? AVStage(), loader: FakeLoader(),
+            sounds: FakeSounds(), host: (host ?? FakeHost()).host)
+    }
+
+    #if canImport(UIKit)
+    lazy var window = UIWindow(frame: CGRect(x: 0, y: 0, width: 400, height: 400))
+
+    func show(_ view: MaskoPlayerView, size: CGFloat) {
+        view.frame = CGRect(x: 0, y: 0, width: size, height: size)
+        window.addSubview(view)
+        view.layoutSubviews()
+    }
+
+    func layer(_ view: MaskoPlayerView) -> CALayer { view.layer }
+    #else
+    lazy var window = NSWindow(
+        contentRect: CGRect(x: 0, y: 0, width: 400, height: 400), styleMask: [.titled], backing: .buffered,
+        defer: true)
+
+    func show(_ view: MaskoPlayerView, size: CGFloat) {
+        view.frame = CGRect(x: 0, y: 0, width: size, height: size)
+        window.contentView!.addSubview(view)
+        view.layout()
+    }
+
+    func layer(_ view: MaskoPlayerView) -> CALayer { view.layer! }
+    #endif
+
+    func testOnePlayerInTwoViewsShowsInTheNewestOnScreen() {
+        let player = makePlayer()
+        let stage = player.stage as! AVStage
+        let first = MaskoPlayerView(player: player)
+        show(first, size: 100)
+        XCTAssertTrue(stage.layer.superlayer === layer(first))
+        XCTAssertFalse(player.hostPaused)
+
+        // SwiftUI makes the new view before it takes the old one away.
+        let second = MaskoPlayerView(player: player)
+        show(second, size: 50)
+        XCTAssertTrue(stage.layer.superlayer === layer(second))
+        XCTAssertEqual(stage.layer.frame.size, CGSize(width: 50, height: 50))
+        first.removeFromSuperview()
+        XCTAssertTrue(stage.layer.superlayer === layer(second), "the old view going away takes nothing")
+        XCTAssertFalse(player.hostPaused, "and the mascot plays on")
+        // A layout of the view that does not show the stage leaves it alone.
+        show(first, size: 100)
+        XCTAssertTrue(stage.layer.superlayer === layer(second))
+        XCTAssertEqual(stage.layer.frame.size, CGSize(width: 50, height: 50))
+
+        // The newer view goes away: the stage comes back to the one still there.
+        second.removeFromSuperview()
+        XCTAssertTrue(stage.layer.superlayer === layer(first))
+        XCTAssertEqual(stage.layer.frame.size, CGSize(width: 100, height: 100))
+        XCTAssertFalse(player.hostPaused)
+        first.removeFromSuperview()
+        XCTAssertTrue(player.hostPaused, "no view on screen: the player pauses itself")
+    }
+
+    func testAPlayerTheViewLetsGoOfStopsRunning() {
+        let host = FakeHost()
+        let stage = FakeStage()
+        let old = makePlayer(host, stage: stage)
+        old.boot()
+        stage.fakeSlots[0].decodeFirstFrame()
+        let view = MaskoPlayerView(player: old)
+        show(view, size: 100)
+        host.advance(1)
+        XCTAssertEqual(old.now, 1000)
+        let new = makePlayer()
+        view.player = new
+        XCTAssertTrue(old.hostPaused)
+        XCTAssertEqual(stage.fakeSlots[0].log.last, "pause")
+        host.advance(1)
+        XCTAssertEqual(old.now, 1000, "its play time stopped with it")
+        XCTAssertFalse(new.hostPaused)
+        XCTAssertTrue((new.stage as! AVStage).layer.superlayer === layer(view))
+    }
+
     func testTheViewHostsTheStageAndReportsItsSizeInPixels() {
         let player = MaskoPlayer(
             delivery: delivery(), autoPlay: false, stage: AVStage(), loader: FakeLoader(), sounds: FakeSounds(),
@@ -54,15 +134,12 @@ final class ViewTests: XCTestCase {
     }
 
     func testClicksKeysAndThePointerBecomeValues() {
-        let host = FakeHost()
         let stage = FakeStage()
-        let player = MaskoPlayer(
-            delivery: delivery(), autoPlay: nil, stage: stage, loader: FakeLoader(), sounds: FakeSounds(),
-            host: host.host)
+        let player = makePlayer(stage: stage)
         player.boot()
         stage.fakeSlots[0].decodeFirstFrame()
         let view = MaskoPlayerView(player: player)
-        view.frame = CGRect(x: 0, y: 0, width: 100, height: 100)
+        show(view, size: 100)
         let engine = player.engine!
 
         view.mouseEntered(with: event(.mouseMoved, x: 50, y: 50))
@@ -85,6 +162,20 @@ final class ViewTests: XCTestCase {
             characters: " ", charactersIgnoringModifiers: " ", isARepeat: false, keyCode: 49)!
         view.keyDown(with: space)
         XCTAssertEqual(engine.pendingFires(), ["action::click"])
+    }
+
+    func testThePointerLeavesWithAViewThatLeavesItsWindow() {
+        let stage = FakeStage()
+        let player = makePlayer(stage: stage)
+        player.boot()
+        stage.fakeSlots[0].decodeFirstFrame()
+        let view = MaskoPlayerView(player: player)
+        show(view, size: 100)
+        view.mouseEntered(with: event(.mouseMoved, x: 50, y: 50))
+        XCTAssertEqual(player.engine!.value(name: "pointerHover"), .bool(value: true))
+        // Out of the window, no mouseExited ever comes.
+        view.removeFromSuperview()
+        XCTAssertEqual(player.engine!.value(name: "pointerHover"), .bool(value: false))
     }
     #endif
 

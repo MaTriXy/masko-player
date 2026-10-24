@@ -3,6 +3,16 @@
   "version": "0.1.0",
   "description": "Plays Masko mascots on the web. One engine holds every canvas rule; apps call set and fire.",
   "license": "MIT",
+  "author": "Masko",
+  "homepage": "https://github.com/masko-ai/masko-player/tree/main/web#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/masko-ai/masko-player.git",
+    "directory": "web"
+  },
+  "bugs": {
+    "url": "https://github.com/masko-ai/masko-player/issues"
+  },
   "type": "module",
   "sideEffects": false,
   "main": "./dist/index.js",
@@ -17,9 +27,15 @@
       "types": "./dist/types/react.d.ts",
       "default": "./dist/react.js"
     },
-    "./script": "./dist/masko-player.js",
     "./masko_player_wasm_bg.wasm": "./dist/masko_player_wasm_bg.wasm",
     "./package.json": "./package.json"
+  },
+  "typesVersions": {
+    "*": {
+      "react": [
+        "./dist/types/react.d.ts"
+      ]
+    }
   },
   "files": [
     "dist",
@@ -58,7 +74,13 @@
     "masko",
     "mascot",
     "animation",
+    "character",
+    "state-machine",
+    "transparent-video",
     "video",
+    "webm",
+    "hevc",
+    "react",
     "webassembly"
   ]
 }

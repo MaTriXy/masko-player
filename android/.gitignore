@@ -9,6 +9,7 @@ local.properties
 # Built by scripts/build-android.sh
 player/src/main/jniLibs/
 player/src/main/generated/
+player/engine.stamp
 player/src/test/resources/darwin-*/
 player/src/test/resources/linux-*/
 *.so

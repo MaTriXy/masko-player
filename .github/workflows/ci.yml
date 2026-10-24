@@ -1,0 +1,145 @@
+# The checks of the README, on every push to main and every pull request: the
+# engine, then each platform with its own binding. Device and simulator
+# checks stay manual (each platform's README).
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  engine:
+    name: Engine
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/rust
+      - name: Format
+        run: cargo fmt --check
+      - name: Lint
+        run: cargo clippy --workspace --all-targets -- -D warnings
+      - name: Test (the scenarios and the engine tests)
+        run: cargo test -p masko-player-engine
+
+  web:
+    name: Web
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/rust
+      - uses: actions/setup-node@v7.1.0
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - name: Install ffmpeg (the browser tests make their clips with libvpx-vp9)
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends ffmpeg
+          ffmpeg -hide_banner -encoders | grep ' libvpx-vp9 '
+      - name: Install packages and Chromium
+        working-directory: web
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+      - name: Build the engine and the package
+        run: scripts/build-web.sh --package
+      - name: Typecheck
+        working-directory: web
+        run: npm run typecheck
+      - name: Test
+        working-directory: web
+        run: npm test
+      - name: Browser tests (they also download a few clips from assets.masko.ai)
+        working-directory: web
+        run: npx playwright test
+
+  android:
+    name: Android
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@v6.0.1
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: gradle/actions/setup-gradle@v6.4.0
+        with:
+          cache-provider: basic
+      - name: Install the NDK of scripts/build-android.sh
+        # The runner's ANDROID_NDK_HOME is its own default NDK: point it at
+        # this one.
+        run: |
+          # shellcheck disable=SC2016 # the pattern matches a literal ${
+          ndk="$(sed -n 's/^NDK_VERSION="\${MASKO_NDK_VERSION:-\([^}]*\)}"$/\1/p' scripts/build-android.sh)"
+          test -n "$ndk"
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --install "ndk;$ndk"
+          echo "ANDROID_NDK_HOME=$ANDROID_HOME/ndk/$ndk" >> "$GITHUB_ENV"
+      - uses: ./.github/actions/rust
+      - name: Build the engine
+        run: scripts/build-android.sh
+      - name: Test
+        working-directory: android
+        run: ./gradlew :player:testDebugUnitTest
+
+  apple:
+    name: Apple
+    runs-on: macos-15
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/rust
+      - name: Build the engine
+        run: |
+          xcodebuild -version
+          scripts/build-apple.sh
+      - name: Test
+        run: swift test
+
+  react-native:
+    name: React Native
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: react-native
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7.1.0
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: react-native/package-lock.json
+      - run: npm ci
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Lint
+        run: npm run lint
+      - name: Test
+        run: npm test

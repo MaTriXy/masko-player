@@ -221,28 +221,25 @@ enum Boundary {
     End,
 }
 
-/// Where the extra-clip rolls come from (rules.md 7.3).
-enum Rolls {
-    /// Fixed numbers, for scenarios. Running out is an error.
-    Fixed(VecDeque<f64>),
-    /// xorshift64*, for players.
-    Seeded(u64),
+/// Where the extra-clip rolls come from (rules.md 7.3): the fixed numbers
+/// first, for scenarios, then xorshift64* once they run out.
+struct Rolls {
+    fixed: VecDeque<f64>,
+    seed: u64,
 }
 
 impl Rolls {
-    fn next(&mut self) -> Option<f64> {
-        match self {
-            Rolls::Fixed(q) => q.pop_front(),
-            Rolls::Seeded(s) => {
-                let mut x = *s;
-                x ^= x >> 12;
-                x ^= x << 25;
-                x ^= x >> 27;
-                *s = x;
-                let r = x.wrapping_mul(0x2545_F491_4F6C_DD1D) >> 11;
-                Some(r as f64 / (1u64 << 53) as f64)
-            }
+    fn next(&mut self) -> f64 {
+        if let Some(r) = self.fixed.pop_front() {
+            return r;
         }
+        let mut x = self.seed;
+        x ^= x >> 12;
+        x ^= x << 25;
+        x ^= x >> 27;
+        self.seed = x;
+        let r = x.wrapping_mul(0x2545_F491_4F6C_DD1D) >> 11;
+        r as f64 / (1u64 << 53) as f64
     }
 }
 
@@ -325,7 +322,7 @@ impl Graph {
     }
 
     /// Highest priority, then shortest clip, then id (rules.md 6.1).
-    fn best(&self, mut edges: Vec<usize>) -> usize {
+    fn best(&self, mut edges: Vec<usize>) -> Option<usize> {
         edges.sort_by(|&a, &b| {
             let (ea, eb) = (&self.edges[a], &self.edges[b]);
             eb.priority
@@ -333,7 +330,7 @@ impl Graph {
                 .then(self.length[a].cmp(&self.length[b]))
                 .then(ea.id.cmp(&eb.id))
         });
-        edges[0]
+        edges.first().copied()
     }
 }
 
@@ -358,14 +355,20 @@ pub struct Engine {
     decided: Option<Decided>,
     loop_count: u32,
     entered_at: u64,
-    looping_sound: Option<usize>,
+    /// The pose clip that ended last on this pose (rules.md 9.5).
+    last_ended: Option<usize>,
+    /// The edges whose looping sound is playing (rules.md 9.6).
+    looping: HashSet<usize>,
 }
 
 impl Engine {
     pub(crate) fn new(release: Release) -> Self {
         let mut e = Engine {
             g: Graph::new(release),
-            rolls: Rolls::Seeded(0x9E37_79B9_7F4A_7C15),
+            rolls: Rolls {
+                fixed: VecDeque::new(),
+                seed: 0x9E37_79B9_7F4A_7C15,
+            },
             now: 0,
             out: Vec::new(),
             unplayable: HashSet::new(),
@@ -378,7 +381,8 @@ impl Engine {
             decided: None,
             loop_count: 0,
             entered_at: 0,
-            looping_sound: None,
+            last_ended: None,
+            looping: HashSet::new(),
         };
         e.reset_values();
         e
@@ -386,12 +390,16 @@ impl Engine {
 
     /// Seeds the extra-clip rolls (rules.md 7.3).
     pub fn seed(&mut self, seed: u64) {
-        self.rolls = Rolls::Seeded(seed.max(1));
+        self.rolls = Rolls {
+            fixed: VecDeque::new(),
+            seed: seed.max(1),
+        };
     }
 
-    /// Uses these numbers, in order, for the extra-clip rolls. For scenarios.
+    /// Uses these numbers, in order, for the extra-clip rolls, then the
+    /// seeded ones once they run out. For scenarios.
     pub fn use_rolls(&mut self, rolls: Vec<f64>) {
-        self.rolls = Rolls::Fixed(rolls.into());
+        self.rolls.fixed = rolls.into();
     }
 
     // ---------------------------------------------------------------- calls
@@ -399,6 +407,7 @@ impl Engine {
     /// Enters the first pose (rules.md 11.1).
     pub fn start(&mut self, now: u64) -> Vec<Command> {
         self.run_until(now, true);
+        self.cut_move();
         self.begin();
         self.take()
     }
@@ -406,6 +415,7 @@ impl Engine {
     /// Starts again from the defaults (rules.md 11.3).
     pub fn reset(&mut self, now: u64) -> Vec<Command> {
         self.run_until(now, true);
+        self.cut_move();
         self.reset_values();
         self.begin();
         self.take()
@@ -425,14 +435,16 @@ impl Engine {
         self.take()
     }
 
-    /// The person clicked the mascot (rules.md 3.5).
+    /// The person clicked the mascot: always `action::click`, whatever the
+    /// canvas declares (rules.md 3.5).
     pub fn click(&mut self, now: u64) -> Vec<Command> {
-        self.fire("click", now)
+        self.fire("action::click", now)
     }
 
-    /// The pointer entered or left the mascot (rules.md 3.5).
+    /// The pointer entered or left the mascot: always
+    /// `behavior::pointerHover` (rules.md 3.5).
     pub fn hover(&mut self, on: bool, now: u64) -> Vec<Command> {
-        self.set("pointerHover", Value::Bool(on), now)
+        self.set("behavior::pointerHover", Value::Bool(on), now)
     }
 
     /// Play time moved on: runs every timer and safety net due.
@@ -485,8 +497,7 @@ impl Engine {
     }
 
     /// The clip on screen cannot play: a move skips to its target (9.4), a
-    /// pose clip becomes the pose's still for as long as it would have
-    /// lasted (9.5).
+    /// pose clip gives way to a stand-in (9.5).
     fn fail_on_screen(&mut self, i: usize, code: &str) {
         let Some(s) = self.screen else {
             return;
@@ -499,8 +510,12 @@ impl Engine {
             }
             ScreenKind::Pose => {
                 self.push_error(code);
-                let ms = round_ms(self.g.edges[i].duration / self.rate(i) * 1000.0);
-                self.show_still(ms);
+                self.stand_in(i);
+                // A start decided for the end of the failed clip leaves the
+                // still at once (rules.md 5.3).
+                if self.screen.is_some_and(|s| s.kind == ScreenKind::Still) {
+                    self.consider(Boundary::None, false);
+                }
             }
             ScreenKind::Still => {}
         }
@@ -670,6 +685,10 @@ impl Engine {
     }
 
     fn set_value(&mut self, name: &str, value: Value) {
+        if !value.number().is_finite() {
+            self.push_error("bad_value");
+            return;
+        }
         let name = self.resolve(name);
         if name.starts_with("node::") || name == "behavior::rest" {
             self.push_error("read_only");
@@ -800,8 +819,8 @@ impl Engine {
             .copied()
             .filter(|&i| self.g.edges[i].target == t)
             .collect();
-        if !direct.is_empty() {
-            return Some(self.g.best(direct));
+        if let Some(hop) = self.g.best(direct) {
+            return Some(hop);
         }
         let exits: Vec<(usize, u32)> = with_clip
             .iter()
@@ -811,9 +830,6 @@ impl Engine {
                     .map(|h| (i, h))
             })
             .collect();
-        if exits.is_empty() {
-            return None;
-        }
         let holding: Vec<(usize, u32)> = exits
             .iter()
             .copied()
@@ -828,7 +844,7 @@ impl Engine {
                 .then(self.g.length[a].cmp(&self.g.length[b]))
                 .then(ea.id.cmp(&eb.id))
         });
-        Some(pool[0].0)
+        pool.first().map(|&(i, _)| i)
     }
 
     // ---------------------------------------------------------------- 5. When a start happens
@@ -871,6 +887,12 @@ impl Engine {
     /// happened.
     fn consider(&mut self, boundary: Boundary, spend_unclaimed_first: bool) -> bool {
         if self.pose.is_none() {
+            return false;
+        }
+        // No move starts for the rest of a clipless cycle's second; the
+        // engine decides again when it is over (rules.md 9.4).
+        if self.cycling() {
+            self.decided = None;
             return false;
         }
         if let Some(s) = self.screen {
@@ -947,7 +969,7 @@ impl Engine {
         self.out.push(Command::StopSounds {
             only_looping: false,
         });
-        self.looping_sound = None;
+        self.looping.clear();
         self.screen = Some(self.clip_screen(ScreenKind::Move, i));
         let (id, rate) = (self.g.edges[i].id.clone(), self.rate(i));
         self.out.push(Command::ShowClip {
@@ -958,7 +980,7 @@ impl Engine {
         if let Some(looping) = self.g.edges[i].sound {
             self.out.push(Command::PlaySound { edge: id });
             if looping {
-                self.looping_sound = Some(i);
+                self.looping.insert(i);
             }
         }
         let target = self.g.edges[i].target.clone();
@@ -972,25 +994,12 @@ impl Engine {
     fn enter(&mut self, pose: &str) {
         let (n, since) = self.chain;
         self.chain = if self.now < since.saturating_add(CHAIN_MS) {
-            (n + 1, since)
+            (n.saturating_add(1), since)
         } else {
             (1, self.now)
         };
-        self.pose = Some(pose.to_owned());
-        self.loop_count = 0;
-        self.entered_at = self.now;
-        self.screen = None;
-        self.decided = None;
-        self.out.push(Command::PoseEntered {
-            pose: pose.to_owned(),
-        });
-        if self.looping_sound.take().is_some() {
-            self.out.push(Command::StopSounds { only_looping: true });
-        }
-        for edge in self.preload_list(pose) {
-            self.out.push(Command::Preload { edge });
-        }
-        let started = if self.chain.0 > MAX_CHAIN {
+        self.arrive(pose);
+        let started = if self.cycling() {
             self.push_error("clipless_cycle");
             false
         } else {
@@ -1001,8 +1010,51 @@ impl Engine {
             let here = pose.to_owned();
             self.unclaim_where(|c| c.route && c.pose != here);
             let choice = self.choose_clip(None);
-            self.show_pose(choice, None);
+            self.show_pose(choice);
         }
+    }
+
+    /// What entering a pose resets and reports, for `enter` and
+    /// `preview.showPose` alike (rules.md 8, 9.6, 9.7).
+    fn arrive(&mut self, pose: &str) {
+        self.pose = Some(pose.to_owned());
+        self.loop_count = 0;
+        self.entered_at = self.now;
+        self.last_ended = None;
+        self.screen = None;
+        self.decided = None;
+        self.out.push(Command::PoseEntered {
+            pose: pose.to_owned(),
+        });
+        if !self.looping.is_empty() {
+            self.looping.clear();
+            self.out.push(Command::StopSounds { only_looping: true });
+        }
+        for edge in self.preload_list(pose) {
+            self.out.push(Command::Preload { edge });
+        }
+    }
+
+    /// `reset`, a second `start` and `preview.showPose` cut the move on
+    /// screen: its target is never entered (rules.md 11.4).
+    fn cut_move(&mut self) {
+        let Some(i) = self
+            .screen
+            .filter(|s| s.kind == ScreenKind::Move)
+            .and_then(|s| s.edge)
+        else {
+            return;
+        };
+        self.out.push(Command::Interrupted {
+            edge: self.g.edges[i].id.clone(),
+        });
+    }
+
+    /// More than 32 poses were entered within this second of play time
+    /// (rules.md 9.4).
+    fn cycling(&self) -> bool {
+        let (n, since) = self.chain;
+        n > MAX_CHAIN && self.now < since.saturating_add(CHAIN_MS)
     }
 
     fn preload_list(&self, p: &str) -> Vec<String> {
@@ -1046,6 +1098,13 @@ impl Engine {
     // ---------------------------------------------------------------- 11. Start
 
     fn begin(&mut self) {
+        // A start while the mascot plays leaves its pose, and the fires a
+        // start claimed for another pose are claimed no more (rules.md 3.3,
+        // 11.1).
+        if let Some(p) = self.pose.clone() {
+            self.spend_where(|c| c.as_ref().is_none_or(|c| c.pose != p));
+        }
+        self.unclaim_where(|_| true);
         let mut cands: Vec<usize> = (0..self.g.edges.len())
             .filter(|&i| {
                 let e = &self.g.edges[i];
@@ -1081,19 +1140,11 @@ impl Engine {
             self.push_error("unknown_pose");
             return;
         }
+        self.cut_move();
         self.fires.clear();
-        self.decided = None;
-        self.pose = Some(pose.to_owned());
-        self.loop_count = 0;
-        self.entered_at = self.now;
-        self.out.push(Command::PoseEntered {
-            pose: pose.to_owned(),
-        });
-        for edge in self.preload_list(pose) {
-            self.out.push(Command::Preload { edge });
-        }
+        self.arrive(pose);
         let main = self.main_clip(pose);
-        self.show_pose(main, None);
+        self.show_pose(main);
         self.consider(Boundary::None, false);
     }
 
@@ -1109,6 +1160,10 @@ impl Engine {
             self.push_error("preview_refused");
             return;
         };
+        if self.cycling() {
+            self.push_error("clipless_cycle");
+            return;
+        }
         let p = self.pose.clone().unwrap_or_default();
         self.spend_where(|c| c.as_ref().is_none_or(|c| c.pose != p));
         self.decided = None;
@@ -1162,10 +1217,7 @@ impl Engine {
         if ended == Some(main) {
             let extras: Vec<usize> = plain.iter().copied().filter(|&i| i != main).collect();
             if !extras.is_empty() {
-                let r = self
-                    .rolls
-                    .next()
-                    .expect("the extra-clip roll needs another random number");
+                let r = self.rolls.next();
                 if r < 1.0 / 3.0 {
                     let last = self.last_extra.get(&p).copied();
                     let fresh: Vec<usize> = extras
@@ -1184,25 +1236,37 @@ impl Engine {
         Some(main)
     }
 
-    fn show_pose(&mut self, choice: Option<usize>, ended: Option<usize>) {
-        let mut choice = choice;
-        if let Some(i) = choice {
-            if self.unplayable.contains(&i) {
+    fn show_pose(&mut self, choice: Option<usize>) {
+        match choice {
+            None => self.show_still(STILL_MS),
+            Some(i) if self.unplayable.contains(&i) => {
                 self.push_error("clip_failed");
-                match ended.filter(|e| !self.unplayable.contains(e)) {
-                    Some(prev) => choice = Some(prev),
-                    None => {
-                        let ms = round_ms(self.g.edges[i].duration / self.rate(i) * 1000.0);
-                        self.show_still(ms);
-                        return;
-                    }
-                }
+                self.stand_in(i);
+            }
+            Some(i) => self.show_pose_clip(i),
+        }
+    }
+
+    /// A pose clip that cannot play: the pose plays again the clip that
+    /// ended last on it, if that one can play, else its still for the failed
+    /// clip's length. A fire the failed clip claimed is spent when what plays
+    /// in its place ends (rules.md 3.3, 9.5).
+    fn stand_in(&mut self, failed: usize) {
+        for (_, claim) in self.fires.iter_mut() {
+            if let Some(c) = claim.as_mut().filter(|c| c.clip == Some(failed)) {
+                c.clip = None;
             }
         }
-        let Some(i) = choice else {
-            self.show_still(STILL_MS);
-            return;
-        };
+        match self.last_ended.filter(|e| !self.unplayable.contains(e)) {
+            Some(prev) => self.show_pose_clip(prev),
+            None => {
+                let ms = round_ms(self.g.edges[failed].duration / self.rate(failed) * 1000.0);
+                self.show_still(ms);
+            }
+        }
+    }
+
+    fn show_pose_clip(&mut self, i: usize) {
         self.screen = Some(self.clip_screen(ScreenKind::Pose, i));
         let (id, rate) = (self.g.edges[i].id.clone(), self.rate(i));
         self.out.push(Command::ShowClip {
@@ -1211,19 +1275,19 @@ impl Engine {
             rate,
         });
         if let Some(looping) = self.g.edges[i].sound {
-            if !(looping && self.looping_sound == Some(i)) {
+            // A looping sound already playing on this pose plays on, never
+            // twice (rules.md 9.6).
+            if !looping || self.looping.insert(i) {
                 self.out.push(Command::PlaySound { edge: id });
-            }
-            if looping {
-                self.looping_sound = Some(i);
             }
         }
     }
 
-    /// Shows the pose's still for `ms`, or 1 s when that is 0: a still that
-    /// lasted no time would end and show again forever (rules.md 9.5).
+    /// Shows the pose's still for `ms`, and never less than 1 s: a still
+    /// that ended at once would show again a thousand times a second
+    /// (rules.md 9.5).
     fn show_still(&mut self, ms: u64) {
-        let ms = if ms == 0 { STILL_MS } else { ms };
+        let ms = ms.max(STILL_MS);
         self.screen = Some(Screen {
             kind: ScreenKind::Still,
             edge: None,
@@ -1235,15 +1299,15 @@ impl Engine {
         self.out.push(Command::ShowStill { pose });
     }
 
-    /// Speed times the number `speedInput` names (1 when it holds none),
-    /// kept between 0.2 and 4 (rules.md 9.2).
+    /// Speed times the number `speedInput` names (1 when it holds none, or
+    /// one that is not finite), kept between 0.2 and 4 (rules.md 9.2).
     fn rate(&self, i: usize) -> f64 {
         let e = &self.g.edges[i];
         match &e.speed_input {
             None => e.speed,
             Some(name) => {
                 let factor = match self.held.get(name) {
-                    Some(Value::Number(n)) if self.g.is_number(name) => *n,
+                    Some(Value::Number(n)) if self.g.is_number(name) && n.is_finite() => *n,
                     _ => 1.0,
                 };
                 (e.speed * factor).clamp(0.2, 4.0)
@@ -1268,17 +1332,21 @@ impl Engine {
         let Some(s) = self.screen else {
             return;
         };
-        if s.kind == ScreenKind::Move {
-            let target = self.g.edges[s.edge.unwrap_or(0)].target.clone();
-            self.enter(&target);
-        } else {
-            self.clip_end(s.edge);
+        match (s.kind, s.edge) {
+            (ScreenKind::Move, Some(i)) => {
+                let target = self.g.edges[i].target.clone();
+                self.enter(&target);
+            }
+            _ => self.clip_end(s.edge),
         }
     }
 
     fn clip_end(&mut self, ended: Option<usize>) {
         let p = self.pose.clone().unwrap_or_default();
-        self.loop_count += 1;
+        self.loop_count = self.loop_count.saturating_add(1);
+        if ended.is_some() {
+            self.last_ended = ended;
+        }
         if self.consider(Boundary::End, true) {
             return;
         }
@@ -1296,7 +1364,7 @@ impl Engine {
         if spent && self.consider(Boundary::End, false) {
             return;
         }
-        self.show_pose(choice, ended);
+        self.show_pose(choice);
     }
 
     // ---------------------------------------------------------------- The clock
@@ -1310,6 +1378,9 @@ impl Engine {
         }
         let p = self.pose.as_deref().unwrap_or("");
         let mut out = Vec::new();
+        if self.cycling() {
+            out.push(self.chain.1.saturating_add(CHAIN_MS));
+        }
         for e in &self.g.edges {
             let relevant = match e.source.as_deref() {
                 Some(src) => src == p,

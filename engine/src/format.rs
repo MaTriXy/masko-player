@@ -136,7 +136,46 @@ struct WireVideos {
     webm: Option<String>,
     hevc: Option<String>,
     stacked: Option<String>,
-    variants: Option<IgnoredAny>,
+    #[serde(default)]
+    variants: WireVariants,
+}
+
+/// One size of `videos.variants`.
+#[derive(Deserialize)]
+struct WireFiles {
+    webm: Option<String>,
+    hevc: Option<String>,
+    stacked: Option<String>,
+}
+
+/// `videos.variants`: true when one of its sizes names a file (rules.md 1.4).
+#[derive(Default)]
+struct WireVariants(bool);
+
+impl<'de> Deserialize<'de> for WireVariants {
+    fn deserialize<D: Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        struct V;
+        impl<'de> Visitor<'de> for V {
+            type Value = WireVariants;
+            fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
+                f.write_str("a map of sizes")
+            }
+            fn visit_map<A: serde::de::MapAccess<'de>>(
+                self,
+                mut m: A,
+            ) -> Result<WireVariants, A::Error> {
+                let mut any = false;
+                while let Some((_, f)) = m.next_entry::<IgnoredAny, WireFiles>()? {
+                    any |= f.webm.is_some() || f.hevc.is_some() || f.stacked.is_some();
+                }
+                Ok(WireVariants(any))
+            }
+            fn visit_unit<E>(self) -> Result<WireVariants, E> {
+                Ok(WireVariants(false))
+            }
+        }
+        d.deserialize_any(V)
+    }
 }
 
 #[derive(Deserialize)]
@@ -167,9 +206,61 @@ struct WireEdge {
 #[derive(Deserialize)]
 struct WireCondition {
     input: String,
-    op: Option<String>,
+    #[serde(default)]
+    op: WireScalar,
     operator: Option<IgnoredAny>,
-    value: Option<RawValue>,
+    #[serde(default)]
+    value: WireScalar,
+}
+
+/// A condition's `op` or `value` as written, whatever its type, so a wrong
+/// type is refused with its rule's code instead of as unreadable (rules.md
+/// 1.3). `null` is `Other`; a field that is not there is `Missing`.
+#[derive(Default)]
+enum WireScalar {
+    #[default]
+    Missing,
+    Bool(bool),
+    Number(f64),
+    Text(String),
+    Other,
+}
+
+impl<'de> Deserialize<'de> for WireScalar {
+    fn deserialize<D: Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        struct V;
+        impl<'de> Visitor<'de> for V {
+            type Value = WireScalar;
+            fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
+                f.write_str("any value")
+            }
+            fn visit_bool<E>(self, v: bool) -> Result<WireScalar, E> {
+                Ok(WireScalar::Bool(v))
+            }
+            fn visit_i64<E>(self, v: i64) -> Result<WireScalar, E> {
+                Ok(WireScalar::Number(v as f64))
+            }
+            fn visit_u64<E>(self, v: u64) -> Result<WireScalar, E> {
+                Ok(WireScalar::Number(v as f64))
+            }
+            fn visit_f64<E>(self, v: f64) -> Result<WireScalar, E> {
+                Ok(WireScalar::Number(v))
+            }
+            fn visit_str<E>(self, v: &str) -> Result<WireScalar, E> {
+                Ok(WireScalar::Text(v.to_owned()))
+            }
+            fn visit_unit<E>(self) -> Result<WireScalar, E> {
+                Ok(WireScalar::Other)
+            }
+            fn visit_seq<A: serde::de::SeqAccess<'de>>(self, s: A) -> Result<WireScalar, A::Error> {
+                skip(s).map(|_| WireScalar::Other)
+            }
+            fn visit_map<A: serde::de::MapAccess<'de>>(self, m: A) -> Result<WireScalar, A::Error> {
+                skip_map(m).map(|_| WireScalar::Other)
+            }
+        }
+        d.deserialize_any(V)
+    }
 }
 
 #[derive(Deserialize)]
@@ -475,7 +566,11 @@ fn decode_graph(g: WireGraph) -> Result<Release, LoadError> {
             ));
         }
         let speed = e.speed.unwrap_or(1.0);
-        let priority = e.priority.unwrap_or(0.0);
+        // -0 ranks as 0, not below it (rules.md 4.1).
+        let priority = match e.priority {
+            Some(p) if p != 0.0 => p,
+            _ => 0.0,
+        };
         if !e.duration.is_finite()
             || e.duration < 0.0
             || !speed.is_finite()
@@ -521,7 +616,7 @@ fn decode_graph(g: WireGraph) -> Result<Release, LoadError> {
             has_video: e.videos.webm.is_some()
                 || e.videos.hevc.is_some()
                 || e.videos.stacked.is_some()
-                || e.videos.variants.is_some(),
+                || e.videos.variants.0,
             sound: e
                 .sound
                 .filter(|s| s.url.is_some())
@@ -552,7 +647,17 @@ fn decode_condition(edge: &str, c: WireCondition) -> Result<Condition, LoadError
             format!("edge {edge}: operator, not op"),
         ));
     }
-    let op = match c.op.as_deref().unwrap_or("==") {
+    let text = match &c.op {
+        WireScalar::Missing => "==",
+        WireScalar::Text(t) => t.as_str(),
+        _ => {
+            return Err(refuse(
+                "unknown_operator",
+                format!("edge {edge}: op is not a string"),
+            ))
+        }
+    };
+    let op = match text {
         "==" => Op::Eq,
         "!=" => Op::Ne,
         ">" => Op::Gt,
@@ -561,9 +666,20 @@ fn decode_condition(edge: &str, c: WireCondition) -> Result<Condition, LoadError
         "<=" => Op::Le,
         other => return Err(refuse("unknown_operator", format!("edge {edge}: {other}"))),
     };
+    let value = match c.value {
+        WireScalar::Missing => RawValue::Bool(true),
+        WireScalar::Bool(b) => RawValue::Bool(b),
+        WireScalar::Number(n) => RawValue::Number(n),
+        _ => {
+            return Err(refuse(
+                "invalid_graph",
+                format!("edge {edge}: a condition value is not a boolean or a number"),
+            ))
+        }
+    };
     Ok(Condition {
         input: c.input,
         op,
-        value: c.value.unwrap_or(RawValue::Bool(true)),
+        value,
     })
 }

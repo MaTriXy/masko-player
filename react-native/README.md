@@ -38,7 +38,9 @@ mascot.current?.fire('celebrate');
   `clip` null before anything shows) and
   `preview.showPose(id)` / `preview.playMove(id)` (editors only). Calls reach
   the native player on the main thread, in the order they were made. A call
-  after the view is gone does nothing.
+  after the view is gone does nothing. There is no `destroy()`, which
+  `../spec/player.md` lists for the other platforms: unmounting the view
+  destroys its player.
 - Events, as props, with the same data as `@masko/player`:
   `onPose({ pose })`, `onClip({ clip, kind, rate })` (an edge id, or
   `still:<pose>`; `kind` is `pose`, `move` or `still`),
@@ -59,15 +61,23 @@ mascot.current?.fire('celebrate');
   `falling` itself.
 - A new release in `delivery` loads a new player. A delivery of the same
   release with new links keeps the mascot playing and gives the native
-  player the new links (its `updateDelivery`).
+  player the new links (its `updateDelivery`). Giving or taking away
+  `getDelivery` loads the release again with the latest `delivery` prop's
+  links. That restarts the mascot: it starts from its first pose, without
+  the values the app set.
 - Signed links: pass `getDelivery`. The native player calls it five minutes
   before `deliveryAccess.signedUrlExpiresAt` (halfway there when less than
   ten minutes are left) and swaps the links only; files already downloaded
   keep playing. A `getDelivery` that throws or returns nothing gives
   `error` `refresh_failed`, another release `refresh_mismatch`, and the
-  player asks again 30 seconds later.
-- Unmounting the view destroys its player. On Android the player also pauses
-  while the view is off screen.
+  player asks again 30 seconds later. A view that unmounts while
+  `getDelivery` runs stops waiting for it and drops its answer; so does an
+  iOS view that leaves its window, whose player asks again 30 seconds
+  later.
+- Unmounting the view destroys its player. While the view is off screen the
+  player pauses itself, and resumes where it stopped when it is back: out
+  of its window or with the app in the background on iOS, detached or with
+  its window hidden on Android.
 - iOS plays each edge's `videos.hevc` (HEVC with alpha), Android its
   `videos.stacked` (colour above, transparency below). On Android, fetch the
   release delivery with `target=android`; an older release without stacked
@@ -124,7 +134,6 @@ so an app should keep only these, for example with
 ## Build and test
 
 ```bash
-scripts/build-react-native.sh   # from the repository root: the engines and ai.masko:player
 cd react-native
 npm install
 npm run typecheck
@@ -132,9 +141,12 @@ npm run lint
 npm test                        # Jest: props, ref calls and events against a fake native view
 ```
 
-The native players run their own tests (`../apple/README.md`,
-`../android/README.md`). The example below runs the whole bridge on the iOS
-simulator and an Android emulator.
+These checks need no native build; CI runs them on Ubuntu
+(`../.github/workflows/ci.yml`). The example and `npm pack` need
+`scripts/build-react-native.sh` first (from the repository root: the
+engines and `ai.masko:player`). The native players run their own tests
+(`../apple/README.md`, `../android/README.md`). The example below runs the
+whole bridge on the iOS simulator and an Android emulator.
 
 ## Example
 

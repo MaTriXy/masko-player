@@ -178,3 +178,16 @@ internal fun parseIsoTime(text: String): Long? {
 
 /** A media link without its query, so a refreshed signed link names the same file. */
 internal fun fileKey(url: String): String = url.substringBefore('?').substringBefore('#')
+
+/**
+ * The longer side, in pixels, of a mascot fitted inside a [width] x [height]
+ * view, for its size variant: the mascot's own [aspect] (width over height)
+ * once a clip is known, else square. 0 before the view has a size.
+ */
+internal fun fittedSizePx(width: Int, height: Int, aspect: Float?): Int {
+    if (width <= 0 || height <= 0) return 0
+    val ratio = aspect?.takeIf { it > 0f } ?: 1f
+    val fittedWidth = minOf(width.toFloat(), height * ratio)
+    val fittedHeight = fittedWidth / ratio
+    return Math.round(maxOf(fittedWidth, fittedHeight))
+}

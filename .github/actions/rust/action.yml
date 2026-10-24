@@ -1,0 +1,39 @@
+# The Rust of the README's "Set up": scripts/setup.sh installs rustup, the
+# toolchain and targets of rust-toolchain.toml and the wasm-bindgen CLI that
+# scripts/build-web.sh checks into .toolchain/. The folder is cached per
+# runner, and the next steps of the job find cargo on PATH. The job's target/
+# and crate downloads are cached too.
+name: Rust
+description: Rust from scripts/setup.sh, cached, with the job's target/ cached
+
+runs:
+  using: composite
+  steps:
+    - name: Read the wasm-bindgen version
+      id: bindgen
+      shell: bash
+      run: |
+        version="$(sed -n 's/^WANT_BINDGEN="\([^"]*\)"$/\1/p' scripts/build-web.sh)"
+        test -n "$version"
+        echo "version=$version" >> "$GITHUB_OUTPUT"
+
+    - name: Cache .toolchain
+      uses: actions/cache@v6.1.0
+      with:
+        path: .toolchain
+        key: toolchain-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('rust-toolchain.toml') }}-wasm-bindgen-${{ steps.bindgen.outputs.version }}
+
+    - name: Install Rust (scripts/setup.sh)
+      shell: bash
+      run: |
+        scripts/setup.sh
+        source scripts/env.sh
+        echo "RUSTUP_HOME=$RUSTUP_HOME" >> "$GITHUB_ENV"
+        echo "CARGO_HOME=$CARGO_HOME" >> "$GITHUB_ENV"
+        echo "$CARGO_HOME/bin" >> "$GITHUB_PATH"
+
+    - name: Cache target/ and crates
+      uses: Swatinem/rust-cache@v2.9.2
+      with:
+        # cargo, rustup and wasm-bindgen are in the .toolchain cache.
+        cache-bin: "false"

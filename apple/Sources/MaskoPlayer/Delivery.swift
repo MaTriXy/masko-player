@@ -29,8 +29,9 @@ public enum MaskoJSON: Equatable, Sendable, Decodable {
 }
 
 /// What the player reads from a release delivery for itself: files, sounds,
-/// movement and when signed links expire. The engine reads the rules from the
-/// same JSON.
+/// movement, the poses each edge joins (to decode a move's next loop early)
+/// and when signed links expire. The engine reads the rules from the same
+/// JSON.
 struct Delivery {
     struct Sound: Equatable {
         var url: URL
@@ -39,6 +40,11 @@ struct Delivery {
     }
 
     struct Edge {
+        /// The pose it leaves (`*` for any pose) and the pose it reaches.
+        var source: String?
+        var target: String?
+        /// A pose's own clip, which loops on its pose.
+        var isLoop: Bool
         /// The base HEVC-with-alpha file.
         var hevc: URL?
         /// Size variants with an HEVC file, smallest first (manifest mode).
@@ -77,6 +83,9 @@ struct Delivery {
                 }
             }
             edges[e.id] = Edge(
+                source: e.source?.value,
+                target: e.target?.value,
+                isLoop: e.isLoop?.value ?? false,
                 hevc: videos?.hevc?.url,
                 variants: variants,
                 sound: sound,
@@ -208,6 +217,9 @@ struct Delivery {
 
     private struct WireEdge: Decodable {
         var id: String
+        var source: Lenient<String>?
+        var target: Lenient<String>?
+        var isLoop: Lenient<Bool>?
         var videos: Lenient<Videos>?
         var sound: Lenient<WireSound>?
         var movement: MaskoJSON?

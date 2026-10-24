@@ -18,7 +18,8 @@ const files = (id: string, sig = '1') => ({
   hevc: `https://cdn.test/${id}.mov?sig=${sig}`
 });
 
-function delivery(sig = '1', expires?: string) {
+/** The test delivery; `expires` signs its links, `fetched` is when the server made it. */
+function delivery(sig = '1', expires?: string, fetched: string | null = '2026-10-23T10:00:00Z') {
   return {
     deliverySchemaVersion: 1,
     playerContract: 1,
@@ -26,7 +27,13 @@ function delivery(sig = '1', expires?: string) {
     target: 'web',
     mode: 'selected',
     ...(expires
-      ? { deliveryAccess: { urlMode: 'signed' as const, signedUrlExpiresAt: expires, lastFetchedAt: '2026-10-23T10:00:00Z' } }
+      ? {
+          deliveryAccess: {
+            urlMode: 'signed' as const,
+            signedUrlExpiresAt: expires,
+            ...(fetched ? { lastFetchedAt: fetched } : {})
+          }
+        }
       : {}),
     runtimeGraph: {
       runtimeGraphSchemaVersion: 1,
@@ -692,7 +699,7 @@ test('signed links: getDelivery before expiry swaps URLs only; cached files keep
     delivery: delivery('1', expires(20 * 60_000)),
     getDelivery: async () => {
       calls++;
-      return { data: { delivery: delivery('2', expires(40 * 60_000)) } };
+      return { data: { delivery: delivery('2', expires(40 * 60_000), expires(15 * 60_000)) } };
     }
   });
   await host.advance(14 * 60_000);
@@ -769,4 +776,291 @@ test('destroy: timers, sounds, slots and cache go; nothing fires after', async (
   player.set('working', true);
   await host.advance(10_000);
   assert.equal(events.length, n);
+});
+
+test('an app call made in an event handler runs after the batch that told it, never inside it', async () => {
+  const d = delivery();
+  (d.runtimeGraph.edges as unknown[]).push({
+    id: 'drop',
+    source: 'working',
+    target: 'idle',
+    isLoop: false,
+    duration: 1,
+    priority: 5,
+    conditions: [{ input: 'behavior::heldContact' }],
+    videos: files('drop')
+  });
+  const { host, player, events, a, b } = await started({ delivery: d });
+  // A person input set as the pose is entered starts its move at once (rules 5.2).
+  player.on('pose', ({ pose }) => {
+    if (pose === 'working') player.set('heldContact', true);
+  });
+  player.set('working', true);
+  await host.advance(2000);
+  a.end();
+  await settle();
+  b.frame();
+  await host.advance(1000);
+  b.end();
+  await settle();
+  // The batch of the move's end asked for the working loop after the pose event:
+  // the handler's call comes after it, so its move wins.
+  assert.deepEqual(a.loads, [url('idle-loop'), blob('drop')], 'the move the handler started, not the loop asked for before');
+  a.frame();
+  await settle();
+  assert.ok(events.includes('clip:drop'));
+  assert.ok(!events.includes('clip:work-loop'));
+});
+
+test('pause while the next clip waits for its cached file: no stale frame, no early clip event', async () => {
+  const { host, player, events, a, b } = await started();
+  player.set('working', true);
+  await host.advance(2000);
+  a.end();
+  await settle();
+  b.frame();
+  await settle();
+  // The preloads of the working pose are slow from here on.
+  host.files.hold = true;
+  await host.advance(1000);
+  b.end();
+  await settle();
+  a.frame();
+  await settle();
+  player.set('working', false);
+  await host.advance(2000);
+  a.end();
+  await settle();
+  // The move back waits for its file; the hidden slot still holds the old move.
+  assert.equal(b.src, blob('to-work'));
+  player.pause();
+  await settle();
+  assert.equal(b.visible, false, 'the old move is not shown as the new one');
+  assert.equal(a.visible, true);
+  assert.ok(!events.includes('clip:to-idle'));
+  host.files.release();
+  await settle();
+  assert.equal(b.src, blob('to-idle'));
+  assert.equal(b.playing, false, 'loaded while paused, not played');
+  assert.equal(b.visible, false, 'not before its first frame');
+  b.frame();
+  await settle();
+  assert.equal(b.visible, true, 'its first frame shows while paused');
+  assert.ok(events.includes('clip:to-idle'));
+  assert.equal(host.emptyScreens, 0);
+});
+
+test('signed links: a device clock a day ahead of the server never makes the refresh loop', async () => {
+  for (const withFetched of [true, false]) {
+    const host = new FakeHost();
+    const asked: number[] = [];
+    // The server's clock is 25 h behind the device's; its links last 24 h.
+    const fresh = () => {
+      const server = host.wall - 25 * 3600_000;
+      const sig = String(asked.length + 1);
+      return delivery(sig, new Date(server + 24 * 3600_000).toISOString(), withFetched ? new Date(server).toISOString() : null);
+    };
+    const getDelivery = () => {
+      asked.push(host.t);
+      return fresh();
+    };
+    const player = new Player(host, { delivery: fresh(), seed: 1, getDelivery });
+    await settle();
+    // Only the refresh timer runs.
+    player.pause();
+    if (withFetched) {
+      await host.advance(23 * 3600_000 + 54 * 60_000);
+      assert.deepEqual(asked, [], 'lastFetchedAt measures the 24 h on the server clock');
+      await host.advance(60_000);
+      assert.equal(asked.length, 1, 'five minutes before they expire');
+    } else {
+      await host.advance(5 * 60_000);
+      assert.ok(asked.length >= 2 && asked.length <= 11, `links that look expired: ${asked.length} asks in 5 minutes`);
+      for (let i = 1; i < asked.length; i++) assert.ok(asked[i] - asked[i - 1] >= 30_000, 'never sooner than 30 s after the last');
+    }
+    player.destroy();
+  }
+});
+
+test('signed links: a file cached without CORS (its URL, not a copy) plays from the fresh link after a refresh', async () => {
+  const start = Date.parse('2026-10-23T10:00:00Z');
+  const at = (ms: number) => new Date(start + ms).toISOString();
+  const { host, player, a, b } = await started(
+    {
+      delivery: delivery('1', at(20 * 60_000)),
+      getDelivery: () => delivery('2', at(40 * 60_000), at(15 * 60_000))
+    },
+    (h) => {
+      // FetchLoader without CORS: the browser's cache holds the file, the loader returns its URL.
+      h.files.load = (u: string) => {
+        h.files.requested.push(u);
+        return Promise.resolve(u);
+      };
+    }
+  );
+  assert.ok(host.files.requested.includes(url('to-work')), 'cached under the old link');
+  await host.advance(15 * 60_000 + 10);
+  player.set('working', true);
+  await host.advance(2000);
+  a.end();
+  await settle();
+  assert.equal(b.src, url('to-work', 'webm', '2'), 'the fresh link, not the one that expires');
+});
+
+test('sound turned on reaches a looping pose clip at its next loop; a refused voice is not asked again each loop', async (t) => {
+  const d = delivery();
+  (d.runtimeGraph.edges[0] as Record<string, unknown>).hasAudio = true;
+  const { host, player, a } = await started({ delivery: d });
+  const plays = t.mock.method(a, 'play');
+  const loop = async () => {
+    await host.advance(2000);
+    a.end();
+    await settle();
+  };
+  assert.equal(a.muted, true);
+  player.setSound(true);
+  await loop();
+  assert.equal(a.loads.length, 1, 'the same clip restarted in place');
+  assert.equal(a.muted, false, 'the next loop is heard');
+  player.setSound(false);
+  await loop();
+  assert.equal(a.muted, true, 'and muted again');
+  // The browser refuses sound without a gesture.
+  a.refuse = 'unmuted';
+  player.setSound(true);
+  await loop();
+  assert.equal(a.muted, true);
+  assert.equal(a.playing, true, 'played muted');
+  plays.mock.resetCalls();
+  await loop();
+  await loop();
+  assert.deepEqual(
+    plays.mock.calls.map((c) => c.arguments[1]),
+    [true, true],
+    'no unmuted try on every loop'
+  );
+  a.refuse = 'none';
+  player.setSound(true);
+  await loop();
+  assert.equal(a.muted, false, 'the app asks again: heard');
+});
+
+test('autoPlay false: the first frame follows the values set before the start, before or after the engine loads', async () => {
+  const d = delivery();
+  (d.runtimeGraph.edges as unknown[]).push({
+    id: 'any-work',
+    source: '*',
+    target: 'working',
+    isLoop: false,
+    duration: 1,
+    conditions: [{ input: 'behavior::working' }],
+    videos: files('any-work')
+  });
+  // Set while the engine loads.
+  const host = new FakeHost();
+  const early = new Player(host, { delivery: d, seed: 1, autoPlay: false });
+  early.set('working', true);
+  await settle();
+  const [a, b] = host.slots;
+  assert.deepEqual(a.loads, [url('work-loop')], 'the pose the value chose (rules 11.1)');
+  a.frame();
+  await settle();
+  early.play();
+  await settle();
+  assert.deepEqual(a.loads, [url('work-loop')], 'the start restarts the clip already shown');
+  assert.equal(b.loads.length, 0);
+  // Set after the engine loaded, before play.
+  const m = await mount({ delivery: d, autoPlay: false });
+  assert.deepEqual(m.a.loads, [url('idle-loop')]);
+  m.a.frame();
+  await settle();
+  m.player.set('working', true);
+  await settle();
+  assert.deepEqual(m.b.loads, [url('work-loop')], 'the first frame follows the value');
+  m.b.frame();
+  await settle();
+  assert.equal(m.b.visible, true);
+  assert.equal(m.a.visible, false);
+  m.player.set('working', true);
+  await settle();
+  assert.deepEqual([m.a.loads.length, m.b.loads.length], [1, 1], 'the same first frame is not shown again');
+  m.player.play();
+  await settle();
+  assert.ok(m.events.includes('pose:working'));
+  assert.deepEqual(m.b.loads, [url('work-loop')], 'the start plays the clip on screen');
+});
+
+test('signed links: after the device slept past the refresh time, the links are checked when the page shows or comes online', async () => {
+  const start = Date.parse('2026-10-23T10:00:00Z');
+  let calls = 0;
+  const fresh = (sig: string) => {
+    const now = start + calls * 2 * 3600_000;
+    return delivery(sig, new Date(now + 3600_000).toISOString(), new Date(now).toISOString());
+  };
+  for (const wake of ['shown', 'online'] as const) {
+    calls = 0;
+    const { host, player } = await started({
+      delivery: fresh('1'),
+      getDelivery: () => {
+        calls++;
+        return fresh(String(calls + 1));
+      }
+    });
+    player.setHidden(true);
+    // Asleep for 2 hours: the wall clock moves on, timers do not.
+    host.wall += 2 * 3600_000;
+    await host.advance(0);
+    assert.equal(calls, 0);
+    if (wake === 'shown') player.setHidden(false);
+    else player.checkLinks();
+    await host.advance(0);
+    assert.equal(calls, 1, `asked at once when ${wake}`);
+    player.destroy();
+  }
+});
+
+test('one bad value never skips the rest of a batch: a volume that is not a number, a host call that throws', async () => {
+  for (const [volume, heard] of [
+    ['loud', 1],
+    [2, 1],
+    [-1, 0],
+    [null, 1]
+  ] as const) {
+    const d = delivery();
+    d.runtimeGraph.edges[0].sound!.volume = volume as unknown as number;
+    const { host } = await started({ delivery: d });
+    assert.equal(host.sounds.played[0].volume, heard, `volume ${volume}`);
+  }
+  const { host, player, a, b } = await started();
+  const play = host.sounds.play.bind(host.sounds);
+  host.sounds.play = (u, v, l) => {
+    if (u.includes('whoosh')) throw new Error('setter refused');
+    return play(u, v, l);
+  };
+  player.set('working', true);
+  await host.advance(2000);
+  a.end();
+  await assert.rejects(host.advance(0), /setter refused/, 'reported outside');
+  await settle();
+  assert.deepEqual(b.loads, [blob('to-work')], 'the move still shows');
+  assert.ok(host.files.requested.includes(url('work-loop')), 'and its target loop still preloads');
+});
+
+test('calls kept while paused: the last set of a name, a repeated fire once, at most 1000', async (t) => {
+  const sets = t.mock.method(Engine.prototype, 'set');
+  const fires = t.mock.method(Engine.prototype, 'fire');
+  const { player } = await started();
+  player.pause();
+  sets.mock.resetCalls();
+  for (let i = 0; i < 3000; i++) player.set(`score${i}`, i);
+  for (let i = 0; i < 5000; i++) player.set('working', i % 2 === 0);
+  for (let i = 0; i < 100; i++) player.fire('celebrate');
+  player.play();
+  await settle();
+  const names = sets.mock.calls.map((c) => c.arguments[0]);
+  assert.equal(names.length + fires.mock.calls.length, 1000, 'the oldest go first');
+  assert.equal(names.filter((n) => n === 'working').length, 1);
+  assert.equal(sets.mock.calls.find((c) => c.arguments[0] === 'working')!.arguments[1], false, 'its last value');
+  assert.equal(fires.mock.calls.length, 1);
+  assert.equal(names[0], 'score2002');
 });

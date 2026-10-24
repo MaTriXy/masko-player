@@ -1,5 +1,81 @@
 import QuartzCore
 
+/// A view that shows a player's stage: `MaskoPlayerView`.
+@MainActor
+protocol StageHost: AnyObject {
+    /// The layer the stage goes in.
+    var stageSuperlayer: CALayer? { get }
+    /// In a window, and on iPhone and iPad with the app in the foreground.
+    var isShowing: Bool { get }
+    var stageBounds: CGRect { get }
+    /// Pixels per point on its screen.
+    var stageScale: CGFloat { get }
+}
+
+/// The views a player is given, oldest first. A layer is in one place at a
+/// time, so the stage shows in one of them: the newest on screen, else the
+/// newest. Play pauses while that view is off screen, or when no view is
+/// left.
+@MainActor
+struct StageHosts {
+    private struct Weak {
+        weak var view: StageHost?
+    }
+
+    private var views: [Weak] = []
+
+    mutating func add(_ view: StageHost) {
+        remove(view)
+        views.append(Weak(view: view))
+    }
+
+    mutating func remove(_ view: StageHost) {
+        views.removeAll { $0.view == nil || $0.view === view }
+    }
+
+    var current: StageHost? {
+        let live = views.compactMap(\.view)
+        return live.last(where: \.isShowing) ?? live.last
+    }
+}
+
+extension MaskoPlayer {
+    func addHost(_ view: StageHost) {
+        hosts.add(view)
+        updateHost()
+    }
+
+    func removeHost(_ view: StageHost) {
+        hosts.remove(view)
+        updateHost()
+    }
+
+    /// Puts the stage in the view it belongs in and lays it out there, then
+    /// pauses or resumes play as that view is on screen or not. A view calls
+    /// it whenever it changes window, size or foreground.
+    func updateHost() {
+        let host = hosts.current
+        if let stage = stage as? AVStage {
+            if let host, let superlayer = host.stageSuperlayer {
+                if stage.layer.superlayer !== superlayer {
+                    superlayer.addSublayer(stage.layer)
+                }
+                let bounds = host.stageBounds
+                let scale = host.stageScale
+                stage.layout(bounds, scale: scale)
+                // Before layout there is no size yet: the base file plays,
+                // and the next loop picks again.
+                if bounds.width > 0, bounds.height > 0, scale > 0 {
+                    displayPixels = Double(max(bounds.width, bounds.height) * scale)
+                }
+            } else {
+                stage.layer.removeFromSuperlayer()
+            }
+        }
+        setHostActive(host?.isShowing ?? false)
+    }
+}
+
 #if canImport(UIKit)
 import UIKit
 
@@ -7,17 +83,22 @@ import UIKit
 /// values (rules.md 3.5): a tap, or Return or Space while focused, fires
 /// `click`; an iPad pointer over the mascot sets `pointerHover`. Out of its
 /// window or with the app in the background, the player pauses itself.
-public final class MaskoPlayerView: UIView {
+///
+/// A player shows in one view at a time: the newest view given it that is
+/// in a window. A player the view lets go of pauses unless another view
+/// shows it.
+public final class MaskoPlayerView: UIView, StageHost {
     public var player: MaskoPlayer? {
         didSet {
             guard player !== oldValue else { return }
             if hovering { oldValue?.hover(false) }
             hovering = false
-            attach()
+            oldValue?.removeHost(self)
+            player?.addHost(self)
+            setNeedsLayout()
         }
     }
 
-    private var hosted: CALayer?
     private var hovering = false
     private var backgrounded = false
 
@@ -25,7 +106,7 @@ public final class MaskoPlayerView: UIView {
         super.init(frame: .zero)
         setUp()
         self.player = player
-        attach()
+        player?.addHost(self)
     }
 
     public required init?(coder: NSCoder) {
@@ -48,40 +129,44 @@ public final class MaskoPlayerView: UIView {
             object: nil)
     }
 
-    private func attach() {
-        hosted?.removeFromSuperlayer()
-        hosted = (player?.stage as? AVStage)?.layer
-        if let hosted {
-            layer.addSublayer(hosted)
+    var stageSuperlayer: CALayer? { layer }
+    var isShowing: Bool { window != nil && !backgrounded }
+    var stageBounds: CGRect { bounds }
+    var stageScale: CGFloat {
+        #if os(visionOS)
+        traitCollection.displayScale
+        #else
+        window?.screen.scale ?? UIScreen.main.scale
+        #endif
+    }
+
+    public override func willMove(toWindow newWindow: UIWindow?) {
+        super.willMove(toWindow: newWindow)
+        // The pointer cannot stay over a view that leaves its window.
+        if hovering {
+            hovering = false
+            player?.hover(false)
         }
-        if window != nil { updateHost() }
-        setNeedsLayout()
     }
 
     public override func didMoveToWindow() {
         super.didMoveToWindow()
-        updateHost()
+        player?.updateHost()
     }
 
     @objc private func wentToBackground() {
         backgrounded = true
-        if window != nil { updateHost() }
+        player?.updateHost()
     }
 
     @objc private func cameToForeground() {
         backgrounded = false
-        if window != nil { updateHost() }
-    }
-
-    private func updateHost() {
-        player?.setHostActive(window != nil && !backgrounded)
+        player?.updateHost()
     }
 
     public override func layoutSubviews() {
         super.layoutSubviews()
-        let scale = window?.screen.scale ?? UIScreen.main.scale
-        (player?.stage as? AVStage)?.layout(bounds, scale: scale)
-        player?.displayPixels = Double(max(bounds.width, bounds.height) * scale)
+        player?.updateHost()
     }
 
     @objc private func tapped() {
@@ -127,17 +212,22 @@ import AppKit
 /// values (rules.md 3.5): a click, or Return or Space while focused, fires
 /// `click`; the pointer over the mascot sets `pointerHover`. Out of its
 /// window, the player pauses itself.
-public final class MaskoPlayerView: NSView {
+///
+/// A player shows in one view at a time: the newest view given it that is
+/// in a window. A player the view lets go of pauses unless another view
+/// shows it.
+public final class MaskoPlayerView: NSView, StageHost {
     public var player: MaskoPlayer? {
         didSet {
             guard player !== oldValue else { return }
             if hovering { oldValue?.hover(false) }
             hovering = false
-            attach()
+            oldValue?.removeHost(self)
+            player?.addHost(self)
+            needsLayout = true
         }
     }
 
-    private var hosted: CALayer?
     private var hovering = false
     private var tracking: NSTrackingArea?
     private var downAt: NSPoint?
@@ -148,7 +238,7 @@ public final class MaskoPlayerView: NSView {
         super.init(frame: .zero)
         setUp()
         self.player = player
-        attach()
+        player?.addHost(self)
     }
 
     public required init?(coder: NSCoder) {
@@ -163,28 +253,31 @@ public final class MaskoPlayerView: NSView {
         setAccessibilityRole(.image)
     }
 
-    private func attach() {
-        hosted?.removeFromSuperlayer()
-        hosted = (player?.stage as? AVStage)?.layer
-        if let hosted {
-            layer?.addSublayer(hosted)
+    var stageSuperlayer: CALayer? { layer }
+    var isShowing: Bool { window != nil }
+    var stageBounds: CGRect { bounds }
+    var stageScale: CGFloat { window?.backingScaleFactor ?? NSScreen.main?.backingScaleFactor ?? 2 }
+
+    public override func viewWillMove(toWindow newWindow: NSWindow?) {
+        super.viewWillMove(toWindow: newWindow)
+        // A view that leaves its window gets no mouseExited: the pointer is
+        // no longer over it.
+        if hovering {
+            hovering = false
+            player?.hover(false)
         }
-        if window != nil { player?.setHostActive(true) }
-        needsLayout = true
     }
 
     public override func viewDidMoveToWindow() {
         super.viewDidMoveToWindow()
-        player?.setHostActive(window != nil)
+        player?.updateHost()
     }
 
     public override var isFlipped: Bool { true }
 
     public override func layout() {
         super.layout()
-        let scale = window?.backingScaleFactor ?? NSScreen.main?.backingScaleFactor ?? 2
-        (player?.stage as? AVStage)?.layout(bounds, scale: scale)
-        player?.displayPixels = Double(max(bounds.width, bounds.height) * scale)
+        player?.updateHost()
     }
 
     public override func viewDidChangeBackingProperties() {

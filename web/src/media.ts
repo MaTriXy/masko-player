@@ -39,7 +39,7 @@ export interface Sound {
   stop(): void;
   pause(): void;
   resume(): void;
-  /** Calls `fn` once when a one-shot sound finishes. */
+  /** Calls `fn` once when a one-shot sound finishes, or cannot play (autoplay blocked, a file that fails). */
   onEnded(fn: () => void): void;
 }
 
@@ -49,7 +49,10 @@ export interface SoundOut {
 
 /** Loads whole files for the preload cache. */
 export interface FileLoader {
-  /** Resolves with a source a slot can load at once. */
+  /**
+   * Resolves with a source a slot can load at once: an in-memory copy, or
+   * `url` itself when the file is only in the browser's cache.
+   */
   load(url: string, signal: AbortSignal): Promise<string>;
   /** Frees a source `load` returned. */
   free(src: string): void;

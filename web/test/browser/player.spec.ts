@@ -408,3 +408,173 @@ test('real Masko clips: Dumple plays, moves and loops with a mascot on every fra
   expect(events.filter((e) => e.event === 'error')).toEqual([]);
   expect(events.filter((e) => e.event === 'pose').map((e) => e.pose)).toEqual(['idle', 'working']);
 });
+
+test('a dev server that moved the package away from its .wasm (Vite pre-bundling): the inlined engine plays', async ({ page }) => {
+  const wasm: string[] = [];
+  page.on('response', (r) => {
+    const path = new URL(r.url()).pathname;
+    if (path === '/moved/masko_player_wasm_bg.wasm') wasm.push(`wasm ${r.headers()['content-type']}`);
+    if (path.startsWith('/moved/inline-')) wasm.push(`inlined ${r.headers()['content-type']}`);
+  });
+  await open(page, '/pages/moved.html');
+  await page.evaluate(() => (window as unknown as Win).start());
+  await waitClip(page, 'idle-loop');
+  const { samples, events } = await result(page);
+  expectAlwaysAMascot(samples);
+  expect(events.filter((e) => e.event === 'error')).toEqual([]);
+  expect(wasm).toEqual(['wasm text/html; charset=utf-8', 'inlined text/javascript; charset=utf-8']);
+});
+
+test('setWasmSource pointing at a web page: engine_unavailable says so', async ({ page }) => {
+  await open(page, '/pages/moved.html?wasm=/pages/esm.html');
+  await page.evaluate(() => (window as unknown as Win).start());
+  await page.waitForFunction(() => (window as unknown as Win).events.some((e) => e.event === 'error'));
+  const errors = await page.evaluate(() => (window as unknown as Win).events.filter((e) => e.event === 'error'));
+  expect(errors).toHaveLength(1);
+  expect(errors[0].code).toBe('engine_unavailable');
+  expect(errors[0].detail).toContain('/pages/esm.html is a web page');
+  expect(errors[0].detail).toContain('setWasmSource');
+});
+
+test('mounted in a hidden element: measured once it shows, not a square for good', async ({ page }) => {
+  await open(page, '/pages/esm.html');
+  const heights = await page.evaluate(async () => {
+    const { mountMascot } = await import('/dist/index.js' as string);
+    const { testDelivery } = await import('/pages/harness.js' as string);
+    const box = (style: string) => {
+      const el = document.createElement('div');
+      el.style.cssText = `display:none;${style}`;
+      document.body.appendChild(el);
+      mountMascot(el, { delivery: testDelivery() });
+      return el;
+    };
+    const sized = box('width:300px;height:120px');
+    const auto = box('width:200px');
+    await new Promise((r) => requestAnimationFrame(r));
+    sized.style.display = 'block';
+    auto.style.display = 'block';
+    await new Promise((r) => setTimeout(r, 100));
+    const h = (el: HTMLElement) => Math.round(el.querySelector('.masko-player')!.getBoundingClientRect().height);
+    return { sized: h(sized), auto: h(auto) };
+  });
+  expect(heights).toEqual({ sized: 120, auto: 200 });
+});
+
+test('keyboard: the mascot is a focusable button, Enter and Space click it', async ({ page }) => {
+  await start(page, { ripple: true });
+  await waitClip(page, 'idle-loop');
+  const root = page.locator('.masko-player');
+  expect(await root.getAttribute('role')).toBe('button');
+  expect(await root.getAttribute('tabindex')).toBe('0');
+  expect(await root.getAttribute('aria-label')).toBe('Test bot');
+  await page.keyboard.press('Tab');
+  await expect(root).toBeFocused();
+  await page.keyboard.press('Enter');
+  await waitClip(page, 'poke');
+  expect(await page.locator('.masko-ripple').count()).toBe(1);
+  // Back to idle, then Space; the page does not scroll.
+  await page.evaluate(() => (window as unknown as Win).handle.set('working', false));
+  await waitClip(page, 'idle-loop', 2, 15_000);
+  await page.keyboard.press(' ');
+  await waitClip(page, 'poke', 2);
+  expect(await page.evaluate(() => scrollY)).toBe(0);
+  const { events } = await result(page);
+  expect(events.filter((e) => e.event === 'error')).toEqual([]);
+});
+
+test('page CSS cannot turn the swap into a crossfade', async ({ page }) => {
+  await open(page, '/pages/esm.html');
+  await page.addStyleTag({ content: '#m video, #m img { transition: opacity 1s linear; }' });
+  await page.evaluate(() => (window as unknown as Win).start());
+  await waitClip(page, 'idle-loop');
+  const durations = await page.evaluate(() =>
+    [...document.querySelectorAll('#m video, #m img')].map((el) => getComputedStyle(el).transitionDuration)
+  );
+  expect(durations).toEqual(['0s', '0s', '0s']);
+});
+
+test('sound blocked until a gesture: one-shot sounds never play late, a looping one starts on the first click', async ({ page }) => {
+  // The browser's policy: muted video plays, sound waits for the person's first real tap.
+  await page.addInitScript(() => {
+    const w = window as unknown as { audioPlays: { src: string; ok: boolean; t: number }[]; audios: HTMLMediaElement[] };
+    w.audioPlays = [];
+    w.audios = [];
+    let tapped = false;
+    addEventListener('pointerdown', (e) => (tapped ||= e.isTrusted), true);
+    const play = HTMLMediaElement.prototype.play;
+    HTMLMediaElement.prototype.play = function (this: HTMLMediaElement) {
+      if (this instanceof HTMLAudioElement) {
+        if (!w.audios.includes(this)) w.audios.push(this);
+        w.audioPlays.push({ src: new URL(this.src).search, ok: tapped, t: Math.round(performance.now()) });
+      }
+      if (!this.muted && !tapped) return Promise.reject(new DOMException('sound blocked', 'NotAllowedError'));
+      return play.call(this);
+    };
+  });
+  type Audio = Window & { audioPlays: { src: string; ok: boolean; t: number }[]; audios: HTMLMediaElement[] };
+  await start(page, { hum: true, tick: true });
+  await waitClip(page, 'idle-loop');
+  await page.evaluate(() => (window as unknown as Win).handle.set('working', true));
+  // Three working loops, each with a tick the browser blocks.
+  await waitClip(page, 'work-loop', 3, 15_000);
+  // A tap outside the mascot lets the page play sound; then pause and play.
+  await page.mouse.click(600, 400);
+  await page.evaluate(() => {
+    const w = window as unknown as Win;
+    w.handle.pause();
+    w.handle.play();
+  });
+  await page.waitForTimeout(300);
+  const ticks = await page.evaluate(() => (window as unknown as Audio).audioPlays.filter((p) => p.src === '?tick'));
+  expect(ticks.filter((p) => !p.ok).length, 'ticks blocked').toBeGreaterThanOrEqual(2);
+  expect(ticks.filter((p) => p.ok).length, 'none of them played late').toBeLessThanOrEqual(1);
+  // A looping sound blocked at load starts on the first click.
+  await start(page, { hum: true });
+  await waitClip(page, 'idle-loop');
+  await page.waitForTimeout(300);
+  const before = await page.evaluate(() => (window as unknown as Audio).audios.map((a) => a.paused));
+  expect(before).toEqual([true]);
+  await page.mouse.click(600, 400);
+  await page.waitForTimeout(300);
+  const after = await page.evaluate(() => (window as unknown as Audio).audios.map((a) => a.paused));
+  expect(after).toEqual([false]);
+});
+
+test('the handle swaps fresh links and refuses another release; setSound is there', async ({ page }) => {
+  const requests: string[] = [];
+  page.on('request', (r) => requests.push(new URL(r.url()).pathname + new URL(r.url()).search));
+  await start(page);
+  await waitClip(page, 'idle-loop');
+  const taken = await page.evaluate(async () => {
+    const w = window as unknown as Win & { handle: { updateDelivery(d: unknown): boolean; setSound(on: boolean): void } };
+    const { testDelivery } = await import('/pages/harness.js' as string);
+    w.handle.setSound(true);
+    return [w.handle.updateDelivery(testDelivery({ version: '?v=2' })), w.handle.updateDelivery(testDelivery({ name: 'Another bot' }))];
+  });
+  expect(taken).toEqual([true, false]);
+  await page.evaluate(() => (window as unknown as Win).handle.set('working', true));
+  await waitClip(page, 'work-loop');
+  const { events } = await result(page);
+  expect(events.filter((e) => e.event === 'error').map((e) => e.code)).toEqual(['refresh_mismatch']);
+  expect(requests).toContain('/clips/work-loop.webm?v=2');
+});
+
+test('React: listeners added with ref.on hear the player of a new release', async ({ page }) => {
+  await open(page, '/pages/react.html');
+  await waitClip(page, 'idle-loop');
+  await page.evaluate(() => {
+    const w = window as unknown as {
+      mascot: { on(e: string, f: (e: { pose: string }) => void): () => void };
+      refPoses: string[];
+      setDelivery(d: unknown): void;
+      testDelivery(o: unknown): unknown;
+    };
+    w.refPoses = [];
+    w.mascot.on('pose', (e) => w.refPoses.push(e.pose));
+    // Another release: a new player.
+    w.setDelivery(w.testDelivery({ name: 'Another bot' }));
+  });
+  await page.waitForFunction(() => (window as unknown as { refPoses: string[] }).refPoses.length > 0);
+  expect(await page.evaluate(() => (window as unknown as { refPoses: string[] }).refPoses)).toEqual(['idle']);
+  expect(await page.locator('.masko-player').count()).toBe(1);
+});

@@ -1,0 +1,54 @@
+{
+  "name": "pose-clip-fails-on-screen-start-leaves-still",
+  "about": "A start decided for the end of a pose clip that fails on screen leaves the still that replaces it at once.",
+  "rules": ["5.3", "9.3", "9.5"],
+  "canvas": "otto",
+  "loadMs": {
+    "loop-idle": 60000
+  },
+  "steps": [
+    {
+      "start": true,
+      "expect": {
+        "clock": 0,
+        "pose": "idle",
+        "clip": "loop-idle",
+        "next": null,
+        "events": ["pose:idle", "shown:loop-idle"]
+      }
+    },
+    {
+      "set": ["working", true],
+      "expect": {
+        "clock": 0,
+        "pose": "idle",
+        "clip": "loop-idle",
+        "next": {
+          "clip": "idle-to-watching",
+          "at": "end"
+        },
+        "events": []
+      }
+    },
+    {
+      "advance": 10000,
+      "expect": {
+        "clock": 10000,
+        "pose": "idle",
+        "clip": "idle-to-watching",
+        "next": null,
+        "events": ["error:clip_timeout", "shown:still:idle", "shown:idle-to-watching"]
+      }
+    },
+    {
+      "clipEnded": true,
+      "expect": {
+        "clock": 11000,
+        "pose": "watching",
+        "clip": "loop-watching",
+        "next": null,
+        "events": ["pose:watching", "shown:loop-watching"]
+      }
+    }
+  ]
+}

@@ -1,0 +1,75 @@
+{
+  "name": "variants-without-files-are-no-clip",
+  "about": "A variants map whose sizes name no file is no clip; a size that names a file is one.",
+  "rules": ["1.4", "7.1", "9.4"],
+  "canvas": "otto",
+  "patch": {
+    "edges": {
+      "idle-to-watching": {
+        "videos": {
+          "hevc": null,
+          "webm": null,
+          "variants": {}
+        }
+      },
+      "loop-watching": {
+        "videos": {
+          "hevc": null,
+          "webm": null,
+          "variants": {
+            "256": {}
+          }
+        }
+      }
+    },
+    "addEdges": [
+      {
+        "id": "loop-watching-sized",
+        "source": "watching",
+        "target": "watching",
+        "isLoop": true,
+        "duration": 4,
+        "videos": {
+          "variants": {
+            "512": {
+              "webm": "https://example.invalid/loop-watching-512.webm"
+            }
+          }
+        }
+      }
+    ]
+  },
+  "steps": [
+    {
+      "start": true,
+      "expect": {
+        "clock": 0,
+        "pose": "idle",
+        "clip": "loop-idle",
+        "next": null,
+        "events": ["pose:idle", "shown:loop-idle"]
+      }
+    },
+    {
+      "set": ["working", true],
+      "expect": {
+        "clock": 0,
+        "next": {
+          "clip": "idle-to-watching",
+          "at": "end"
+        },
+        "events": []
+      }
+    },
+    {
+      "loopEnded": true,
+      "expect": {
+        "clock": 4000,
+        "pose": "watching",
+        "clip": "loop-watching-sized",
+        "next": null,
+        "events": ["error:clip_failed", "pose:watching", "shown:loop-watching-sized"]
+      }
+    }
+  ]
+}

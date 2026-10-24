@@ -45,6 +45,20 @@ class DeliveryTest {
     }
 
     @Test
+    fun theSizeIsTheFittedMascotsNotTheViews() {
+        // A square mascot (or one not known yet) in a wide view is as tall as the view.
+        assertEquals(300, fittedSizePx(1_000, 300, null))
+        assertEquals(300, fittedSizePx(300, 1_000, 1f))
+        // A mascot twice as wide as tall, in a tall view: as wide as the view.
+        assertEquals(300, fittedSizePx(300, 1_000, 2f))
+        assertEquals(600, fittedSizePx(1_000, 300, 2f))
+        // Twice as tall as wide, in a wide view: as tall as the view.
+        assertEquals(300, fittedSizePx(1_000, 300, 0.5f))
+        assertEquals(0, fittedSizePx(0, 300, null))
+        assertEquals("loop-idle-800.mp4", short(delivery.edges.getValue("loop-idle").video(fittedSizePx(1_000, 300, null))))
+    }
+
+    @Test
     fun aFileKeyIgnoresTheSignature() {
         assertEquals(fileKey("https://a.test/x.mp4?sig=1"), fileKey("https://a.test/x.mp4?sig=2&e=3"))
     }

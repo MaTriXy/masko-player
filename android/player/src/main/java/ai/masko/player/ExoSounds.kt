@@ -13,15 +13,19 @@ import androidx.media3.exoplayer.ExoPlayer
 
 /** Edge sounds, one ExoPlayer each, freed when a one-shot sound ends (rules.md 9.6). */
 @OptIn(UnstableApi::class)
-internal class ExoSounds(private val context: Context, private val media: MediaFiles) : Sounds {
-    private class Playing(val player: ExoPlayer, val loop: Boolean)
+internal class ExoSounds(context: Context, private val media: MediaFiles) : Sounds {
+    private class Playing(val player: ExoPlayer, val url: String, val volume: Float, val loop: Boolean)
 
+    private val context = context.applicationContext
+    private val main = Handler(Looper.getMainLooper())
     private val playing = ArrayList<Playing>()
+    /** Looping sounds freed by [detach], played again at the next [resume]. */
+    private val detachedLoops = ArrayList<Pair<String, Float>>()
     private var paused = false
 
     override fun play(url: String, volume: Float, loop: Boolean) {
         val player = ExoPlayer.Builder(context).build()
-        val entry = Playing(player, loop)
+        val entry = Playing(player, url, volume, loop)
         val attributes = AudioAttributes.Builder()
             .setUsage(C.USAGE_MEDIA)
             .setContentType(C.AUDIO_CONTENT_TYPE_SONIFICATION)
@@ -44,7 +48,7 @@ internal class ExoSounds(private val context: Context, private val media: MediaF
 
     // Released after the callback that reported the end has returned.
     private fun finish(entry: Playing) {
-        Handler(Looper.getMainLooper()).post {
+        main.post {
             if (playing.remove(entry)) entry.player.release()
         }
     }
@@ -53,6 +57,7 @@ internal class ExoSounds(private val context: Context, private val media: MediaF
         val stopped = playing.filter { !onlyLooping || it.loop }
         playing.removeAll(stopped.toSet())
         stopped.forEach { it.player.release() }
+        detachedLoops.clear()
     }
 
     override fun pause() {
@@ -62,7 +67,16 @@ internal class ExoSounds(private val context: Context, private val media: MediaF
 
     override fun resume() {
         paused = false
+        val loops = detachedLoops.toList()
+        detachedLoops.clear()
+        loops.forEach { (url, volume) -> play(url, volume, loop = true) }
         playing.forEach { it.player.playWhenReady = true }
+    }
+
+    override fun detach() {
+        playing.filter { it.loop }.forEach { detachedLoops += it.url to it.volume }
+        playing.forEach { it.player.release() }
+        playing.clear()
     }
 
     override fun release() = stop(onlyLooping = false)

@@ -1,0 +1,109 @@
+{
+  "name": "fire-named-clip-fails-is-spent",
+  "about": "A fire claimed by a named pose clip that fails is spent when the clip played in its place ends, so the next fire works again.",
+  "rules": ["3.3", "7.1", "9.5"],
+  "canvas": "otto",
+  "patch": {
+    "addEdges": [
+      {
+        "id": "idle-wave",
+        "source": "idle",
+        "target": "idle",
+        "isLoop": true,
+        "duration": 2,
+        "videos": {
+          "hevc": "https://example.invalid/idle-wave.mov",
+          "webm": "https://example.invalid/idle-wave.webm"
+        },
+        "conditions": [
+          {
+            "input": "action::wave",
+            "op": "==",
+            "value": true
+          }
+        ]
+      }
+    ]
+  },
+  "steps": [
+    {
+      "failClip": "idle-wave",
+      "expect": {
+        "clock": 0,
+        "pose": null,
+        "clip": null,
+        "next": null,
+        "events": []
+      }
+    },
+    {
+      "start": true,
+      "expect": {
+        "clock": 0,
+        "pose": "idle",
+        "clip": "loop-idle",
+        "next": null,
+        "events": ["pose:idle", "shown:loop-idle"]
+      }
+    },
+    {
+      "fire": "wave",
+      "expect": {
+        "clock": 0,
+        "pose": "idle",
+        "clip": "loop-idle",
+        "next": null,
+        "events": [],
+        "fired": ["action::wave"]
+      }
+    },
+    {
+      "loopEnded": true,
+      "expect": {
+        "clock": 4000,
+        "pose": "idle",
+        "clip": "loop-idle",
+        "next": null,
+        "events": ["error:clip_failed", "shown:loop-idle"],
+        "fired": ["action::wave"]
+      }
+    },
+    {
+      "loopEnded": true,
+      "expect": {
+        "clock": 8000,
+        "pose": "idle",
+        "clip": "loop-idle",
+        "next": null,
+        "events": ["spent:action::wave", "shown:loop-idle"],
+        "fired": []
+      }
+    },
+    {
+      "fire": "wave",
+      "expect": {
+        "clock": 8000,
+        "events": [],
+        "fired": ["action::wave"]
+      }
+    },
+    {
+      "loopEnded": true,
+      "expect": {
+        "clock": 12000,
+        "clip": "loop-idle",
+        "events": ["error:clip_failed", "shown:loop-idle"],
+        "fired": ["action::wave"]
+      }
+    },
+    {
+      "loopEnded": true,
+      "expect": {
+        "clock": 16000,
+        "clip": "loop-idle",
+        "events": ["spent:action::wave", "shown:loop-idle"],
+        "fired": []
+      }
+    }
+  ]
+}

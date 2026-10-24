@@ -33,6 +33,9 @@ internal class StackedVideoView(context: Context) : TextureView(context), Textur
         /** The view can draw: [createOutput] works now. */
         fun onHostReady()
 
+        /** The view got a surface but cannot draw into it ([failure] says why). */
+        fun onHostFailed(detail: String)
+
         /** The view's surface is going away. Detach decoders from its outputs now. */
         fun onHostLost()
 
@@ -40,11 +43,20 @@ internal class StackedVideoView(context: Context) : TextureView(context), Textur
         fun onFrameDrawn(output: Int)
     }
 
-    /** Where a decoder draws. */
-    class Output internal constructor(val id: Int, val surface: Surface, internal val texture: SurfaceTexture, internal val textureId: Int) {
+    /** Where a decoder draws. It belongs to the GL thread of one surface, [owner]. */
+    class Output internal constructor(
+        val id: Int,
+        val surface: Surface,
+        internal val texture: SurfaceTexture,
+        internal val textureId: Int,
+        internal val owner: Handler,
+    ) {
         internal val transform = FloatArray(16).also { Matrix.setIdentityM(it, 0) }
         internal var hasFrame = false
-        @Volatile internal var released = false
+        /** No decoder draws into it any more (main thread). */
+        @Volatile internal var dropped = false
+        /** Its texture and surface are freed (GL thread). */
+        @Volatile internal var freed = false
     }
 
     /** Main thread. */
@@ -53,6 +65,17 @@ internal class StackedVideoView(context: Context) : TextureView(context), Textur
     /** Whether the view can draw (main thread). */
     var hasHost = false
         private set
+
+    /** Why the view's surface cannot be drawn into, or null (main thread). */
+    var failure: String? = null
+        private set
+
+    /** The mascot's width over its height, once a clip's size is known (main thread). */
+    var mascotAspect: Float? = null
+        private set
+
+    /** For instrumented tests: outputs made and not freed yet. */
+    internal val liveOutputs = AtomicInteger()
 
     private val main = Handler(Looper.getMainLooper())
     private val ids = AtomicInteger()
@@ -99,29 +122,29 @@ internal class StackedVideoView(context: Context) : TextureView(context), Textur
             GLES20.glTexParameteri(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, GLES20.GL_TEXTURE_WRAP_S, GLES20.GL_CLAMP_TO_EDGE)
             GLES20.glTexParameteri(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, GLES20.GL_TEXTURE_WRAP_T, GLES20.GL_CLAMP_TO_EDGE)
             val texture = SurfaceTexture(names[0])
-            val output = Output(ids.incrementAndGet(), Surface(texture), texture, names[0])
+            val output = Output(ids.incrementAndGet(), Surface(texture), texture, names[0], handler)
+            liveOutputs.incrementAndGet()
             texture.setOnFrameAvailableListener({ onFrame(output) }, handler)
             outputs += output
             current = output
             main.post {
-                if (hasHost && !output.released) done(output) else release(output)
+                // Only to a decoder of this same surface: one made for a surface that died since is freed.
+                if (gl === handler && hasHost && !output.dropped) done(output) else release(output)
             }
         }
     }
 
     /** Frees an output no decoder draws into any more. */
     fun release(output: Output) {
-        val handler = gl
-        if (handler == null) {
-            output.released = true
-            return
-        }
-        handler.post { free(output) }
+        output.dropped = true
+        // Freed on its own GL thread; when that thread is gone, its teardown freed every output.
+        if (!output.freed) output.owner.post { free(output) }
     }
 
     /** The decoded frame size: the stacked picture, twice as tall as the mascot. */
     fun setVideoSize(width: Int, height: Int) {
         if (width <= 0 || height <= 0) return
+        mascotAspect = width.toFloat() / (height * 0.5f)
         videoAspect = width.toFloat() / (height * 0.5f)
         halfTexel = 0.5f / height
         gl?.post { current?.takeIf { it.hasFrame }?.let(::present) }
@@ -130,7 +153,7 @@ internal class StackedVideoView(context: Context) : TextureView(context), Textur
     // ------------------------------------------------------------------ GL thread
 
     private fun onFrame(output: Output) {
-        if (!ready || output.released) return
+        if (!ready || output.freed) return
         output.texture.updateTexImage()
         output.texture.getTransformMatrix(output.transform)
         output.hasFrame = true
@@ -165,8 +188,9 @@ internal class StackedVideoView(context: Context) : TextureView(context), Textur
     }
 
     private fun free(output: Output) {
-        if (output.released) return
-        output.released = true
+        if (output.freed) return
+        output.freed = true
+        liveOutputs.decrementAndGet()
         outputs -= output
         if (current === output) current = null
         output.texture.setOnFrameAvailableListener(null)
@@ -222,11 +246,18 @@ internal class StackedVideoView(context: Context) : TextureView(context), Textur
             this.width = width.coerceAtLeast(1)
             this.height = height.coerceAtLeast(1)
             if (!setup(texture)) {
+                val detail = "the video surface could not be set up (EGL error 0x${Integer.toHexString(EGL14.eglGetError())})"
                 teardown()
+                main.post {
+                    if (gl !== handler) return@post
+                    failure = detail
+                    listener?.onHostFailed(detail)
+                }
                 return@post
             }
             main.post {
                 if (gl !== handler) return@post
+                failure = null
                 hasHost = true
                 listener?.onHostReady()
             }
@@ -263,6 +294,9 @@ internal class StackedVideoView(context: Context) : TextureView(context), Textur
 
     override fun onSurfaceTextureUpdated(texture: SurfaceTexture) {}
 
+    /** For instrumented tests: runs [task] on the GL thread of the current surface. */
+    internal fun onGlThread(task: Runnable): Boolean = gl?.post(task) ?: false
+
     private companion object {
         const val VERTEX = """
             attribute vec2 pos;
@@ -275,9 +309,10 @@ internal class StackedVideoView(context: Context) : TextureView(context), Textur
         """
 
         // Colour comes from the top half, transparency (grey) from the bottom
-        // half; the output is premultiplied, as the compositor expects. Each
-        // half is sampled half a texel inside its edge, so filtering never
-        // mixes a row of one half into the other.
+        // half, read as the grey's luma (BT.709), so chroma noise in any one
+        // channel barely moves it; the output is premultiplied, as the
+        // compositor expects. Each half is sampled half a texel inside its
+        // edge, so filtering never mixes a row of one half into the other.
         const val FRAGMENT = """
             #extension GL_OES_EGL_image_external : require
             #ifdef GL_FRAGMENT_PRECISION_HIGH
@@ -294,7 +329,7 @@ internal class StackedVideoView(context: Context) : TextureView(context), Textur
               float alphaY = clamp(uv.y * 0.5, halfTexel, 0.5 - halfTexel);
               vec2 colourAt = (transform * vec4(uv.x, colourY, 0.0, 1.0)).xy;
               vec2 alphaAt = (transform * vec4(uv.x, alphaY, 0.0, 1.0)).xy;
-              float alpha = texture2D(video, alphaAt).r;
+              float alpha = dot(texture2D(video, alphaAt).rgb, vec3(0.2126, 0.7152, 0.0722));
               vec3 colour = texture2D(video, colourAt).rgb;
               gl_FragColor = vec4(colour * alpha, alpha);
             }

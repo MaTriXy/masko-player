@@ -3,7 +3,9 @@ import UIKit
 
 /// Shows one `MaskoPlayer` in a `MaskoPlayerView`. A new delivery, or
 /// `getDelivery` given or taken away, loads a new player; the view going away
-/// destroys it.
+/// destroys it. A `getDelivery` call waits for JavaScript without holding the
+/// view, and fails when the view leaves its window, so an unmounted view is
+/// freed even when JavaScript never answers.
 final class MaskoNativeView: ExpoView {
   let onPose = EventDispatcher()
   let onClip = EventDispatcher()
@@ -47,6 +49,14 @@ final class MaskoNativeView: ExpoView {
     mascot.frame = bounds
   }
 
+  /// Out of its window, as when React Native unmounts it, JavaScript may
+  /// never answer: the waiting calls fail, and the player reports
+  /// `refresh_failed` and asks again 30 seconds later.
+  override func didMoveToWindow() {
+    super.didMoveToWindow()
+    if window == nil { failRequests() }
+  }
+
   func propsChanged() {
     guard let delivery else { return unload() }
     if loaded?.delivery != delivery || loaded?.refreshes != refreshes {
@@ -78,9 +88,12 @@ final class MaskoNativeView: ExpoView {
     unload()
     var getDelivery: (@MainActor () async throws -> Data)?
     if refreshes {
+      // Only the continuation waits for the answer, never the view.
       getDelivery = { [weak self] in
-        guard let self else { throw DeliveryUnavailable() }
-        return try await self.requestDelivery()
+        try await withCheckedThrowingContinuation { continuation in
+          guard let self else { return continuation.resume(throwing: DeliveryUnavailable()) }
+          self.requestDelivery(continuation)
+        }
       }
     }
     let player = MaskoPlayer(delivery: Data(json.utf8), autoPlay: autoPlay, getDelivery: getDelivery)
@@ -92,22 +105,27 @@ final class MaskoNativeView: ExpoView {
   }
 
   private func unload() {
-    for request in requests.values {
-      request.resume(throwing: DeliveryUnavailable())
-    }
-    requests = [:]
+    failRequests()
     player?.destroy()
     player = nil
     mascot.player = nil
     loaded = nil
   }
 
-  /// Asks JavaScript's `getDelivery` and waits for `answerDelivery`.
-  private func requestDelivery() async throws -> Data {
-    try await withCheckedThrowingContinuation { continuation in
-      lastRequest += 1
-      requests[lastRequest] = continuation
-      onDeliveryRequest(["request": lastRequest])
+  /// Asks JavaScript's `getDelivery`; `answerDelivery` resumes the
+  /// continuation.
+  private func requestDelivery(_ continuation: CheckedContinuation<Data, Error>) {
+    lastRequest += 1
+    requests[lastRequest] = continuation
+    onDeliveryRequest(["request": lastRequest])
+  }
+
+  /// Ends every `getDelivery` call still waiting for JavaScript.
+  private func failRequests() {
+    let waiting = requests.values
+    requests = [:]
+    for request in waiting {
+      request.resume(throwing: DeliveryUnavailable())
     }
   }
 

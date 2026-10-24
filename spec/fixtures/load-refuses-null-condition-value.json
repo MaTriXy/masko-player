@@ -1,0 +1,25 @@
+{
+  "name": "load-refuses-null-condition-value",
+  "about": "A condition value of null is refused; only a missing value reads true.",
+  "rules": ["1.3", "2.2"],
+  "canvas": "otto",
+  "patch": {
+    "edges": {
+      "idle-to-watching": {
+        "conditionGroups": [
+          [
+            {
+              "op": "==",
+              "input": "behavior::working",
+              "value": null
+            }
+          ]
+        ]
+      }
+    }
+  },
+  "expectLoad": {
+    "refused": "invalid_graph"
+  },
+  "steps": []
+}

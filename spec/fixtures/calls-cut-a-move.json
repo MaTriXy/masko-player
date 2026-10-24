@@ -1,0 +1,113 @@
+{
+  "name": "calls-cut-a-move",
+  "about": "preview.showPose, reset and a second start during a move report the move interrupted and never enter its target.",
+  "rules": ["11.4", "11.1", "11.3", "13"],
+  "canvas": "ko-coffee",
+  "steps": [
+    {
+      "start": true,
+      "expect": {
+        "clock": 0,
+        "pose": "idle",
+        "clip": "loop-idle",
+        "next": null,
+        "events": ["pose:idle", "shown:loop-idle"]
+      }
+    },
+    {
+      "set": ["working", true],
+      "expect": {
+        "clock": 0,
+        "next": {
+          "clip": "enter-laptop-working",
+          "at": "end"
+        },
+        "events": []
+      }
+    },
+    {
+      "loopEnded": true,
+      "expect": {
+        "clock": 4000,
+        "pose": "idle",
+        "clip": "enter-laptop-working",
+        "next": null,
+        "events": ["shown:enter-laptop-working"]
+      }
+    },
+    {
+      "showPose": "fan-wave",
+      "expect": {
+        "clock": 4000,
+        "pose": "fan-wave",
+        "clip": "loop-fan-wave",
+        "next": {
+          "clip": "return-fan-wave",
+          "at": "end"
+        },
+        "events": ["interrupted:enter-laptop-working", "pose:fan-wave", "shown:loop-fan-wave"]
+      }
+    },
+    {
+      "loopEnded": true,
+      "expect": {
+        "clock": 8000,
+        "pose": "fan-wave",
+        "clip": "return-fan-wave",
+        "next": null,
+        "events": ["shown:return-fan-wave"]
+      }
+    },
+    {
+      "reset": true,
+      "expect": {
+        "clock": 8000,
+        "pose": "idle",
+        "clip": "loop-idle",
+        "next": null,
+        "events": ["interrupted:return-fan-wave", "pose:idle", "shown:loop-idle"],
+        "values": {
+          "working": false
+        }
+      }
+    },
+    {
+      "set": ["working", true],
+      "expect": {
+        "clock": 8000,
+        "next": {
+          "clip": "enter-laptop-working",
+          "at": "end"
+        },
+        "events": []
+      }
+    },
+    {
+      "loopEnded": true,
+      "expect": {
+        "clock": 12000,
+        "pose": "idle",
+        "clip": "enter-laptop-working",
+        "next": null,
+        "events": ["shown:enter-laptop-working"]
+      }
+    },
+    {
+      "start": true,
+      "expect": {
+        "clock": 12000,
+        "pose": "laptop-working",
+        "clip": "loop-laptop-working",
+        "next": null,
+        "events": [
+          "interrupted:enter-laptop-working",
+          "pose:laptop-working",
+          "shown:loop-laptop-working"
+        ],
+        "values": {
+          "working": true
+        }
+      }
+    }
+  ]
+}

@@ -1,13 +1,40 @@
 # MaskoPlayer for iPhone, iPad and Mac
 
-The `MaskoPlayer` Swift package plays a Masko mascot release on iOS 15 and
-macOS 13 or later. The Rust engine (`engine/`) decides which clip plays and
-when; this package keeps the play-time clock, shows the clips on two
-`AVPlayerLayer` slots and reports when they end, as `spec/player.md` says.
+The `MaskoPlayer` Swift package plays a Masko mascot release on iOS 15,
+macOS 13, Mac Catalyst 15 and visionOS 1 or later. The Rust engine
+(`engine/`) decides which clip plays and when; this package keeps the
+play-time clock, shows the clips on two `AVPlayerLayer` slots and reports
+when they end, as `spec/player.md` says.
 
-It has no release yet. Build the engine with `scripts/build-apple.sh` (Build
-and test, below), then add this repository to your app as a local Swift
-package; `Package.swift` is at the root.
+## Install
+
+Add the package by its URL; the engine comes built, so the app needs no
+Rust.
+
+- Xcode: File > Add Package Dependencies, enter
+  `https://github.com/masko-ai/masko-player`, choose Up to Next Major
+  Version from `0.1.0`, and add the `MaskoPlayer` product to the app target.
+- `Package.swift`:
+
+  ```swift
+  dependencies: [
+      .package(url: "https://github.com/masko-ai/masko-player", from: "0.1.0")
+  ],
+  targets: [
+      .target(name: "MyApp", dependencies: [
+          .product(name: "MaskoPlayer", package: "masko-player")
+      ])
+  ]
+  ```
+
+The engine is the binary target `MaskoPlayerFFI`: SwiftPM downloads
+`MaskoPlayerFFI.xcframework.zip` from the GitHub release of that version
+and checks it against the checksum in `Package.swift`. The package ships a
+privacy manifest (`PrivacyInfo.xcprivacy`): no tracking, no data collected,
+and the system boot time (`ProcessInfo.systemUptime`, reason `35F9.1`) for
+the play-time clock.
+
+## Use
 
 ```swift
 import MaskoPlayer
@@ -42,6 +69,10 @@ MaskoPlayerView(player: player)            // UIView on iOS, NSView on macOS
 - The view turns taps, clicks, Return and Space into `click`, and the
   pointer (Mac, iPad) into `pointerHover`. Dragging and physics stay in the
   app, which sets `heldContact`, `heldShake` and `falling` itself.
+- A player shows in one view at a time: the newest view given it that is in
+  a window, else the newest. It pauses itself while that view is out of its
+  window (or the app is in the background on iPhone and iPad), and when the
+  last view lets go of it. A mascot never keeps the screen awake.
 - Signed links: pass `getDelivery`, an async closure that fetches the same
   release again. The player calls it five minutes before
   `deliveryAccess.signedUrlExpiresAt` (halfway there when less than ten
@@ -56,27 +87,37 @@ MaskoPlayerView(player: player)            // UIView on iOS, NSView on macOS
   it cannot read.
 - The player picks each edge's `videos.hevc` file (HEVC with alpha), or with
   `videos.variants` the smallest size at least as large as the view in
-  pixels.
+  pixels. A pose clip that started before the view had a size switches to
+  the right file at its next loop.
+- Downloads go in `tmp/MaskoPlayer/`. `destroy()` cancels the ones in
+  flight and deletes the files; a launch deletes what earlier launches left.
 
 ## Layout
 
 - `Sources/MaskoPlayer/MaskoPlayer.swift`: the player: engine calls, commands,
-  slots, stills, sounds, clock, link refresh.
+  slots, stills, sounds, clock, link refresh. The hidden slot decodes the
+  next clip ahead: the decided one, or during a move the target pose's loop.
 - `Stage.swift`: the two-slot `AVPlayerLayer` stage. A clip swaps in only when
   its first frame is decoded and ready for display, in one transaction with
   implicit animations off.
 - `Delivery.swift`: the delivery fields the player reads itself (files,
-  sounds, movement, stills, link expiry).
+  sounds, movement, stills, the poses each edge joins, link expiry).
 - `MediaLoader.swift`: downloads files into a small cache, keyed by edge and
   size so a refreshed link reuses them.
-- `Sounds.swift`, `Clock.swift`, `MaskoPlayerView.swift`, `MaskoView.swift`.
+- `MaskoPlayerView.swift`: the view, and which view shows a player.
+- `Sounds.swift`, `Clock.swift`, `MaskoView.swift`.
+- `PrivacyInfo.xcprivacy`: the privacy manifest, a resource of the target.
 - `Generated/masko_player_ffi.swift`: the UniFFI bindings, written by the build
   script. Do not edit it.
 - `MaskoPlayerFFI.xcframework`: the engine as a static library for macOS
-  (arm64, x86_64), iOS devices (arm64) and the iOS simulator (arm64, x86_64).
-  It is built locally and git-ignored.
+  (arm64, x86_64), iOS devices (arm64), the iOS simulator (arm64, x86_64),
+  Mac Catalyst (arm64, x86_64), visionOS devices (arm64) and the visionOS
+  simulator (arm64). It is built locally and git-ignored.
 - `tools/make-test-clips.swift`: writes the HEVC-with-alpha test clips in
   `Tests/MaskoPlayerTests/Clips`.
+
+`Package.swift` uses `apple/MaskoPlayerFFI.xcframework` when it exists, and
+the release zip otherwise.
 
 ## Build and test
 
@@ -85,15 +126,38 @@ scripts/build-apple.sh   # the xcframework and the Swift bindings
 swift test               # scenarios, player, file cache and real video on macOS
 xcodebuild test -scheme MaskoPlayer \
   -destination 'platform=iOS Simulator,name=iPhone 16 Pro'
+xcodebuild test -scheme MaskoPlayer \
+  -destination 'platform=macOS,variant=Mac Catalyst'
 ```
 
 The tests run every `spec/fixtures` scenario through the Swift binding, the
 player against a fake video layer, and real HEVC-with-alpha clips on
 AVFoundation.
 
+Run `scripts/build-apple.sh` before the first `swift` or `xcodebuild` command
+in a clone. SwiftPM caches what `Package.swift` says by its text, so a read
+made before the local engine existed keeps using the release zip; the build
+script warns when that happens, and `swift package purge-cache` clears it.
+
 ## Releases
 
-A release publishes `MaskoPlayerFFI.xcframework` as a zip and `Package.swift`
-switches its binary target from the local path to that zip's URL and
-checksum (`swift package compute-checksum`), with the generated bindings
-committed at the same version.
+```bash
+scripts/release-apple.sh 0.1.0
+```
+
+It builds the engine, writes
+`target/apple-release/<version>/MaskoPlayerFFI.xcframework.zip` (the
+xcframework at the top of the zip, as SwiftPM expects), and sets
+`releaseURL`
+(`https://github.com/masko-ai/masko-player/releases/download/<version>/MaskoPlayerFFI.xcframework.zip`)
+and `releaseChecksum` (`swift package compute-checksum`) in `Package.swift`.
+Then:
+
+1. Commit `Package.swift` with `Sources/MaskoPlayer/Generated/` from the
+   same build: the bindings must match the engine in the zip.
+2. Tag that commit with the version itself (`0.1.0`, no `v`), push it, and
+   make the GitHub release for the tag.
+3. Attach the zip to the release, under its own name.
+
+Run the script again after any engine change: the zip, its checksum and the
+bindings go together.

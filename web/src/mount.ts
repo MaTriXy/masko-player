@@ -30,6 +30,14 @@ export interface MaskoHandle {
   destroy(): void;
   /** The clip on screen and its clip time in seconds. */
   position(): Position;
+  /**
+   * Swaps in fresh links of the release that is playing; the mascot keeps
+   * playing. Another release is refused with `error` `refresh_mismatch`, a
+   * delivery that cannot be read with `refresh_failed`. True when taken.
+   */
+  updateDelivery(delivery: DeliveryInput): boolean;
+  /** Lets clips' own voices be heard, or not, from the next clip or loop on. */
+  setSound(on: boolean): void;
   /** Listens to `pose`, `clip`, `reactionDone`, `movement` or `error`; returns the unsubscribe call. */
   on<K extends MaskoEventName>(event: K, handler: MaskoListener<K>): () => void;
   preview: { showPose(id: string): void; playMove(id: string): void };
@@ -38,7 +46,7 @@ export interface MaskoHandle {
 const STYLE_ID = 'masko-player-style';
 const CSS = `
 .masko-player{position:relative;width:100%;height:100%;overflow:visible;-webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none}
-.masko-player>video,.masko-player>img.masko-still{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;pointer-events:none;margin:0;padding:0;border:0;background:transparent}
+.masko-player>video,.masko-player>img.masko-still{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;pointer-events:none;margin:0;padding:0;border:0;background:transparent;transition:none}
 .masko-player>.masko-tap{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;margin:0;padding:0;border:0;background:transparent;cursor:pointer}
 .masko-player>.masko-tap[hidden]{display:none}
 .masko-player>.masko-tap>span{display:flex;align-items:center;justify-content:center;width:48px;height:48px;border-radius:50%;background:rgba(0,0,0,.55);box-shadow:0 2px 8px rgba(0,0,0,.25)}
@@ -88,10 +96,25 @@ export function createPlayer(element: HTMLElement, options: MountOptions): { pla
     '<span><svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true"><path d="M6 4l10 6-10 6z" fill="#fff"/></svg></span>';
   root.appendChild(tap);
   element.appendChild(root);
-  if (root.getBoundingClientRect().height === 0) {
-    // An element without a height: a square mascot as wide as it is.
-    root.style.height = 'auto';
-    root.style.aspectRatio = '1 / 1';
+  const cleanups: (() => void)[] = [];
+
+  // An element without a height: a square mascot as wide as it is. A hidden
+  // element has no size at all yet: it is measured once it shows.
+  const square = (): boolean => {
+    const r = root.getBoundingClientRect();
+    if (r.width === 0) return false;
+    if (r.height === 0) {
+      root.style.height = 'auto';
+      root.style.aspectRatio = '1 / 1';
+    }
+    return true;
+  };
+  if (!square() && typeof win.ResizeObserver === 'function') {
+    const observer = new win.ResizeObserver(() => {
+      if (square()) observer.disconnect();
+    });
+    observer.observe(root);
+    cleanups.push(() => observer.disconnect());
   }
 
   const slots: [DomSlot, DomSlot] = [new DomSlot(videos[0]), new DomSlot(videos[1])];
@@ -114,7 +137,7 @@ export function createPlayer(element: HTMLElement, options: MountOptions): { pla
     },
     slots,
     still: new DomStill(img),
-    sounds: new DomSounds(),
+    sounds: new DomSounds(doc),
     files: new FetchLoader(),
     formats: preferredFormats(nav.userAgent, nav.maxTouchPoints ?? 0),
     pixels: () => {
@@ -131,7 +154,6 @@ export function createPlayer(element: HTMLElement, options: MountOptions): { pla
       root.remove();
     }
   };
-  const cleanups: (() => void)[] = [];
 
   const playerOptions: PlayerOptions = {
     delivery: options.delivery,
@@ -151,24 +173,44 @@ export function createPlayer(element: HTMLElement, options: MountOptions): { pla
     player.play();
   });
   if (options.pointer !== false) {
+    /** The person clicks the mascot at (x, y) in it. */
+    const poke = (x: number, y: number) => {
+      player.click();
+      if (!ripple) return;
+      const dot = doc.createElement('span');
+      dot.className = 'masko-ripple';
+      dot.style.left = `${x}px`;
+      dot.style.top = `${y}px`;
+      dot.addEventListener('animationend', () => dot.remove());
+      root.appendChild(dot);
+    };
     listen(root, 'click', (e) => {
       if (!tap.hidden) return;
-      player.click();
-      if (ripple) {
-        const r = root.getBoundingClientRect();
-        const m = e as MouseEvent;
-        const dot = doc.createElement('span');
-        dot.className = 'masko-ripple';
-        dot.style.left = `${m.clientX - r.left}px`;
-        dot.style.top = `${m.clientY - r.top}px`;
-        dot.addEventListener('animationend', () => dot.remove());
-        root.appendChild(dot);
+      const r = root.getBoundingClientRect();
+      const m = e as MouseEvent;
+      poke(m.clientX - r.left, m.clientY - r.top);
+    });
+    // Enter or Space while the mascot has focus is a click (rules.md 3.5).
+    root.tabIndex = 0;
+    root.setAttribute('role', 'button');
+    root.setAttribute('aria-label', player.name() ?? 'Mascot');
+    listen(root, 'keydown', (e) => {
+      const k = e as KeyboardEvent;
+      if (k.target !== root || (k.key !== 'Enter' && k.key !== ' ') || k.repeat || k.altKey || k.ctrlKey || k.metaKey) return;
+      k.preventDefault();
+      if (!tap.hidden) {
+        player.play();
+        return;
       }
+      const r = root.getBoundingClientRect();
+      poke(r.width / 2, r.height / 2);
     });
     listen(root, 'pointerenter', () => player.hover(true));
     listen(root, 'pointerleave', () => player.hover(false));
   }
   listen(doc, 'visibilitychange', () => player.setHidden(doc.visibilityState === 'hidden'));
+  // Timers may have slept with the device: check the signed links again.
+  listen(win, 'online', () => player.checkLinks());
   if (doc.visibilityState === 'hidden') player.setHidden(true);
   return { player, root };
 }
@@ -183,6 +225,8 @@ export function handleFor(player: Player): MaskoHandle {
     pause: () => player.pause(),
     destroy: () => player.destroy(),
     position: () => player.position(),
+    updateDelivery: (delivery) => player.updateDelivery(delivery),
+    setSound: (on) => player.setSound(on),
     on: (event, handler) => player.on(event, handler),
     preview: player.preview
   };

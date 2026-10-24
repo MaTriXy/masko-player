@@ -86,23 +86,28 @@ A player refuses with `invalid_graph` unless:
 - `duration` is a finite number of at least 0, `speed` (when present) a
   finite number above 0, and `priority` (when present) a finite number,
   fractions allowed;
-- every condition `value` is a boolean or a number;
+- every condition `value`, when present, is a boolean or a number (`null`
+  and a string are neither);
 - `speedInput` (when present) names an input the canvas declares with type
   `number` (9.2).
 
 It refuses with `unknown_operator` a condition whose `op` is not one of
-`==`, `!=`, `>`, `<`, `>=`, `<=`, and with `unknown_condition_key` a
-condition that has an `operator` field. Some canvases, the Ko coffee graph
-among them, wrote `operator` instead of `op`; a player that reads only `op`
-treats `operator: ">"` as `==`. The release compiler rewrites `operator` to
-`op`; a player that meets it refuses instead of guessing.
+`==`, `!=`, `>`, `<`, `>=`, `<=` (a number or `null` is not one of them;
+only an `op` that is not there reads `==`, 2.2), and with
+`unknown_condition_key` a condition that has an `operator` field. Some
+canvases, the Ko coffee graph among them, wrote `operator` instead of `op`;
+a player that reads only `op` treats `operator: ">"` as `==`. The release
+compiler rewrites `operator` to `op`; a player that meets it refuses instead
+of guessing.
 
 ### 1.4 Clips that can play
 
-An edge has a clip when its `videos` names at least one file (`webm`,
-`hevc`, or a size variant). The player picks the file its platform plays;
-that choice is not a rule of the engine. A move without a clip plays as a
-failed clip (9.4). A pose clip without one is never chosen (7.1).
+An edge has a clip when its `videos` names at least one file: `webm`,
+`hevc`, `stacked`, or one of those in a size of `variants`. A `variants` map
+whose sizes name no file, an empty one included, is no clip. The player
+picks the file its platform plays; that choice is not a rule of the engine.
+A move without a clip plays as a failed clip (9.4). A pose clip without one
+is never chosen (7.1).
 
 ## 2. Conditions
 
@@ -163,6 +168,8 @@ name. Setting the value a name already holds changes nothing. Several
 behaviors can be on at once; which one shows is decided by priority (4), not
 by the order of the calls. The player never clears a held value by itself.
 
+- `set` with a number that is not finite (NaN or an infinity) changes
+  nothing and reports `error` `bad_value`.
 - `set` on `node::loopCount`, `node::nodeTime` or `behavior::rest` changes
   nothing and reports `error` `read_only`.
 - `set` on an input the canvas declares as `trigger`: `true` fires it (3.3),
@@ -184,16 +191,16 @@ A pending fire is spent at exactly one of these moments:
    that start, unless an earlier start already claimed it. A claimed fire
    stays pending until the first pose clip of the pose the start leads to
    ends: the move's target, the Any State edge's target at the end of its
-   route (6.4), or, for a named pose clip (7.1), that clip itself. If the
-   mascot leaves that pose before its first pose clip ends, the fire is spent
-   when it leaves. If the route ends before reaching its target, the fire is
-   no longer claimed.
+   route (6.4), or, for a named pose clip (7.1), that clip itself, or what
+   plays in its place when it fails (9.5). If the mascot leaves that pose
+   before its first pose clip ends, the fire is spent when it leaves. If the
+   route ends before reaching its target, the fire is no longer claimed.
 2. **Unclaimed.** A fire that no start claimed is spent at the end of the
    first pose clip that ends after it was fired, once that end has been fully
    handled (5.5).
 
 When a fire is spent, the player reports `reactionDone` with the name and
-whether a start claimed it.
+whether it was claimed (1), by a start or a named pose clip.
 
 The claim lasts through the target's first pose clip because a move that
 holds when its pose is entered starts at once (5.3): a reaction pose whose
@@ -210,10 +217,13 @@ change it.
 
 The player turns what the person does on the mascot itself into values:
 
-- the pointer enters the mascot: `set('pointerHover', true)`; it leaves:
-  `set('pointerHover', false)`;
+- the pointer enters the mascot: `behavior::pointerHover` is set to `true`;
+  it leaves: it is set to `false`;
 - a click, a tap, or Enter or Space while the mascot has focus:
-  `fire('click')`, which is `action::click`.
+  `action::click` is fired.
+
+These are always the full names, never resolved as bare names (3.1): a
+canvas input named `click` or `pointerHover` never catches the person.
 
 The app sets `heldContact`, `heldShake` and `falling` itself, since it owns
 dragging and physics.
@@ -229,8 +239,8 @@ With the mascot on pose P, and not during a move (10), the candidates are:
   conditions never holds, since it would pull every pose to its target
   forever.
 
-They are ranked by `priority`, highest first (missing is 0), then by canvas
-order. The first is the winner.
+They are ranked by `priority`, highest first (missing is 0, and so is -0),
+then by canvas order. The first is the winner.
 
 ### 4.2 What the winner means
 
@@ -267,8 +277,9 @@ the person, and neither is a move that only checks a person input is off.
 
 Any other winner with conditions starts at the end of the pose clip on
 screen, so the next clip starts from the pose's own frame. At a boundary that
-moment is now. A pose shown as a still (7.4) is the pose's own picture, so a
-winner starts from it at once.
+moment is now. A pose shown as a still (7.4, 9.5) is the pose's own
+picture, so a winner starts from it at once, including a start decided for
+the end of a pose clip that failed on screen and gave way to the still.
 
 ### 5.4 No conditions: the end of the clip
 
@@ -367,7 +378,8 @@ pose's extras without the one this pose played last (all its extras if that
 leaves none). Otherwise it plays the main loop. The extra plays right after
 the main loop whose end drew the number. The engine remembers the last extra
 of each pose for as long as it runs. This is the only rule that uses
-randomness; scenarios inject the numbers.
+randomness; scenarios inject the numbers, and when those run out the engine
+draws from its own seeded source.
 
 ### 7.4 A pose without a clip
 
@@ -440,23 +452,31 @@ Moves whose clips all fail can send the mascot from pose to pose without
 showing anything. When more than 32 poses are entered within one second of
 play time, the engine starts no move from the next ones until that second
 is over, and reports `error` `clipless_cycle`; the pose shows its clip or
-still meanwhile.
+still meanwhile. No event starts a move during the rest of that second: not
+a `set`, a `fire`, a node timer, a boundary or `preview.playMove` (13). When
+the second is over, the engine decides again (5.1).
 
 ### 9.5 A pose clip that fails
 
-When a chosen pose clip fails, the pose plays the clip that just ended on it
-again, if there is one and it did not fail; otherwise its still (7.4) for
-the failed clip's length, or 1 s when that length is 0. Either way the
-failure is reported as `error` `clip_failed` and the pose keeps counting
-loops.
+When a chosen pose clip fails, before it shows or while it is on screen,
+the pose plays again the pose clip that ended last on it since it was
+entered, if there is one and it has not failed; otherwise its still (7.4)
+for the failed clip's length, and never less than the 1 s of a still of its
+own, so a pose whose clips fail cannot flicker through stills. Either way
+the failure is reported as `error` `clip_failed` (or `clip_timeout`, 9.3)
+and the pose keeps counting loops. A fire the failed clip claimed (3.3) is
+spent when the clip or still that plays in its place ends.
 
 ### 9.6 Sound
 
 When a clip with a `sound` is shown, the sound plays at its `volume`, looping
 when `loop` is true. Entering a pose stops looping sounds and lets one-shot
-sounds finish; a move stops every sound before its own. A clip's own voice
-(`hasAudio`) is heard only when the app allows sound, which is off by
-default.
+sounds finish; a move stops every sound before its own. Nothing else stops a
+sound, and a looping sound that is playing is never started again: a pose
+clip that loops, or comes back after another clip of the same pose, leaves
+its looping sound running, so each looping sound plays once at most. A
+clip's own voice (`hasAudio`) is heard only when the app allows sound, which
+is off by default.
 
 ### 9.7 Preloading
 
@@ -499,7 +519,9 @@ starts, the engine asks the player to preload the target pose's main loop
    mascot to a pose. The app's `autoPlay` wins over the graph's when the app
    gives one; with neither, the mascot starts at once. With `autoPlay`
    false, the player shows the first pose's first frame and starts only on
-   `play()`.
+   `play()`. A `start` while the mascot already plays starts again the same
+   way with the values and fires it has: the mascot leaves its pose (3.3),
+   and the fires a start claimed for another pose are no longer claimed.
 2. **Pause.** Play time stops, and so do clips and timers. `set` and `fire`
    are recorded and decided on when play resumes. `play()` resumes exactly
    where it stopped. The player also pauses itself while the mascot cannot
@@ -508,6 +530,10 @@ starts, the engine asks the player to preload the target pose's main loop
 3. **Reset.** Values go back to their defaults (2.4), pending fires and the
    route are dropped, and the player starts again as in 1, with the
    defaults.
+4. **Cutting a move.** `reset`, a `start` while the mascot plays and
+   `preview.showPose` (13) cut a move in progress: the player is told
+   (`interrupted`, as in 10.1), the move's target is never entered, and the
+   pose they enter stops looping sounds as any pose entered (9.6).
 
 ## 12. What the engine says
 
@@ -528,18 +554,20 @@ These two calls are outside the app contract: the canvas editor, the
 preview and test tools use them, and an app never needs them. An app reaches
 a pose by setting values (11.1) and plays moves through the canvas.
 
-- **`preview.showPose(poseId)`** cuts to that pose at once: pending fires
-  (dropped without `reactionDone`), the route and any decided start are
-  dropped, the pose is entered with its timers at 0, and its main loop (7.1)
-  is shown, or its still. The rules then take over as after any event (5.1):
-  a winner started by the person starts at once, any other at the end of
-  the loop. An unknown pose reports `error` `unknown_pose`.
+- **`preview.showPose(poseId)`** cuts to that pose at once, and cuts a move
+  in progress (11.4): pending fires (dropped without `reactionDone`), the
+  route and any decided start are dropped, the pose is entered with its
+  timers at 0, and its main loop (7.1) is shown, or its still. The rules
+  then take over as after any event (5.1): a winner started by the person
+  starts at once, any other at the end of the loop. An unknown pose reports
+  `error` `unknown_pose`.
 - **`preview.playMove(edgeId)`** plays one move whose source is the current
   pose, at once, from whatever frame the pose clip is on. Any decided start
   is dropped and the pose's claimed fires are spent, as when the mascot
   leaves a pose (3.3). The move ends as any move (9), and the rules take
   over at its target. It is refused with `error` `preview_refused` when the
-  edge is not a move from the current pose or a move is in progress.
+  edge is not a move from the current pose or a move is in progress, and
+  with `error` `clipless_cycle` while no move may start (9.4).
 
 ## 14. The web player, beyond the rules
 

@@ -4,6 +4,9 @@
 import type { FileLoader, Sound, SoundOut, StillLayer, VideoSlot } from './media.ts';
 
 const HAVE_CURRENT_DATA = 2;
+/** The playback rates Chromium takes; it throws outside them. */
+const MIN_RATE = 0.0625;
+const MAX_RATE = 16;
 
 type FrameVideo = HTMLVideoElement & {
   requestVideoFrameCallback?: (cb: () => void) => number;
@@ -27,6 +30,8 @@ export class DomSlot implements VideoSlot {
     el.setAttribute('disablepictureinpicture', '');
     el.setAttribute('disableremoteplayback', '');
     el.setAttribute('aria-hidden', 'true');
+    // Page CSS must not turn the swap into a crossfade.
+    el.style.transition = 'none';
     this.setVisible(false);
   }
 
@@ -44,10 +49,11 @@ export class DomSlot implements VideoSlot {
   }
 
   play(rate: number, muted: boolean): Promise<void> {
-    this.el.defaultPlaybackRate = rate;
-    this.el.playbackRate = rate;
-    this.el.muted = muted;
     try {
+      const r = Number.isFinite(rate) && rate > 0 ? Math.min(MAX_RATE, Math.max(MIN_RATE, rate)) : 1;
+      this.el.defaultPlaybackRate = r;
+      this.el.playbackRate = r;
+      this.el.muted = muted;
       return this.el.play() ?? Promise.resolve();
     } catch (error) {
       return Promise.reject(error);
@@ -142,20 +148,25 @@ export class DomSlot implements VideoSlot {
 /** The pose's still image, decoded before it shows. */
 export class DomStill implements StillLayer {
   readonly el: HTMLImageElement;
+  /** Counts loads: an older image that decodes after a newer one asked for is not shown. */
+  private loads = 0;
 
   constructor(el: HTMLImageElement) {
     this.el = el;
     el.alt = '';
     el.decoding = 'async';
     el.draggable = false;
+    el.style.transition = 'none';
     this.setVisible(false);
   }
 
   async load(url: string): Promise<void> {
-    const img = new Image();
+    const n = ++this.loads;
+    const img = this.el.ownerDocument.createElement('img');
     img.decoding = 'async';
     img.src = url;
     await img.decode();
+    if (n !== this.loads) return;
     this.el.src = url;
     // The visible element decodes from the image cache.
     await this.el.decode().catch(() => undefined);
@@ -167,30 +178,82 @@ export class DomStill implements StillLayer {
   }
 }
 
-/** Edge sounds through `<audio>` elements. Blocked autoplay keeps them silent. */
+/** Events that let a page play sound (user activation). */
+const GESTURES = ['pointerdown', 'pointerup', 'mousedown', 'keydown', 'touchend', 'click'];
+
+/**
+ * Edge sounds through `<audio>` elements. When the browser blocks sound
+ * until a gesture, a one-shot sound is over (it belongs to its moment, it
+ * never plays late), and a looping one starts on the person's next gesture.
+ */
 export class DomSounds implements SoundOut {
+  private readonly doc: Document;
+
+  constructor(doc: Document) {
+    this.doc = doc;
+  }
+
   play(url: string, volume: number, loop: boolean): Sound {
-    const audio = new Audio(url);
-    audio.volume = volume;
+    const doc = this.doc;
+    const audio = doc.createElement('audio');
+    audio.preload = 'auto';
+    audio.src = url;
+    audio.volume = Number.isFinite(volume) ? Math.min(1, Math.max(0, volume)) : 1;
     audio.loop = loop;
     let stopped = false;
+    let paused = false;
+    let over = false;
     let ended: (() => void) | null = null;
-    audio.addEventListener('ended', () => ended?.());
-    const start = () => audio.play().catch(() => undefined);
-    void start();
+    const finish = () => {
+      if (over) return;
+      over = true;
+      ended?.();
+    };
+    const retry = () => {
+      disarm();
+      if (!stopped && !paused) start();
+    };
+    const arm = () => {
+      for (const e of GESTURES) doc.addEventListener(e, retry, true);
+    };
+    const disarm = () => {
+      for (const e of GESTURES) doc.removeEventListener(e, retry, true);
+    };
+    const start = () => {
+      let playing: Promise<void> | undefined;
+      try {
+        playing = audio.play();
+      } catch (error) {
+        playing = Promise.reject(error);
+      }
+      void playing?.catch((error: unknown) => {
+        // Paused or stopped before it started: `resume` starts it again, `stop` ends it.
+        if (stopped || paused) return;
+        if (!loop) finish();
+        else if ((error as { name?: unknown } | null)?.name === 'NotAllowedError') arm();
+      });
+    };
+    audio.addEventListener('ended', finish);
+    start();
     return {
       stop: () => {
         stopped = true;
+        disarm();
         audio.pause();
         audio.removeAttribute('src');
         audio.load();
       },
-      pause: () => audio.pause(),
+      pause: () => {
+        paused = true;
+        audio.pause();
+      },
       resume: () => {
-        if (!stopped && !audio.ended) void start();
+        paused = false;
+        if (!stopped && !over && !audio.ended) start();
       },
       onEnded: (fn) => {
         ended = fn;
+        if (over) fn();
       }
     };
   }
