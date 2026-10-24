@@ -3,8 +3,8 @@
 #
 # - libmasko_player_ffi.so for arm64-v8a, armeabi-v7a and x86_64 (NDK 27
 #   clang, API 24, 16 KB pages) into android/player/src/main/jniLibs/<abi>/;
-# - the host library for the JVM unit tests, where JNA finds it
-#   (android/player/src/test/resources/<jna platform>/);
+# - the host library for the JVM unit tests into android/player/src/test/engine/,
+#   the folder the tests give JNA (jna.library.path);
 # - the Kotlin MaskoEngine bindings (UniFFI) into
 #   android/player/src/main/generated/;
 # - android/player/engine.stamp: a hash of the engine sources, then the hash
@@ -72,21 +72,22 @@ fi
 # No stamp until this build is done: a failed build leaves nothing Gradle accepts.
 rm -f "$STAMP"
 
-# The host library for JVM tests, in the folder JNA searches on this machine.
-case "$(uname -s)-$(uname -m)" in
-  Darwin-arm64) host_dir="darwin-aarch64"; host_lib="libmasko_player_ffi.dylib" ;;
-  Darwin-x86_64) host_dir="darwin-x86-64"; host_lib="libmasko_player_ffi.dylib" ;;
-  Linux-x86_64) host_dir="linux-x86-64"; host_lib="libmasko_player_ffi.so" ;;
-  Linux-aarch64) host_dir="linux-aarch64"; host_lib="libmasko_player_ffi.so" ;;
-  *) echo "Unsupported host $(uname -s)-$(uname -m)" >&2; exit 1 ;;
+# The host library for JVM tests. Not a test resource: the Android Gradle
+# plugin leaves .so files out of those, so JNA would not find it on Linux.
+case "$(uname -s)" in
+  Darwin) host_lib="libmasko_player_ffi.dylib" ;;
+  Linux) host_lib="libmasko_player_ffi.so" ;;
+  *) echo "Unsupported host $(uname -s)" >&2; exit 1 ;;
 esac
+HOST_ENGINE="$PLAYER/src/test/engine"
 
-echo "==> Host library ($host_dir)"
+echo "==> Host library ($(uname -s)-$(uname -m))"
 # The bindings are read from this library's symbols; a fully stripped ELF
 # library (Linux) has none, so only its debug info is stripped.
 cargo build -p masko-player-ffi "${CARGO_FLAGS[@]}" --config 'profile.release.strip="debuginfo"'
-mkdir -p "$PLAYER/src/test/resources/$host_dir"
-cp "$CARGO_TARGET_DIR/release/$host_lib" "$PLAYER/src/test/resources/$host_dir/$host_lib"
+rm -rf "$HOST_ENGINE"
+mkdir -p "$HOST_ENGINE"
+cp "$CARGO_TARGET_DIR/release/$host_lib" "$HOST_ENGINE/$host_lib"
 
 echo "==> Kotlin bindings"
 cargo build -p uniffi-bindgen --locked
@@ -101,7 +102,7 @@ mkdir -p "$GENERATED"
 
 built=(
   "src/main/generated/ai/masko/player/engine/masko_player_ffi.kt"
-  "src/test/resources/$host_dir/$host_lib"
+  "src/test/engine/$host_lib"
 )
 
 if ! $host_only; then
@@ -168,7 +169,7 @@ mv "$STAMP.tmp" "$STAMP"
 
 echo "==> Done"
 if $host_only; then
-  ls -l "$PLAYER/src/test/resources/$host_dir/$host_lib"
+  ls -l "$HOST_ENGINE/$host_lib"
 else
-  ls -l "$JNI"/*/libmasko_player_ffi.so "$PLAYER/src/test/resources/$host_dir/$host_lib"
+  ls -l "$JNI"/*/libmasko_player_ffi.so "$HOST_ENGINE/$host_lib"
 fi

@@ -40,6 +40,8 @@ android {
                 "masko.fixtures",
                 (project.findProperty("masko.fixtures") as String?) ?: rootProject.file("../spec/fixtures").absolutePath,
             )
+            // The host engine library, built by scripts/build-android.sh.
+            it.systemProperty("jna.library.path", file("src/test/engine").absolutePath)
             it.testLogging {
                 events("passed", "failed", "skipped")
                 showStandardStreams = false
@@ -74,7 +76,7 @@ dependencies {
     // @RequiresApi in the generated bindings.
     implementation("androidx.annotation:annotation:1.9.1")
 
-    // JVM tests load the host engine library (src/test/resources) through the desktop JNA.
+    // JVM tests load the host engine library (src/test/engine) through the desktop JNA.
     testImplementation("net.java.dev.jna:jna:$jna")
     testImplementation("junit:junit:4.13.2")
     // android.jar has only stubs of org.json.
@@ -130,7 +132,7 @@ fun verifyEngine(libraries: Boolean) {
     }
     val needed = mutableListOf("src/main/generated/ai/masko/player/engine/masko_player_ffi.kt")
     // The host library of the JVM tests, when this machine built one.
-    needed += built.keys.filter { it.startsWith("src/test/resources/") }
+    needed += built.keys.filter { it.startsWith("src/test/engine/") }
     if (libraries) {
         needed += listOf("arm64-v8a", "armeabi-v7a", "x86_64").map { "src/main/jniLibs/$it/libmasko_player_ffi.so" }
         // Any other engine library in jniLibs would be packaged too.

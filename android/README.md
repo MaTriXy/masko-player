@@ -172,7 +172,7 @@ cd android && ./gradlew :player:assembleRelease
 - `libmasko_player_ffi.so` for the three ABIs with the NDK 27 clang (API 24,
   16 KB pages) into `player/src/main/jniLibs/`, with this machine's folders
   remapped (`--remap-path-prefix`), so the libraries name no local path;
-- the host library for JVM tests into `player/src/test/resources/<platform>/`;
+- the host library for JVM tests into `player/src/test/engine/`;
 - the Kotlin bindings (`uniffi.toml`, package `ai.masko.player.engine`) into
   `player/src/main/generated/`;
 - `player/engine.stamp`: a hash of the engine sources (`engine/`,
