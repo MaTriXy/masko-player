@@ -82,7 +82,9 @@ case "$(uname -s)-$(uname -m)" in
 esac
 
 echo "==> Host library ($host_dir)"
-cargo build -p masko-player-ffi "${CARGO_FLAGS[@]}"
+# The bindings are read from this library's symbols; a fully stripped ELF
+# library (Linux) has none, so only its debug info is stripped.
+cargo build -p masko-player-ffi "${CARGO_FLAGS[@]}" --config 'profile.release.strip="debuginfo"'
 mkdir -p "$PLAYER/src/test/resources/$host_dir"
 cp "$CARGO_TARGET_DIR/release/$host_lib" "$PLAYER/src/test/resources/$host_dir/$host_lib"
 
