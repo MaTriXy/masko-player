@@ -86,13 +86,21 @@ mascot.current?.fire('celebrate');
 
 ## Install
 
-It is not on npm yet. Build the native players from this repository, then
-install this folder in your app, as `../examples/react-native` does:
+```bash
+npm install @masko/player-react-native
+npx expo run:ios          # or run:android; prebuild links the native code
+```
+
+The package carries both native players: the Swift player with the
+engine's iOS slices, and `ai.masko:player` as a local Maven repository.
+
+To work on the package itself, build the native players from this
+repository, then install this folder in an app, as
+`../examples/react-native` does:
 
 ```bash
 scripts/build-react-native.sh                      # in this repository
 npm install <this repository>/react-native         # in your app
-npx expo run:ios          # or run:android; prebuild links the native code
 ```
 
 The Android engine is built for `arm64-v8a`, `armeabi-v7a` and `x86_64`.
