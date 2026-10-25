@@ -412,7 +412,67 @@
     },
     "release": {
       "type": "object",
-      "properties": {},
+      "properties": {
+        "id": {
+          "description": "Names what plays: a fingerprint of the delivered graph without its links. A fresh delivery with the same id only renews the links.",
+          "type": "string"
+        },
+        "listingId": {
+          "type": "string"
+        },
+        "slug": {
+          "type": "string"
+        },
+        "mascotVersion": {
+          "type": "integer",
+          "minimum": -9007199254740991,
+          "maximum": 9007199254740991
+        },
+        "contentHash": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "updatedAt": {
+          "type": "string"
+        },
+        "resourceKind": {
+          "type": "string",
+          "enum": [
+            "marketplace_listing",
+            "mascot"
+          ]
+        },
+        "resourceId": {
+          "type": "string"
+        },
+        "resourceVersionNumber": {
+          "type": "integer",
+          "minimum": -9007199254740991,
+          "maximum": 9007199254740991
+        },
+        "runtimeBuildId": {
+          "type": "string"
+        },
+        "runtimeContentHash": {
+          "type": "string"
+        },
+        "sourceListingId": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
       "additionalProperties": {}
     },
     "deliveryAccess": {
