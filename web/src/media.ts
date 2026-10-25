@@ -73,6 +73,8 @@ export interface Host {
   formats: Format[];
   /** The mascot's size on screen times the screen density, in pixels. */
   pixels(): number;
+  /** A video file's length in seconds, from its metadata; rejects when it cannot be read. */
+  clipLength(url: string): Promise<number>;
   /** Shows or hides the tap-to-play overlay. */
   blocked(on: boolean): void;
   /** The player is destroyed: remove what the host added. */

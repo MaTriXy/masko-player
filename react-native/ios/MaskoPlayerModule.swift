@@ -13,6 +13,9 @@ public final class MaskoPlayerModule: Module {
       Prop("delivery") { (view: MaskoNativeView, json: String?) in
         MainActor.assumeIsolated { view.delivery = json }
       }
+      Prop("clip") { (view: MaskoNativeView, url: String?) in
+        MainActor.assumeIsolated { view.clip = url }
+      }
       Prop("autoPlay") { (view: MaskoNativeView, on: Bool?) in
         MainActor.assumeIsolated { view.autoPlay = on }
       }

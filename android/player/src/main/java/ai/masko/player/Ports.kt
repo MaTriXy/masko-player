@@ -75,6 +75,9 @@ internal interface Stage {
      */
     fun preload(url: String, done: (Boolean) -> Unit)
 
+    /** Reads a video's length in seconds from its metadata, then calls [done], with null when it cannot be read. */
+    fun clipLength(url: String, done: (Double?) -> Unit)
+
     /** Frees the slots and cancels preloads and still loads; nothing is called back afterwards. */
     fun release()
 }

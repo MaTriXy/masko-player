@@ -109,6 +109,27 @@ struct Delivery {
         shape = Delivery.shape(of: json)
     }
 
+    /// The delivery a lone clip plays as (player.md, "One clip"): one pose,
+    /// `clip`, whose loop is the HEVC file, `seconds` long.
+    static func clip(hevc: URL, seconds: TimeInterval) -> Data {
+        let delivery: [String: Any] = [
+            "deliverySchemaVersion": 1,
+            "playerContract": 1,
+            "requires": [String](),
+            "runtimeGraph": [
+                "runtimeGraphSchemaVersion": 1,
+                "initialNode": "clip",
+                "nodes": [["id": "clip"]],
+                "edges": [[
+                    "id": "clip", "source": "clip", "target": "clip", "isLoop": true,
+                    "duration": seconds, "videos": ["hevc": hevc.absoluteString],
+                ]],
+                "inputs": [Any](),
+            ],
+        ]
+        return (try? JSONSerialization.data(withJSONObject: delivery)) ?? Data()
+    }
+
     /// The file to play for an edge on a mascot `pixels` wide on screen: the
     /// smallest variant at least that large, else the base file (player.md).
     /// `key` names the choice, so a cached file outlives a link refresh.

@@ -67,6 +67,21 @@ final class RealVideoTests: XCTestCase {
         return base[y * CVPixelBufferGetBytesPerRow(frame) + x * 4 + 3]
     }
 
+    func testTheFileCacheReadsAClipsLengthFromItsFile() async throws {
+        let loop = clips.appendingPathComponent("loop.mov")
+        let expected = try await AVURLAsset(url: loop).load(.duration).seconds
+        let cache = FileCache()
+        let seconds: TimeInterval? = await withCheckedContinuation { done in
+            cache.length(loop, key: "clip") { done.resume(returning: $0) }
+        }
+        XCTAssertEqual(try XCTUnwrap(seconds), expected, accuracy: 0.001)
+        XCTAssertGreaterThan(expected, 0)
+        let missing: TimeInterval? = await withCheckedContinuation { done in
+            cache.length(clips.appendingPathComponent("none.mov"), key: "missing") { done.resume(returning: $0) }
+        }
+        XCTAssertNil(missing)
+    }
+
     func testTheClipFilesHaveAnAlphaChannel() async throws {
         let asset = AVURLAsset(url: clips.appendingPathComponent("loop.mov"))
         let tracks = try await asset.loadTracks(withMediaType: .video)

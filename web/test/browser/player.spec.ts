@@ -202,6 +202,20 @@ test('the one-file script build plays on a plain page, with the engine inlined',
   );
 });
 
+test('one clip: a single file plays on its own and loops, with a mascot on every frame', async ({ page }) => {
+  await open(page, '/pages/esm.html');
+  await page.evaluate(() => {
+    const clip = { webm: `${location.origin}/clips/idle-loop.webm`, hevc: `${location.origin}/clips/idle-loop.mov` };
+    return (window as unknown as Win).start({ clip });
+  });
+  await waitClip(page, 'clip', 3);
+  const { samples, events } = await result(page);
+  const after = expectAlwaysAMascot(samples);
+  expect(collapse(after.map((s) => s.color))).toEqual(['idle-loop']);
+  expect(events.filter((e) => e.event === 'pose').map((e) => e.pose)).toEqual(['clip']);
+  expect(events.filter((e) => e.event === 'error')).toEqual([]);
+});
+
 test('React: <MaskoPlayer> with a ref and event props, one player under StrictMode, new links swap without a remount', async ({
   page
 }) => {

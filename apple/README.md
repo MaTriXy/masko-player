@@ -48,6 +48,10 @@ MaskoView(player: player)                  // SwiftUI
 MaskoPlayerView(player: player)            // UIView on iOS, NSView on macOS
 ```
 
+One animation on its own, from its HEVC file: `MaskoPlayer(clip: url)`. The
+player reads the file's length and loops it as one pose named `clip`; a
+file it cannot read plays nothing and reports `clip_failed`.
+
 - `set(_:_:)` takes a `Bool` or a number, `fire(_:)` a name. Values set right
   after the player is made choose its first pose. The player then loads the
   first frame and starts, at play time 0, once that frame is on screen; with

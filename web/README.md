@@ -56,11 +56,25 @@ Without a build step, one file with the engine inlined,
 script that defines `window.MaskoPlayer`, not a module to import.
 
 ```html
-<script src="https://cdn.jsdelivr.net/npm/@masko/player@0.1.1/dist/masko-player.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@masko/player@0.1.2/dist/masko-player.js"></script>
 <script>
   const mascot = MaskoPlayer.mount(document.getElementById('mascot'), { delivery });
 </script>
 ```
+
+
+### One animation
+
+To play one animation on its own, give its files in place of a delivery:
+
+```ts
+mountMascot(element, { clip: { webm: 'https://…/wave.webm', hevc: 'https://…/wave.mov' } });
+// React: <MaskoPlayer clip={{ webm, hevc }} />; script tag: MaskoPlayer.mount(element, { clip })
+```
+
+The player picks the file the browser shows with transparency, reads its
+length, and loops it as one pose named `clip`. A clip whose length cannot be
+read plays nothing and reports `error` `clip_failed`.
 
 ## What the app can call
 

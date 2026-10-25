@@ -29,6 +29,11 @@ mascot.current?.set('working', true);
 mascot.current?.fire('celebrate');
 ```
 
+One animation on its own: `<MaskoView clip={{ hevc, stacked }} />` in
+place of `delivery`. iOS plays the HEVC file, Android the stacked MP4; each
+loops as one pose named `clip`. A clip without the file for the platform, or
+whose length cannot be read, reports `clip_failed`.
+
 - `delivery` is the `delivery` object of
   `GET /v1/canvases/{canvasId}/releases/{releaseId}/delivery`, its JSON, or
   the response around it.

@@ -4,6 +4,7 @@ import android.app.Application
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.media.MediaMetadataRetriever
 import android.net.Uri
 import android.os.Build
 import android.os.Handler
@@ -40,7 +41,7 @@ import java.util.concurrent.atomic.AtomicReference
  * plays from the network instead.
  */
 @OptIn(UnstableApi::class)
-internal class MediaFiles private constructor(context: Context) {
+internal class MediaFiles private constructor(private val context: Context) {
     /** A preload or a still that is loading. Cancelled, its callback is never called. */
     fun interface Request {
         fun cancel()
@@ -121,6 +122,37 @@ internal class MediaFiles private constructor(context: Context) {
             if (preloading[key] !== job) return@post
             preloading.remove(key)
             job.callbacks.toList().forEach { it(ok) }
+        }
+    }
+
+    /**
+     * Reads a video's length in seconds from its metadata, off the main
+     * thread; [done] runs on the main thread, with null when it cannot be read.
+     */
+    fun length(url: String, done: (Double?) -> Unit): Request {
+        val waiting = AtomicReference(done)
+        work.execute {
+            if (waiting.get() == null) return@execute
+            val seconds = readLength(url)
+            main.post { waiting.getAndSet(null)?.invoke(seconds) }
+        }
+        return Request { waiting.set(null) }
+    }
+
+    private fun readLength(url: String): Double? {
+        val retriever = MediaMetadataRetriever()
+        return try {
+            if (isRemote(url)) retriever.setDataSource(url, emptyMap()) else retriever.setDataSource(context, Uri.parse(url))
+            retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)
+                ?.toLongOrNull()?.takeIf { it > 0 }?.let { it / 1000.0 }
+        } catch (_: Exception) {
+            null
+        } finally {
+            try {
+                retriever.release()
+            } catch (_: Exception) {
+                // Released either way.
+            }
         }
     }
 

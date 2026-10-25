@@ -10,7 +10,7 @@ import org.json.JSONArray
 import org.json.JSONObject
 
 /**
- * Shows one [MaskoPlayer] in a [MaskoPlayerView]. A new delivery, or
+ * Shows one [MaskoPlayer] in a [MaskoPlayerView]. A new delivery or clip, or
  * `getDelivery` given or taken away, loads a new player; the view going away
  * destroys it.
  */
@@ -26,6 +26,8 @@ class MaskoNativeView(context: Context, appContext: AppContext) : ExpoView(conte
   private val onDeliveryRequest by EventDispatcher()
 
   var delivery: String? = null
+  /** A lone clip's stacked file, played in place of [delivery]. */
+  var clip: String? = null
   var autoPlay: Boolean? = null
   var sound = false
   var refreshes = false
@@ -35,7 +37,7 @@ class MaskoNativeView(context: Context, appContext: AppContext) : ExpoView(conte
 
   private val mascot = MaskoPlayerView(context)
 
-  /** What the player was loaded with. */
+  /** What the player was loaded with: the delivery's JSON, or `clip:` and the file. */
   private var loaded: Pair<String, Boolean>? = null
 
   /** `getDelivery` calls waiting for JavaScript's answer. */
@@ -70,8 +72,13 @@ class MaskoNativeView(context: Context, appContext: AppContext) : ExpoView(conte
   }
 
   fun propsChanged() {
-    val json = delivery ?: return unload()
-    if (loaded != json to refreshes) load(json)
+    val file = clip?.takeIf { it.isNotEmpty() }
+    if (file != null) {
+      if (loaded != "clip:$file" to refreshes) loadClip(file)
+    } else {
+      val json = delivery?.takeIf { it.isNotEmpty() } ?: return unload()
+      if (loaded != json to refreshes) load(json)
+    }
     player?.sound = sound
   }
 
@@ -103,6 +110,14 @@ class MaskoNativeView(context: Context, appContext: AppContext) : ExpoView(conte
     next.addListener(listener)
     player = next
     loaded = json to refreshes
+  }
+
+  private fun loadClip(file: String) {
+    unload()
+    val next = mascot.loadClip(file, MaskoPlayer.Options(autoPlay = autoPlay, sound = sound))
+    next.addListener(listener)
+    player = next
+    loaded = "clip:$file" to refreshes
   }
 
   /** Asks JavaScript's `getDelivery` (the player asks on the main thread); [answerDelivery] replies. */

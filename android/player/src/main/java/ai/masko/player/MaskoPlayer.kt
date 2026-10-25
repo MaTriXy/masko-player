@@ -18,6 +18,7 @@ import kotlin.random.Random
  * listeners added right after loading hear the first pose.
  */
 class MaskoPlayer internal constructor(
+    /** The release delivery; ignored when [clip] is given. */
     deliveryJson: String,
     private val stage: Stage,
     private val sounds: Sounds,
@@ -26,8 +27,13 @@ class MaskoPlayer internal constructor(
     private val wallClockMs: () -> Long,
     private val options: Options,
     /** The engine's random source for extra clips (rules.md 7.3): its own for every player. */
-    seed: ULong = randomSeed(),
-    makeEngine: (String) -> MaskoEngine = ::MaskoEngine,
+    private val seed: ULong = randomSeed(),
+    private val makeEngine: (String) -> MaskoEngine = ::MaskoEngine,
+    /**
+     * One animation's stacked file, played on its own in a loop in place of
+     * the delivery: its delivery waits for the file's length (player.md, "One clip").
+     */
+    clip: String? = null,
 ) {
     /** How the player starts and refreshes its links. */
     class Options(
@@ -109,13 +115,13 @@ class MaskoPlayer internal constructor(
 
     private val listeners = CopyOnWriteArrayList<Listener>()
     private lateinit var engine: MaskoEngine
-    private var delivery: Delivery
+    private var delivery = Delivery.NONE
     private val clock = PlayClock(elapsedMs)
     private val slots = stage.slots
 
     private var started = false
     private var destroyed = false
-    private var appPaused: Boolean
+    private var appPaused = !(options.autoPlay ?: true)
     private var hostPaused = false
     private val paused get() = appPaused || hostPaused
     /** Whether the view is in a window; a detached view keeps nothing queued on the main thread. */
@@ -164,9 +170,26 @@ class MaskoPlayer internal constructor(
     private var asks = 0
 
     init {
+        slots.forEachIndexed { i, slot -> slot.events = SlotEvents(i) }
+        if (clip == null) {
+            open(deliveryJson)
+            appPaused = !(options.autoPlay ?: delivery.autoPlay)
+        } else {
+            stage.clipLength(clip) { seconds ->
+                when {
+                    destroyed -> Unit
+                    seconds == null -> fail("clip_failed", "cannot read the length of $clip")
+                    else -> open(Delivery.clip(clip, seconds))
+                }
+            }
+        }
+    }
+
+    /** Starts the engine on [json]; a delivery it refuses plays nothing (rules.md 1.2). */
+    private fun open(json: String) {
         var refusal: Pair<String, String?>? = null
         try {
-            engine = makeEngine(deliveryJson)
+            engine = makeEngine(json)
         } catch (e: LoadFailure.Refused) {
             // The engine's own reason, as on every platform: `unreadable` for text that is not JSON.
             refusal = e.code to e.detail
@@ -177,31 +200,31 @@ class MaskoPlayer internal constructor(
             // Or no engine library for this device's ABI.
             refusal = "engine_failed" to e.message
         }
-        delivery = (if (refusal == null) Delivery.parse(deliveryJson) else null)
-            ?: Delivery(true, emptyMap(), emptyMap(), null, null)
-        appPaused = !(options.autoPlay ?: delivery.autoPlay)
-        slots.forEachIndexed { i, slot -> slot.events = SlotEvents(i) }
         if (refusal != null) {
-            // Refusing means playing nothing from the delivery (rules.md 1.2): free the decoders at once.
-            val (code, detail) = refusal
-            destroyed = true
-            stage.release()
-            sounds.release()
-            scheduler.post { emit { it.onError(code, detail) } }
-        } else {
-            try {
-                engine.seed(seed)
-            } catch (e: Exception) {
-                scheduler.post { emit { it.onError("engine_failed", e.message) } }
-            }
-            stage.whenReady(
-                ready = { scheduler.post { begin() } },
-                failed = { detail ->
-                    scheduler.post { if (!destroyed) emit { it.onError("surface_unavailable", detail) } }
-                },
-            )
-            scheduleRefresh()
+            fail(refusal.first, refusal.second)
+            return
         }
+        delivery = Delivery.parse(json) ?: delivery
+        try {
+            engine.seed(seed)
+        } catch (e: Exception) {
+            scheduler.post { emit { it.onError("engine_failed", e.message) } }
+        }
+        stage.whenReady(
+            ready = { scheduler.post { begin() } },
+            failed = { detail ->
+                scheduler.post { if (!destroyed) emit { it.onError("surface_unavailable", detail) } }
+            },
+        )
+        scheduleRefresh()
+    }
+
+    /** Plays nothing, and frees the decoders at once: the delivery or the clip cannot play. */
+    private fun fail(code: String, detail: String?) {
+        destroyed = true
+        stage.release()
+        sounds.release()
+        scheduler.post { emit { it.onError(code, detail) } }
     }
 
     // ------------------------------------------------------------------ app API
@@ -289,7 +312,7 @@ class MaskoPlayer internal constructor(
         commands.clear()
         stage.release()
         sounds.release()
-        if (wasRunning) {
+        if (wasRunning && ::engine.isInitialized) {
             try {
                 engine.destroy()
             } catch (_: Exception) {
@@ -373,7 +396,8 @@ class MaskoPlayer internal constructor(
 
     /** Calls the engine at the current play time and carries out its commands in order. */
     private fun call(f: (ULong) -> List<EngineCommand>) {
-        if (destroyed) return
+        // A lone clip drops calls until its engine starts.
+        if (destroyed || !::engine.isInitialized) return
         commands.addAll(engineCall(emptyList()) { f(clock.now().toULong()) })
         run()
     }

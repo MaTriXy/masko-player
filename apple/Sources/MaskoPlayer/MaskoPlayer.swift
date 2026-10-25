@@ -96,7 +96,10 @@ public final class MaskoPlayer {
     private let loader: MediaLoader
     private let sounds: SoundOutput
     private let host: PlayerHost
-    private let json: String
+    private var json: String
+    /// A lone clip whose delivery waits for its file's length (player.md,
+    /// "One clip").
+    private var clip: URL?
     private var delivery: Delivery?
     private(set) var engine: MaskoEngine?
     private var refusal: (code: String, detail: String?)?
@@ -208,6 +211,34 @@ public final class MaskoPlayer {
             refusal = ("unreadable", String(describing: error))
         }
         self.autoPlay = autoPlay ?? self.delivery?.autoPlay ?? true
+        wireSlots()
+    }
+
+    /// A player for one animation on its own: its HEVC file, with
+    /// transparency, looped as one pose. The player reads the file's length
+    /// first; a file it cannot read plays nothing and reports an `error`
+    /// event `clip_failed`.
+    public convenience init(clip: URL, autoPlay: Bool? = nil) {
+        self.init(
+            clip: clip, autoPlay: autoPlay, stage: AVStage(), loader: FileCache(), sounds: AVSounds(),
+            host: .real)
+        DispatchQueue.main.async { [weak self] in
+            MainActor.assumeIsolated { self?.boot() }
+        }
+    }
+
+    init(clip: URL, autoPlay: Bool?, stage: Stage, loader: MediaLoader, sounds: SoundOutput, host: PlayerHost) {
+        self.stage = stage
+        self.loader = loader
+        self.sounds = sounds
+        self.host = host
+        json = ""
+        self.clip = clip
+        self.autoPlay = autoPlay ?? true
+        wireSlots()
+    }
+
+    private func wireSlots() {
         for (i, slot) in stage.slots.enumerated() {
             slot.onEnd = { [weak self] in self?.slotEnded(i) }
             slot.onFail = { [weak self] in self?.slotFailed(i) }
@@ -219,12 +250,35 @@ public final class MaskoPlayer {
     func boot() {
         guard !booted, !destroyed else { return }
         booted = true
+        if let clip {
+            readClip(clip)
+            return
+        }
         if let refusal {
             emit(.error(code: refusal.code, detail: refusal.detail))
             return
         }
         scheduleRefresh()
         showPoster()
+    }
+
+    /// A lone clip's delivery, once its file's length is known; then the
+    /// first frame loads as for a release.
+    private func readClip(_ url: URL) {
+        loader.length(url, key: "clip") { [weak self] seconds in
+            guard let self, !self.destroyed else { return }
+            self.clip = nil
+            guard let seconds else {
+                self.emit(.error(code: "clip_failed", detail: "cannot read the length of \(url.absoluteString)"))
+                return
+            }
+            let data = Delivery.clip(hevc: url, seconds: seconds)
+            self.json = String(decoding: data, as: UTF8.self)
+            self.engine = try? MaskoEngine(delivery: self.json)
+            self.engine?.seed(seed: UInt64.random(in: 1...UInt64.max))
+            self.delivery = try? Delivery(json: data)
+            self.showPoster()
+        }
     }
 
     // MARK: - What the app calls
@@ -276,6 +330,11 @@ public final class MaskoPlayer {
     /// Starts the mascot (once its first frame shows), or resumes it exactly
     /// where it paused.
     public func play() {
+        // A lone clip still reading its length starts once it can.
+        if clip != nil, !destroyed {
+            autoPlay = true
+            return
+        }
         guard !destroyed, engine != nil else { return }
         if !started {
             autoPlay = true

@@ -1,8 +1,8 @@
 import ExpoModulesCore
 import UIKit
 
-/// Shows one `MaskoPlayer` in a `MaskoPlayerView`. A new delivery, or
-/// `getDelivery` given or taken away, loads a new player; the view going away
+/// Shows one `MaskoPlayer` in a `MaskoPlayerView`. A new delivery or clip,
+/// or `getDelivery` given or taken away, loads a new player; the view going away
 /// destroys it. A `getDelivery` call waits for JavaScript without holding the
 /// view, and fails when the view leaves its window, so an unmounted view is
 /// freed even when JavaScript never answers.
@@ -15,14 +15,16 @@ final class MaskoNativeView: ExpoView {
   let onDeliveryRequest = EventDispatcher()
 
   var delivery: String?
+  /// A lone clip's HEVC file, played in place of `delivery`.
+  var clip: String?
   var autoPlay: Bool?
   var sound = false
   var refreshes = false
 
   private(set) var player: MaskoPlayer?
   private let mascot = MaskoPlayerView()
-  /// What the player was loaded with.
-  private var loaded: (delivery: String, refreshes: Bool)?
+  /// What the player was loaded with: the delivery's JSON, or `clip:` and the file.
+  private var loaded: (source: String, refreshes: Bool)?
   /// `getDelivery` calls waiting for JavaScript's answer.
   private var requests: [Int: CheckedContinuation<Data, Error>] = [:]
   private var lastRequest = 0
@@ -58,9 +60,13 @@ final class MaskoNativeView: ExpoView {
   }
 
   func propsChanged() {
-    guard let delivery else { return unload() }
-    if loaded?.delivery != delivery || loaded?.refreshes != refreshes {
-      load(delivery)
+    if let clip, let url = URL(string: clip) {
+      if loaded?.source != "clip:" + clip { loadClip(url) }
+    } else {
+      guard let delivery, !delivery.isEmpty else { return unload() }
+      if loaded?.source != delivery || loaded?.refreshes != refreshes {
+        load(delivery)
+      }
     }
     player?.sound = sound
   }
@@ -97,11 +103,21 @@ final class MaskoNativeView: ExpoView {
       }
     }
     let player = MaskoPlayer(delivery: Data(json.utf8), autoPlay: autoPlay, getDelivery: getDelivery)
+    show(player)
+    loaded = (json, refreshes)
+  }
+
+  private func loadClip(_ url: URL) {
+    unload()
+    show(MaskoPlayer(clip: url, autoPlay: autoPlay))
+    loaded = ("clip:" + url.absoluteString, refreshes)
+  }
+
+  private func show(_ player: MaskoPlayer) {
     player.sound = sound
     player.onEvent = { [weak self] event in self?.send(event) }
     mascot.player = player
     self.player = player
-    loaded = (json, refreshes)
   }
 
   private func unload() {

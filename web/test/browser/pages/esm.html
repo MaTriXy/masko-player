@@ -16,8 +16,11 @@
 
       window.start = (options = {}) => {
         const element = document.getElementById('m');
-        const delivery = options.delivery ?? testDelivery(options);
-        window.handle = mountMascot(element, { delivery, sound: options.sound, autoPlay: options.autoPlay });
+        const common = { sound: options.sound, autoPlay: options.autoPlay };
+        window.handle = mountMascot(
+          element,
+          options.clip ? { ...common, clip: options.clip } : { ...common, delivery: options.delivery ?? testDelivery(options) }
+        );
         window.events = record(window.handle);
         window.watcher = watch(element.querySelector('.masko-player'));
         return true;

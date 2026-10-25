@@ -1,3 +1,4 @@
+import AVFoundation
 import CoreGraphics
 import Foundation
 import ImageIO
@@ -9,6 +10,9 @@ import ImageIO
 protocol MediaLoader: AnyObject {
     func file(_ url: URL, key: String, done: @escaping @MainActor (URL?) -> Void)
     func image(_ url: URL, key: String, done: @escaping @MainActor (CGImage?) -> Void)
+    /// A video's length in seconds, read from its local copy; nil when it
+    /// cannot be read.
+    func length(_ url: URL, key: String, done: @escaping @MainActor (TimeInterval?) -> Void)
 }
 
 /// Downloads files into a temporary folder and keeps the most recent few
@@ -102,6 +106,17 @@ final class FileCache: MediaLoader {
                 guard let self, !self.closed else { return }
                 if let image { self.images[key] = image }
                 done(image)
+            }
+        }
+    }
+
+    func length(_ url: URL, key: String, done: @escaping @MainActor (TimeInterval?) -> Void) {
+        file(url, key: key) { [weak self] local in
+            guard let local else { return done(nil) }
+            Task { @MainActor [weak self] in
+                let seconds = try? await AVURLAsset(url: local).load(.duration).seconds
+                guard let self, !self.closed else { return }
+                done(seconds.flatMap { $0.isFinite && $0 > 0 ? $0 : nil })
             }
         }
     }

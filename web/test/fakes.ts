@@ -287,6 +287,15 @@ export class FakeHost implements Host {
     return this.size;
   }
 
+  /** File lengths for `clipLength`, by URL; a URL not here cannot be read. */
+  lengths = new Map<string, number>();
+
+  clipLength(url: string): Promise<number> {
+    this.log.push(`length:${url}`);
+    const seconds = this.lengths.get(url);
+    return seconds === undefined ? Promise.reject(new Error(`cannot read ${url}`)) : Promise.resolve(seconds);
+  }
+
   blocked(on: boolean): void {
     this.overlay = on;
     this.log.push(`overlay:${on}`);

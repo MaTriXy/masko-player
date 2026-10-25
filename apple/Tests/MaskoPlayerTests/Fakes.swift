@@ -140,6 +140,15 @@ final class FakeLoader: MediaLoader {
         file(url, key: key) { local in done(local == nil ? nil : FakeLoader.image) }
     }
 
+    /// File lengths by file name, for `length`; a name not here cannot be read.
+    var lengths: [String: TimeInterval] = [:]
+
+    func length(_ url: URL, key: String, done: @escaping @MainActor (TimeInterval?) -> Void) {
+        file(url, key: key) { [unowned self] local in
+            done(local == nil ? nil : self.lengths[url.lastPathComponent])
+        }
+    }
+
     func release() {
         let waiting = held
         held = []

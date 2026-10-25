@@ -185,6 +185,14 @@ internal class FakeStage(private val log: MutableList<String>) : Stage {
         log += "preload ${short(url)}"
     }
 
+    /** File lengths by URL, for [clipLength]; a URL not here cannot be read. */
+    val lengths = HashMap<String, Double>()
+
+    override fun clipLength(url: String, done: (Double?) -> Unit) {
+        log += "length ${short(url)}"
+        done(lengths[url])
+    }
+
     override fun release() {
         released = true
         slots.forEach { it.release() }
@@ -274,18 +282,24 @@ internal class Rig(
     private val wallStart: Long = TestDelivery.WALL_START,
     seed: ULong? = null,
     makeEngine: (String) -> MaskoEngine = ::MaskoEngine,
+    /** A lone clip's stacked file, played in place of [delivery]; its length comes from [lengths]. */
+    clip: String? = null,
+    lengths: Map<String, Double> = emptyMap(),
 ) {
     val time = FakeTime()
     /** Time the device spent in deep sleep: the wall clock moves, the main thread's timers do not. */
     var slept = 0L
     val log = ArrayList<String>()
     val scheduler = FakeScheduler(time)
-    val stage = FakeStage(log).also { it.ready = ready }
+    val stage = FakeStage(log).also {
+        it.ready = ready
+        it.lengths.putAll(lengths)
+    }
     val sounds = FakeSounds(log)
     val player = if (seed == null) {
-        MaskoPlayer(delivery, stage, sounds, scheduler, { time.now }, { wallStart + time.now + slept }, options, makeEngine = makeEngine)
+        MaskoPlayer(delivery, stage, sounds, scheduler, { time.now }, { wallStart + time.now + slept }, options, makeEngine = makeEngine, clip = clip)
     } else {
-        MaskoPlayer(delivery, stage, sounds, scheduler, { time.now }, { wallStart + time.now + slept }, options, seed, makeEngine)
+        MaskoPlayer(delivery, stage, sounds, scheduler, { time.now }, { wallStart + time.now + slept }, options, seed, makeEngine, clip)
     }
     val heard = Heard().also { player.addListener(it) }
     val slot0 get() = stage.slots[0]

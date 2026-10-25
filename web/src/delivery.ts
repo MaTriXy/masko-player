@@ -52,6 +52,40 @@ export interface Delivery {
  */
 export type DeliveryInput = Delivery | string | { delivery: Delivery } | { data: { delivery: Delivery } };
 
+/** One animation's files, played on its own: `webm` and `hevc` on the web. */
+export interface ClipFiles {
+  webm?: string;
+  hevc?: string;
+}
+
+/**
+ * The delivery a lone clip plays as (spec/player.md, "One clip"): one pose,
+ * `clip`, whose loop is the file, `seconds` long.
+ */
+export function clipDelivery(files: ClipFiles, seconds: number): Delivery {
+  return {
+    deliverySchemaVersion: 1,
+    playerContract: 1,
+    requires: [],
+    runtimeGraph: {
+      runtimeGraphSchemaVersion: 1,
+      initialNode: 'clip',
+      nodes: [{ id: 'clip' }],
+      edges: [
+        {
+          id: 'clip',
+          source: 'clip',
+          target: 'clip',
+          isLoop: true,
+          duration: seconds,
+          videos: { webm: files.webm, hevc: files.hevc }
+        }
+      ],
+      inputs: []
+    }
+  };
+}
+
 /** The delivery object, and its JSON for the engine. Throws on text that is not JSON. */
 export function readDelivery(input: DeliveryInput): { delivery: Delivery; json: string } {
   let value: unknown = typeof input === 'string' ? JSON.parse(input) : input;

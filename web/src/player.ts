@@ -7,11 +7,13 @@ import { ClipCache } from './cache.ts';
 import { PlayClock } from './clock.ts';
 import {
   chooseFiles,
+  clipDelivery,
   expiresAt,
   fetchedAt,
   indexDelivery,
   readDelivery,
   sameRelease,
+  type ClipFiles,
   type Delivery,
   type DeliveryEdge,
   type DeliveryInput,
@@ -40,7 +42,9 @@ export type MaskoListener<K extends MaskoEventName> = (event: MaskoEvents[K]) =>
 
 export interface PlayerOptions {
   /** The release delivery, its JSON, or the API response around it. */
-  delivery: DeliveryInput;
+  delivery?: DeliveryInput;
+  /** One animation's files, played on its own in a loop, in place of `delivery`. */
+  clip?: ClipFiles;
   /** Returns a fresh delivery of the same release, for signed links that expire. */
   getDelivery?: () => DeliveryInput | Promise<DeliveryInput>;
   /** Lets clips with their own voice (`hasAudio`) be heard. Off by default. */
@@ -167,8 +171,14 @@ export class Player {
     this.cache = new ClipCache(host.files);
     this.voices = options.sound ?? false;
     this.seed = options.seed ?? Math.floor(Math.random() * 2 ** 52) + 1;
+    if (options.autoPlay !== undefined) this.wantStart = options.autoPlay;
+    if (options.clip) {
+      // Its delivery waits for the file's length (boot).
+      void this.boot();
+      return;
+    }
     try {
-      const { delivery, json } = readDelivery(options.delivery);
+      const { delivery, json } = readDelivery(options.delivery as DeliveryInput);
       this.useDelivery(delivery);
       this.json = json;
     } catch (error) {
@@ -176,7 +186,6 @@ export class Player {
       this.later(() => this.emit('error', { code: 'unreadable', detail: message(error) }));
       return;
     }
-    if (options.autoPlay !== undefined) this.wantStart = options.autoPlay;
     void this.boot();
   }
 
@@ -349,6 +358,7 @@ export class Player {
   // ------------------------------------------------------------- engine
 
   private async boot(): Promise<void> {
+    const clip = this.options.clip ? this.readClip(this.options.clip) : null;
     try {
       await loadWasm();
     } catch (error) {
@@ -360,6 +370,7 @@ export class Player {
       this.emit('error', { code: 'engine_unavailable', detail: message(error) });
       return;
     }
+    if (clip && !(await clip)) return;
     if (this.destroyed) return;
     let engine: Engine;
     try {
@@ -382,6 +393,34 @@ export class Player {
     if (autoPlay) this.start();
     else this.showFirstFrame();
     this.scheduleRefresh();
+  }
+
+  /**
+   * A lone clip's delivery, once its file's length is known: the preferred
+   * format first, then the other one. When neither can be read nothing
+   * plays, with `error` `clip_failed`. True when the delivery is ready.
+   */
+  private async readClip(files: ClipFiles): Promise<boolean> {
+    let failure = 'the clip has no webm or hevc file';
+    for (const format of this.host.formats) {
+      const url = files[format];
+      if (!url) continue;
+      try {
+        const seconds = await this.host.clipLength(url);
+        const delivery = clipDelivery(files, seconds);
+        this.useDelivery(delivery);
+        this.json = JSON.stringify(delivery);
+        return true;
+      } catch (error) {
+        failure = message(error);
+      }
+    }
+    if (this.destroyed) return false;
+    this.dead = true;
+    this.queue = [];
+    this.early = [];
+    this.emit('error', { code: 'clip_failed', detail: failure });
+    return false;
   }
 
   private start(): void {

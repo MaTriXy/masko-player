@@ -18,7 +18,7 @@ import type { MaskoEventName, MaskoEvents, MaskoListener, Player } from './playe
 export type { MaskoHandle, MountOptions } from './mount.ts';
 export type { MaskoEvents, Position } from './player.ts';
 
-export interface MaskoPlayerProps extends MountOptions {
+export type MaskoPlayerProps = MountOptions & {
   className?: string;
   style?: CSSProperties;
   onPose?: (event: MaskoEvents['pose']) => void;
@@ -26,7 +26,7 @@ export interface MaskoPlayerProps extends MountOptions {
   onReactionDone?: (event: MaskoEvents['reactionDone']) => void;
   onMovement?: (event: MaskoEvents['movement']) => void;
   onError?: (event: MaskoEvents['error']) => void;
-}
+};
 
 const EVENTS: [MaskoEventName, keyof MaskoPlayerProps][] = [
   ['pose', 'onPose'],
@@ -59,20 +59,27 @@ function MaskoPlayerView(props: MaskoPlayerProps, ref: ForwardedRef<MaskoHandle>
   latest.current = props;
   const mounted = useRef<DeliveryInput | null>(null);
   const subscriptions = useRef(new Set<Subscription>());
-  const key = useMemo(() => releaseKey(props.delivery), [props.delivery]);
+  const { clip } = props;
+  const key = useMemo(
+    () => (clip ? `clip:${clip.webm ?? ''}|${clip.hevc ?? ''}` : releaseKey(props.delivery)),
+    [props.delivery, clip?.webm, clip?.hevc]
+  );
   const hasRefresh = props.getDelivery !== undefined;
 
   useEffect(() => {
     const element = box.current;
     if (!element) return;
     const p = latest.current;
-    const created = createPlayer(element, {
-      delivery: p.delivery,
+    const common = {
       getDelivery: hasRefresh ? () => latest.current.getDelivery!() : undefined,
       sound: p.sound,
       autoPlay: p.autoPlay,
       pointer: p.pointer
-    }).player;
+    };
+    const created = createPlayer(
+      element,
+      p.clip ? { ...common, clip: p.clip } : { ...common, delivery: p.delivery }
+    ).player;
     for (const [event, prop] of EVENTS) {
       created.on(event, (e) => {
         const handler = latest.current[prop] as ((e: unknown) => void) | undefined;
@@ -82,7 +89,7 @@ function MaskoPlayerView(props: MaskoPlayerProps, ref: ForwardedRef<MaskoHandle>
     // Listeners added with `ref.current.on` hear the new player too.
     for (const s of subscriptions.current) s.off = created.on(s.event, s.listener);
     player.current = created;
-    mounted.current = p.delivery;
+    mounted.current = p.delivery ?? null;
     return () => {
       created.destroy();
       player.current = null;
@@ -93,7 +100,7 @@ function MaskoPlayerView(props: MaskoPlayerProps, ref: ForwardedRef<MaskoHandle>
 
   // New links for the same release: swap URLs, keep playing.
   useEffect(() => {
-    if (!player.current || mounted.current === props.delivery) return;
+    if (!player.current || !props.delivery || mounted.current === props.delivery) return;
     mounted.current = props.delivery;
     player.current.updateDelivery(props.delivery);
   }, [props.delivery]);

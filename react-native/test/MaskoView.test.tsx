@@ -165,6 +165,32 @@ describe('props', () => {
   });
 });
 
+describe('clip', () => {
+  const wave = { hevc: 'https://cdn.example/wave.mov', stacked: 'https://cdn.example/wave.mp4' };
+
+  it("plays a lone clip from this platform's file, with no delivery", () => {
+    render(<MaskoView clip={wave} />);
+    expect(props().clip).toBe(wave.hevc);
+    expect(props().delivery).toBe('');
+  });
+
+  it('keeps the player for the same file, and loads another file anew', () => {
+    const view = render(<MaskoView clip={{ ...wave }} />);
+    view.rerender(<MaskoView clip={{ ...wave }} />);
+    expect(props().clip).toBe(wave.hevc);
+    view.rerender(<MaskoView clip={{ hevc: 'https://cdn.example/hop.mov' }} />);
+    expect(props().clip).toBe('https://cdn.example/hop.mov');
+    expect(fake.calls.updateDelivery).not.toHaveBeenCalled();
+  });
+
+  it("reports clip_failed when the clip has no file for this platform", () => {
+    const onError = jest.fn();
+    render(<MaskoView clip={{ stacked: wave.stacked }} onError={onError} />);
+    expect(props().clip).toBeUndefined();
+    expect(onError).toHaveBeenCalledWith({ code: 'clip_failed', detail: 'the clip has no hevc file for ios' });
+  });
+});
+
 describe('ref', () => {
   it('maps every call to its native call', async () => {
     const ref = createRef<MaskoHandle>();

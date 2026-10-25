@@ -16,6 +16,7 @@ class MaskoPlayerModule : Module() {
       Events("onPose", "onClip", "onReactionDone", "onMovement", "onError", "onDeliveryRequest")
 
       Prop("delivery") { view: MaskoNativeView, json: String? -> view.delivery = json }
+      Prop("clip") { view: MaskoNativeView, url: String? -> view.clip = url }
       Prop("autoPlay") { view: MaskoNativeView, on: Boolean? -> view.autoPlay = on }
       Prop("sound") { view: MaskoNativeView, on: Boolean? -> view.sound = on ?: false }
       Prop("refreshes") { view: MaskoNativeView, on: Boolean? -> view.refreshes = on ?: false }

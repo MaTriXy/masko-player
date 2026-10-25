@@ -55,9 +55,21 @@ export interface MaskoHandle {
   preview: { showPose(id: string): void; playMove(id: string): void };
 }
 
-export interface MaskoViewProps extends ViewProps {
-  /** The release delivery, its JSON, or the API response around it. */
-  delivery: DeliveryInput;
+/** One animation's files, played on its own: HEVC on iOS, the stacked MP4 on Android. */
+export interface ClipFiles {
+  hevc?: string;
+  stacked?: string;
+}
+
+/**
+ * What the view plays: a release `delivery`, or one animation's `clip` files,
+ * looped on its own.
+ */
+export type MaskoViewProps = ViewProps &
+  MaskoViewOptions &
+  ({ delivery: DeliveryInput; clip?: undefined } | { clip: ClipFiles; delivery?: undefined });
+
+export interface MaskoViewOptions {
   /**
    * Returns a fresh delivery of the same release, before signed links expire.
    * Giving or taking it away loads the release again, which restarts the mascot.

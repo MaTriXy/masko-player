@@ -1064,3 +1064,42 @@ test('calls kept while paused: the last set of a name, a repeated fire once, at 
   assert.equal(fires.mock.calls.length, 1);
   assert.equal(names[0], 'score2002');
 });
+
+const waveFiles = { webm: url('wave'), hevc: url('wave', 'mov') };
+
+test('one clip: its file plays in a loop as one pose, from the length it reads', async () => {
+  const { host, events, a } = await mount({ delivery: undefined, clip: waveFiles }, (h) => h.lengths.set(url('wave'), 3));
+  assert.deepEqual(a.loads, [url('wave')]);
+  a.frame();
+  await settle();
+  assert.deepEqual(events, ['pose:clip', 'clip:clip']);
+  await host.advance(3000);
+  a.end();
+  await settle();
+  assert.equal(a.seeks, 1, 'the loop restarts in its slot');
+  assert.ok(!events.some((e) => e.startsWith('error:')));
+});
+
+test('one clip: the safety net counts the length read from the file', async () => {
+  const { host, events, a } = await mount({ delivery: undefined, clip: waveFiles }, (h) => h.lengths.set(url('wave'), 3));
+  a.frame();
+  await host.advance(3999);
+  assert.ok(!events.includes('error:missing_end'));
+  await host.advance(1);
+  assert.ok(events.includes('error:missing_end'), '3 s + 1 s after the first frame');
+});
+
+test('one clip: the other format gives the length when the preferred one cannot be read', async () => {
+  const { host, events, a } = await mount({ delivery: undefined, clip: waveFiles }, (h) =>
+    h.lengths.set(url('wave', 'mov'), 2)
+  );
+  assert.ok(host.log.includes(`length:${url('wave')}`));
+  assert.deepEqual(a.loads, [url('wave')], 'the preferred file still plays first');
+  assert.deepEqual(events, ['pose:clip']);
+});
+
+test('one clip: nothing plays when no file length can be read (clip_failed)', async () => {
+  const { events, a } = await mount({ delivery: undefined, clip: waveFiles });
+  assert.deepEqual(a.loads, []);
+  assert.deepEqual(events, ['error:clip_failed']);
+});

@@ -91,6 +91,38 @@ large as the mascot on screen times the screen density, else the base file.
 If a file fails, a web player tries the other format once before reporting
 `clipFailed`.
 
+## One clip
+
+A player also plays one animation on its own, from its file links in place
+of a delivery: `webm` and `hevc` on the web, `hevc` on iPhone, iPad and Mac,
+`stacked` on Android. It reads the file's length from its metadata (on the
+web, the preferred format first, then the other one), then plays this
+delivery as any other:
+
+```json
+{
+  "deliverySchemaVersion": 1,
+  "playerContract": 1,
+  "requires": [],
+  "runtimeGraph": {
+    "runtimeGraphSchemaVersion": 1,
+    "initialNode": "clip",
+    "nodes": [{ "id": "clip" }],
+    "edges": [{ "id": "clip", "source": "clip", "target": "clip", "isLoop": true,
+                "duration": <the file's length in seconds>, "videos": { <the files> } }],
+    "inputs": []
+  }
+}
+```
+
+The pose and the clip are both `clip`, so the app hears `pose` `clip` and
+`clip` `clip` on every loop. The length matters: the engine's safety net
+(rules.md 9.3) ends a loop whose end is not reported `duration + 1 s` after
+it showed. When no length can be read, nothing plays and the player reports
+`error` `clip_failed`. Calls made before the length is read are dropped,
+except `play` and `pause`, which decide whether it starts. `getDelivery`
+does not apply: the links are the app's.
+
 ## What the app sees
 
 The same names on every platform:

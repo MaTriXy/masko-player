@@ -30,6 +30,32 @@ internal class Delivery(
     fun sameRelease(other: Delivery): Boolean = shape != null && shape == other.shape
 
     companion object {
+        /** No delivery yet: what a lone clip has until its file's length is read. */
+        val NONE = Delivery(true, emptyMap(), emptyMap(), null, null)
+
+        /**
+         * The delivery a lone clip plays as (player.md, "One clip"): one pose,
+         * `clip`, whose loop is the stacked file, [seconds] long.
+         */
+        fun clip(stacked: String, seconds: Double): String {
+            val edge = JSONObject()
+                .put("id", "clip").put("source", "clip").put("target", "clip")
+                .put("isLoop", true).put("duration", seconds)
+                .put("videos", JSONObject().put("stacked", stacked))
+            val graph = JSONObject()
+                .put("runtimeGraphSchemaVersion", 1)
+                .put("initialNode", "clip")
+                .put("nodes", JSONArray().put(JSONObject().put("id", "clip")))
+                .put("edges", JSONArray().put(edge))
+                .put("inputs", JSONArray())
+            return JSONObject()
+                .put("deliverySchemaVersion", 1)
+                .put("playerContract", 1)
+                .put("requires", JSONArray())
+                .put("runtimeGraph", graph)
+                .toString()
+        }
+
         /** Reads the delivery, or null when it is not a JSON object with a graph. */
         fun parse(json: String): Delivery? = try {
             read(JSONObject(json))

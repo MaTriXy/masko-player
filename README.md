@@ -25,7 +25,7 @@ Install:
 - **Android**: not on Maven Central yet. Build it from this repository
   ([android/README.md](android/README.md)): `scripts/build-android.sh`, then
   `./gradlew :player:publishReleasePublicationToLocalRepository` in
-  `android/` writes `ai.masko:player:0.1.1` to `android/player/build/repo`;
+  `android/` writes `ai.masko:player:0.1.2` to `android/player/build/repo`;
   add that folder to your app's Maven repositories.
 
 The React Native package wraps the Swift and Kotlin players; it adds no
@@ -35,6 +35,10 @@ Every player reads a release delivery: the `delivery` object of the Masko
 API's `GET /v1/canvases/{canvasId}/releases/{releaseId}/delivery`, with
 `target=web`, `target=apple` or `target=android` for the files that
 platform plays.
+
+A player also plays one animation on its own, from its file links (`webm`
+and `hevc` on the web, `hevc` on Apple, `stacked` on Android), looped as one
+pose (`spec/player.md`, "One clip").
 
 ## What is here
 

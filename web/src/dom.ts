@@ -284,6 +284,29 @@ export class FetchLoader implements FileLoader {
   }
 }
 
+/**
+ * A video file's length in seconds, read from its metadata in a detached
+ * `<video>`. Rejects when the file cannot be read within `ms`.
+ */
+export function clipLength(doc: Document, url: string, ms = 10_000): Promise<number> {
+  return new Promise((resolve, reject) => {
+    const v = doc.createElement('video');
+    v.muted = true;
+    v.preload = 'metadata';
+    const timer = setTimeout(() => done(NaN), ms);
+    const done = (seconds: number) => {
+      clearTimeout(timer);
+      v.removeAttribute('src');
+      v.load();
+      if (Number.isFinite(seconds) && seconds > 0) resolve(seconds);
+      else reject(new Error(`cannot read the length of ${url}`));
+    };
+    v.addEventListener('loadedmetadata', () => done(v.duration), { once: true });
+    v.addEventListener('error', () => done(NaN), { once: true });
+    v.src = url;
+  });
+}
+
 function probe(url: string, signal: AbortSignal): Promise<void> {
   return new Promise((resolve, reject) => {
     const v = document.createElement('video');

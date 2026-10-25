@@ -13,8 +13,9 @@ import androidx.annotation.OptIn
 import androidx.media3.common.util.UnstableApi
 
 /**
- * Shows a Masko mascot. Load a release delivery with [load]; taps and the
- * pointer reach the canvas as `action::click` and `behavior::pointerHover`.
+ * Shows a Masko mascot. Load a release delivery with [load], or one
+ * animation's file with [loadClip]; taps and the pointer reach the canvas as
+ * `action::click` and `behavior::pointerHover`.
  *
  * The mascot is drawn transparent and fitted inside the view, centred. While
  * the view is off screen (detached, GONE or INVISIBLE, itself or a parent, or
@@ -66,9 +67,22 @@ class MaskoPlayerView @JvmOverloads constructor(
      * A player loaded before is destroyed. Main thread only.
      */
     @JvmOverloads
-    fun load(delivery: String, options: MaskoPlayer.Options = MaskoPlayer.Options()): MaskoPlayer {
+    fun load(delivery: String, options: MaskoPlayer.Options = MaskoPlayer.Options()): MaskoPlayer =
+        start("load", delivery, null, options)
+
+    /**
+     * Plays one animation on its own, looped: its stacked MP4 file (colour
+     * above, transparency below). The player reads the file's length first;
+     * a file it cannot read plays nothing and reports `clip_failed`. A player
+     * loaded before is destroyed. Main thread only.
+     */
+    @JvmOverloads
+    fun loadClip(stacked: String, options: MaskoPlayer.Options = MaskoPlayer.Options()): MaskoPlayer =
+        start("loadClip", "", stacked, options)
+
+    private fun start(method: String, delivery: String, clip: String?, options: MaskoPlayer.Options): MaskoPlayer {
         check(Looper.myLooper() == Looper.getMainLooper()) {
-            "MaskoPlayerView.load must be called on the main thread, not on thread \"${Thread.currentThread().name}\""
+            "MaskoPlayerView.$method must be called on the main thread, not on thread \"${Thread.currentThread().name}\""
         }
         player?.destroy()
         val media = MediaFiles.get(context)
@@ -81,6 +95,7 @@ class MaskoPlayerView @JvmOverloads constructor(
             SystemClock::elapsedRealtime,
             System::currentTimeMillis,
             options,
+            clip = clip,
         )
         player = next
         next.setHostAttached(isAttachedToWindow)
@@ -226,6 +241,16 @@ internal class ViewStage(private val view: MaskoPlayerView, private val media: M
         request = media.preload(url) { ok ->
             preloads.remove(request)
             done(ok)
+        }
+        preloads += request
+    }
+
+    override fun clipLength(url: String, done: (Double?) -> Unit) {
+        if (released) return
+        lateinit var request: MediaFiles.Request
+        request = media.length(url) { seconds ->
+            preloads.remove(request)
+            done(seconds)
         }
         preloads += request
     }

@@ -85,6 +85,27 @@ final class PlayerTests: XCTestCase {
         heard = []
         let player = MaskoPlayer(
             delivery: data, autoPlay: autoPlay, stage: stage, loader: loader, sounds: sounds, host: host.host)
+        listen(player)
+        return player
+    }
+
+    /// A player for one clip, `wave.mov`, whose length the fake loader reads from `lengths`.
+    func makeClipPlayer(lengths: [String: TimeInterval] = ["wave.mov": 3], autoPlay: Bool? = nil) -> MaskoPlayer {
+        stage = FakeStage()
+        loader = FakeLoader()
+        loader.lengths = lengths
+        sounds = FakeSounds()
+        host = FakeHost()
+        events = []
+        heard = []
+        let player = MaskoPlayer(
+            clip: URL(string: "https://cdn.test/wave.mov")!, autoPlay: autoPlay, stage: stage, loader: loader,
+            sounds: sounds, host: host.host)
+        listen(player)
+        return player
+    }
+
+    func listen(_ player: MaskoPlayer) {
         player.onEvent = { [unowned self] event in
             self.heard.append(event)
             switch event {
@@ -95,7 +116,6 @@ final class PlayerTests: XCTestCase {
             case let .error(code, _): self.events.append("error:\(code)")
             }
         }
-        return player
     }
 
     /// Starts the player and lets the first clip decode.
@@ -135,6 +155,45 @@ final class PlayerTests: XCTestCase {
         host.advance(2)
         a.end()
         XCTAssertEqual(now(player), 2000)
+    }
+
+    func testALoneClipLoopsAsOnePoseFromTheLengthOfItsFile() {
+        let player = makeClipPlayer()
+        player.boot()
+        XCTAssertTrue(loader.requested("wave.mov"))
+        XCTAssertEqual(a.log, ["load wave.mov"])
+        a.decodeFirstFrame()
+        XCTAssertEqual(events, ["pose:clip", "clip:clip"])
+        end(a, after: 3)
+        XCTAssertEqual(a.log, ["load wave.mov", "restart 1.0", "restart 1.0"], "the loop restarts in its slot")
+        XCTAssertEqual(stage.presented, [.slot(0)])
+        XCTAssertEqual(player.engine!.state().pose, "clip")
+    }
+
+    func testALoneClipsSafetyNetCountsTheLengthOfItsFile() {
+        let player = makeClipPlayer()
+        player.boot()
+        a.decodeFirstFrame()
+        host.advance(3.9)
+        XCTAssertFalse(events.contains("error:missing_end"))
+        host.advance(0.2)
+        XCTAssertTrue(events.contains("error:missing_end"), "3 s + 1 s after the first frame")
+    }
+
+    func testALoneClipWhoseLengthCannotBeReadPlaysNothing() {
+        let player = makeClipPlayer(lengths: [:])
+        player.boot()
+        XCTAssertEqual(events, ["error:clip_failed"])
+        XCTAssertNil(player.engine)
+        XCTAssertTrue(a.log.isEmpty)
+    }
+
+    func testPlayBeforeALoneClipIsReadStartsItOnceItShows() {
+        let player = makeClipPlayer(autoPlay: false)
+        player.play()
+        player.boot()
+        a.decodeFirstFrame()
+        XCTAssertEqual(events, ["pose:clip", "clip:clip"])
     }
 
     func testPlayBeforeTheFirstFrameWaitsForIt() {

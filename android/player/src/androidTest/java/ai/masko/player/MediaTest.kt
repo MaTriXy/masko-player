@@ -1,5 +1,6 @@
 package ai.masko.player
 
+import android.media.MediaMetadataRetriever
 import android.net.Uri
 import android.os.SystemClock
 import androidx.annotation.OptIn
@@ -24,12 +25,14 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Assert.fail
 import org.junit.Test
 import org.junit.runner.RunWith
 import java.io.File
 import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.atomic.AtomicReference
 
 /** The clip files on a real device: what a loop reads, and a disk cache that cannot write. */
 @OptIn(UnstableApi::class)
@@ -50,6 +53,30 @@ class MediaTest {
             if (SystemClock.elapsedRealtime() > until) fail("timed out waiting for $what")
             Thread.sleep(20)
         }
+    }
+
+    /** A lone clip's length, as [MediaFiles.length] reads it on a real device; null when it cannot be read. */
+    private fun length(url: String): Double? {
+        val answer = AtomicReference<Result<Double?>?>(null)
+        main { MediaFiles.get(context).length(url) { answer.set(Result.success(it)) } }
+        waitFor("the length of $url") { answer.get() != null }
+        return answer.get()!!.getOrThrow()
+    }
+
+    @Test
+    fun theLengthOfALoneClipIsReadFromItsFile() {
+        val file = File(context.cacheDir, "length-red.mp4")
+        context.assets.open("clips/red.mp4").use { input -> file.outputStream().use { input.copyTo(it) } }
+        val retriever = MediaMetadataRetriever()
+        val expected = try {
+            retriever.setDataSource(file.path)
+            retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)!!.toLong() / 1000.0
+        } finally {
+            retriever.release()
+        }
+        assertTrue(expected > 0)
+        assertEquals(expected, length(Uri.fromFile(file).toString())!!, 0.001)
+        assertNull(length(Uri.fromFile(File(context.cacheDir, "none.mp4")).toString()))
     }
 
     /** Counts how often a file is opened. */

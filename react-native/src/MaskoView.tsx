@@ -15,7 +15,7 @@ import {
   type ForwardedRef,
   type Ref
 } from 'react';
-import type { ViewProps } from 'react-native';
+import { Platform, type ViewProps } from 'react-native';
 
 import { deliveryJson, releaseKey } from './delivery';
 import type { MaskoEvents, MaskoHandle, MaskoViewProps, Position } from './types';
@@ -42,6 +42,8 @@ export interface NativeCalls {
 export interface NativeProps extends ViewProps {
   ref?: Ref<NativeCalls>;
   delivery: string;
+  /** A lone clip's file for this platform, played in place of `delivery`. */
+  clip?: string;
   autoPlay?: boolean;
   sound: boolean;
   /** The app passed `getDelivery`: the player asks for fresh links through `onDeliveryRequest`. */
@@ -66,6 +68,7 @@ const NOTHING: Position = { clip: null, time: 0 };
 function MaskoViewWithRef(props: MaskoViewProps, ref: ForwardedRef<MaskoHandle>) {
   const {
     delivery,
+    clip,
     getDelivery,
     sound,
     autoPlay,
@@ -83,14 +86,30 @@ function MaskoViewWithRef(props: MaskoViewProps, ref: ForwardedRef<MaskoHandle>)
   // A new release loads a new player; new links for the same release keep it.
   // getDelivery given or taken away loads the release again (the mascot
   // restarts), with the latest links.
-  const key = useMemo(() => releaseKey(delivery), [delivery]);
+  // A lone clip plays this platform's file: HEVC on iOS, the stacked MP4 on Android.
+  const clipFile = clip ? ((Platform.OS === 'ios' ? clip.hevc : clip.stacked) ?? '') : undefined;
+  const key = useMemo(
+    () => (clipFile !== undefined ? `clip:${clipFile}` : releaseKey(delivery!)),
+    [delivery, clipFile]
+  );
   const refreshes = getDelivery !== undefined;
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  const json = useMemo(() => deliveryJson(latest.current.delivery), [key, refreshes]);
+  const json = useMemo(
+    () => (latest.current.delivery === undefined ? '' : deliveryJson(latest.current.delivery)),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [key, refreshes]
+  );
+
+  useEffect(() => {
+    if (clipFile === '') {
+      const file = Platform.OS === 'ios' ? 'hevc' : 'stacked';
+      latest.current.onError?.({ code: 'clip_failed', detail: `the clip has no ${file} file for ${Platform.OS}` });
+    }
+  }, [clipFile]);
 
   // New links for the same release: the native player swaps them in and keeps playing.
   const given = useRef({ key, json });
   useEffect(() => {
+    if (delivery === undefined) return;
     const fresh = deliveryJson(delivery);
     const last = given.current;
     given.current = { key, json: fresh };
@@ -172,6 +191,7 @@ function MaskoViewWithRef(props: MaskoViewProps, ref: ForwardedRef<MaskoHandle>)
     ...events,
     ref: native,
     delivery: json,
+    clip: clipFile || undefined,
     autoPlay,
     sound: sound ?? false,
     refreshes

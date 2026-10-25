@@ -1,15 +1,20 @@
 // mountMascot: the player in a page element, with the click and pointer
 // wiring, the tap-to-play overlay and the click ripple (rules.md 14).
 
-import { preferredFormats, type DeliveryInput } from './delivery.ts';
-import { DomSlot, DomSounds, DomStill, FetchLoader } from './dom.ts';
+import { preferredFormats, type ClipFiles, type DeliveryInput } from './delivery.ts';
+import { DomSlot, DomSounds, DomStill, FetchLoader, clipLength } from './dom.ts';
 import type { Value } from './engine.ts';
 import type { Host } from './media.ts';
 import { Player, type MaskoEventName, type MaskoListener, type PlayerOptions, type Position } from './player.ts';
 
-export interface MountOptions {
-  /** The release delivery, its JSON, or the API response around it. */
-  delivery: DeliveryInput;
+/**
+ * What the player plays: a release `delivery`, or one animation's `clip`
+ * files (`webm` and `hevc`), looped on its own.
+ */
+export type MountOptions = MountCommon &
+  ({ delivery: DeliveryInput; clip?: undefined } | { clip: ClipFiles; delivery?: undefined });
+
+interface MountCommon {
   /** Returns a fresh delivery of the same release, before signed links expire. */
   getDelivery?: () => DeliveryInput | Promise<DeliveryInput>;
   /** Lets clips with their own voice be heard. Off by default; edge sounds play either way. */
@@ -144,6 +149,7 @@ export function createPlayer(element: HTMLElement, options: MountOptions): { pla
       const r = root.getBoundingClientRect();
       return Math.max(r.width, r.height) * (win.devicePixelRatio || 1);
     },
+    clipLength: (url) => clipLength(doc, url),
     blocked: (on) => {
       tap.hidden = !on;
     },
@@ -157,6 +163,7 @@ export function createPlayer(element: HTMLElement, options: MountOptions): { pla
 
   const playerOptions: PlayerOptions = {
     delivery: options.delivery,
+    clip: options.clip,
     getDelivery: options.getDelivery,
     sound: options.sound,
     autoPlay: options.autoPlay

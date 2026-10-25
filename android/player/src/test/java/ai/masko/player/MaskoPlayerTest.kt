@@ -35,6 +35,45 @@ class MaskoPlayerTest {
         assertTrue(rig.slot1.loads.isEmpty())
     }
 
+    // ------------------------------------------------------------------ one clip
+
+    @Test
+    fun aLoneClipLoopsAsOnePoseFromTheLengthOfItsFile() {
+        val url = "https://cdn.test/m/wave.mp4"
+        val rig = Rig(clip = url, lengths = mapOf(url to 3.0))
+        rig.turn()
+        assertEquals(listOf(url), rig.slot0.loads)
+        assertEquals(listOf("pose:clip"), rig.heard.events)
+        rig.slot0.firstFrame()
+        assertEquals(listOf("pose:clip", "clip:clip"), rig.heard.events)
+        rig.advance(3_000)
+        val mark = rig.log.size
+        rig.slot0.end()
+        assertEquals("the loop restarts in its slot", listOf("0 rewind", "0 play 1.0"), rig.since(mark))
+        assertTrue(rig.slot1.loads.isEmpty())
+    }
+
+    @Test
+    fun aLoneClipsSafetyNetCountsTheLengthOfItsFile() {
+        val url = "https://cdn.test/m/wave.mp4"
+        val rig = Rig(clip = url, lengths = mapOf(url to 3.0))
+        rig.turn()
+        rig.slot0.firstFrame()
+        rig.advance(3_999)
+        assertFalse(rig.heard.events.contains("error:missing_end"))
+        rig.advance(1)
+        assertTrue("3 s + 1 s after the first frame", rig.heard.events.contains("error:missing_end"))
+    }
+
+    @Test
+    fun aLoneClipWhoseLengthCannotBeReadPlaysNothing() {
+        val rig = Rig(clip = "https://cdn.test/m/wave.mp4")
+        rig.turn()
+        assertEquals(listOf("error:clip_failed"), rig.heard.events)
+        assertTrue(rig.slot0.loads.isEmpty())
+        assertTrue(rig.stage.released)
+    }
+
     @Test
     fun aStageThatIsNotReadyDelaysTheStart() {
         val rig = Rig(ready = false)
