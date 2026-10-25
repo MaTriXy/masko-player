@@ -14,7 +14,7 @@ default). Once `ai.masko:player` is on Maven Central:
 ```kotlin
 // settings.gradle.kts: repositories { google(); mavenCentral() }
 dependencies {
-    implementation("ai.masko:player:0.1.0")
+    implementation("ai.masko:player:0.1.1")
 }
 ```
 
@@ -191,7 +191,7 @@ The build needs Java 17; Gradle downloads it when this machine has none (the
 foojay toolchain resolver in `settings.gradle.kts`).
 
 `./gradlew :player:publishReleasePublicationToLocalRepository` writes
-`ai.masko:player:0.1.0` to `player/build/repo` (the React Native package
+`ai.masko:player:0.1.1` to `player/build/repo` (the React Native package
 takes it from there; `../scripts/build-react-native.sh` runs it), with its
 sources and javadoc jars, signed when a signing key is set.
 

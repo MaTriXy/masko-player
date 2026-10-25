@@ -25,7 +25,7 @@ Install:
 - **Android**: not on Maven Central yet. Build it from this repository
   ([android/README.md](android/README.md)): `scripts/build-android.sh`, then
   `./gradlew :player:publishReleasePublicationToLocalRepository` in
-  `android/` writes `ai.masko:player:0.1.0` to `android/player/build/repo`;
+  `android/` writes `ai.masko:player:0.1.1` to `android/player/build/repo`;
   add that folder to your app's Maven repositories.
 
 The React Native package wraps the Swift and Kotlin players; it adds no

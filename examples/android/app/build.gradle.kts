@@ -33,5 +33,5 @@ kotlin {
 }
 
 dependencies {
-    implementation("ai.masko:player:0.1.0")
+    implementation("ai.masko:player:0.1.1")
 }

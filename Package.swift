@@ -9,8 +9,8 @@ import PackageDescription
 // that adds this package by URL gets no build there (the xcframework is
 // git-ignored), so it downloads the release zip; scripts/release-apple.sh
 // writes its URL and checksum here.
-let releaseURL = "https://github.com/masko-ai/masko-player/releases/download/0.1.0/MaskoPlayerFFI.xcframework.zip"
-let releaseChecksum = "5af25e4c2ea3981107567dd998b6c8d7f8c109098b4baea0b03b39f70301855f"
+let releaseURL = "https://github.com/masko-ai/masko-player/releases/download/0.1.1/MaskoPlayerFFI.xcframework.zip"
+let releaseChecksum = "788b72427c9274b49c9b076d1e6d3bc6c372595daca28e2e98d05e5a8cfe6dc8"
 
 let localEngine = "apple/MaskoPlayerFFI.xcframework"
 let engine: Target =
