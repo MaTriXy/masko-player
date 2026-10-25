@@ -140,12 +140,15 @@ final class FakeLoader: MediaLoader {
         file(url, key: key) { local in done(local == nil ? nil : FakeLoader.image) }
     }
 
-    /// File lengths by file name, for `length`; a name not here cannot be read.
+    /// File lengths by file name, for `clipFile`; a name not here cannot be read.
     var lengths: [String: TimeInterval] = [:]
+    /// File names with a sound track.
+    var voiced: Set<String> = []
 
-    func length(_ url: URL, key: String, done: @escaping @MainActor (TimeInterval?) -> Void) {
+    func clipFile(_ url: URL, key: String, done: @escaping @MainActor (ClipFile?) -> Void) {
         file(url, key: key) { [unowned self] local in
-            done(local == nil ? nil : self.lengths[url.lastPathComponent])
+            let name = url.lastPathComponent
+            done(local == nil ? nil : self.lengths[name].map { ClipFile(seconds: $0, voiced: self.voiced.contains(name)) })
         }
     }
 

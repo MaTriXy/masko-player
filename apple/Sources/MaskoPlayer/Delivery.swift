@@ -110,8 +110,9 @@ struct Delivery {
     }
 
     /// The delivery a lone clip plays as (player.md, "One clip"): one pose,
-    /// `clip`, whose loop is the HEVC file, `seconds` long.
-    static func clip(hevc: URL, seconds: TimeInterval) -> Data {
+    /// `clip`, whose loop is the HEVC file, `seconds` long, with its own
+    /// voice when the file has a sound track (`voiced`).
+    static func clip(hevc: URL, seconds: TimeInterval, voiced: Bool) -> Data {
         let delivery: [String: Any] = [
             "deliverySchemaVersion": 1,
             "playerContract": 1,
@@ -122,7 +123,7 @@ struct Delivery {
                 "nodes": [["id": "clip"]],
                 "edges": [[
                     "id": "clip", "source": "clip", "target": "clip", "isLoop": true,
-                    "duration": seconds, "videos": ["hevc": hevc.absoluteString],
+                    "duration": seconds, "videos": ["hevc": hevc.absoluteString], "hasAudio": voiced,
                 ]],
                 "inputs": [Any](),
             ],

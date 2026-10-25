@@ -60,7 +60,8 @@ export interface ClipFiles {
 
 /**
  * The delivery a lone clip plays as (spec/player.md, "One clip"): one pose,
- * `clip`, whose loop is the file, `seconds` long.
+ * `clip`, whose loop is the file, `seconds` long. Its own voice, if the file
+ * has one, is heard with sound on.
  */
 export function clipDelivery(files: ClipFiles, seconds: number): Delivery {
   return {
@@ -78,7 +79,8 @@ export function clipDelivery(files: ClipFiles, seconds: number): Delivery {
           target: 'clip',
           isLoop: true,
           duration: seconds,
-          videos: { webm: files.webm, hevc: files.hevc }
+          videos: { webm: files.webm, hevc: files.hevc },
+          hasAudio: true
         }
       ],
       inputs: []

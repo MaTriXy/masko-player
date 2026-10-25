@@ -287,6 +287,21 @@ export class FakeHost implements Host {
     return this.size;
   }
 
+  /** Callbacks waiting for the person's next gesture (`gesture`). */
+  private gestures = new Set<() => void>();
+
+  onGesture(fn: () => void): () => void {
+    this.gestures.add(fn);
+    return () => this.gestures.delete(fn);
+  }
+
+  /** The person clicks or presses a key somewhere on the page. */
+  gesture(): void {
+    const waiting = [...this.gestures];
+    this.gestures.clear();
+    for (const fn of waiting) fn();
+  }
+
   /** File lengths for `clipLength`, by URL; a URL not here cannot be read. */
   lengths = new Map<string, number>();
 

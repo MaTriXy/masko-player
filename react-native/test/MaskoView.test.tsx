@@ -96,7 +96,7 @@ describe('props', () => {
     render(<MaskoView delivery={delivery} style={{ width: 200, height: 200 }} testID="mascot" />);
     expect(fake.requested).toEqual(['MaskoPlayer']);
     expect(JSON.parse(props().delivery)).toEqual(delivery);
-    expect(props().sound).toBe(false);
+    expect(props().sound).toBe(true);
     expect(props().autoPlay).toBeUndefined();
     expect(props().refreshes).toBe(false);
     expect(props().style).toEqual({ width: 200, height: 200 });

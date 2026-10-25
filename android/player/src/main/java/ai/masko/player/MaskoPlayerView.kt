@@ -245,12 +245,12 @@ internal class ViewStage(private val view: MaskoPlayerView, private val media: M
         preloads += request
     }
 
-    override fun clipLength(url: String, done: (Double?) -> Unit) {
+    override fun clipFile(url: String, done: (ClipFile?) -> Unit) {
         if (released) return
         lateinit var request: MediaFiles.Request
-        request = media.length(url) { seconds ->
+        request = media.clipFile(url) { file ->
             preloads.remove(request)
-            done(seconds)
+            done(file)
         }
         preloads += request
     }

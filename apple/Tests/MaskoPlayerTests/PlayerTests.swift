@@ -90,10 +90,13 @@ final class PlayerTests: XCTestCase {
     }
 
     /// A player for one clip, `wave.mov`, whose length the fake loader reads from `lengths`.
-    func makeClipPlayer(lengths: [String: TimeInterval] = ["wave.mov": 3], autoPlay: Bool? = nil) -> MaskoPlayer {
+    func makeClipPlayer(
+        lengths: [String: TimeInterval] = ["wave.mov": 3], voiced: Bool = false, autoPlay: Bool? = nil
+    ) -> MaskoPlayer {
         stage = FakeStage()
         loader = FakeLoader()
         loader.lengths = lengths
+        loader.voiced = voiced ? ["wave.mov"] : []
         sounds = FakeSounds()
         host = FakeHost()
         events = []
@@ -194,6 +197,23 @@ final class PlayerTests: XCTestCase {
         player.boot()
         a.decodeFirstFrame()
         XCTAssertEqual(events, ["pose:clip", "clip:clip"])
+    }
+
+    func testALoneClipsOwnVoiceIsHeardUntilSoundIsTurnedOff() {
+        let player = makeClipPlayer(voiced: true)
+        player.boot()
+        a.decodeFirstFrame()
+        XCTAssertFalse(a.isMuted, "sound is on by default: the file's voice is heard")
+        player.sound = false
+        XCTAssertTrue(a.isMuted)
+    }
+
+    func testALoneClipWithoutASoundTrackStaysMuted() {
+        let player = makeClipPlayer()
+        player.boot()
+        a.decodeFirstFrame()
+        XCTAssertTrue(player.sound)
+        XCTAssertTrue(a.isMuted, "no sound track: the clip never asks for the audio")
     }
 
     func testPlayBeforeTheFirstFrameWaitsForIt() {
@@ -599,11 +619,11 @@ final class PlayerTests: XCTestCase {
         end(b, after: 1)
         a.decodeFirstFrame()
         XCTAssertEqual(player.engine!.state().clip, "work-loop")
-        XCTAssertTrue(a.isMuted, "sound is off by default")
-        player.sound = true
-        XCTAssertFalse(a.isMuted, "work-loop has its own voice")
+        XCTAssertFalse(a.isMuted, "sound is on by default, and work-loop has its own voice")
         player.sound = false
         XCTAssertTrue(a.isMuted)
+        player.sound = true
+        XCTAssertFalse(a.isMuted)
     }
 
     func testSoundOnKeepsClipsWithoutAVoiceMuted() {

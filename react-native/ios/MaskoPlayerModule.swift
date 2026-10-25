@@ -20,7 +20,7 @@ public final class MaskoPlayerModule: Module {
         MainActor.assumeIsolated { view.autoPlay = on }
       }
       Prop("sound") { (view: MaskoNativeView, on: Bool?) in
-        MainActor.assumeIsolated { view.sound = on ?? false }
+        MainActor.assumeIsolated { view.sound = on ?? true }
       }
       Prop("refreshes") { (view: MaskoNativeView, on: Bool?) in
         MainActor.assumeIsolated { view.refreshes = on ?? false }

@@ -10,9 +10,16 @@ import ImageIO
 protocol MediaLoader: AnyObject {
     func file(_ url: URL, key: String, done: @escaping @MainActor (URL?) -> Void)
     func image(_ url: URL, key: String, done: @escaping @MainActor (CGImage?) -> Void)
-    /// A video's length in seconds, read from its local copy; nil when it
-    /// cannot be read.
-    func length(_ url: URL, key: String, done: @escaping @MainActor (TimeInterval?) -> Void)
+    /// A lone clip's length and whether it has a sound track, read from its
+    /// local copy; nil when it cannot be read.
+    func clipFile(_ url: URL, key: String, done: @escaping @MainActor (ClipFile?) -> Void)
+}
+
+/// What a lone clip's file holds: its length in seconds, and whether it has a
+/// sound track (player.md, "One clip").
+struct ClipFile: Equatable {
+    var seconds: TimeInterval
+    var voiced: Bool
 }
 
 /// Downloads files into a temporary folder and keeps the most recent few
@@ -110,13 +117,16 @@ final class FileCache: MediaLoader {
         }
     }
 
-    func length(_ url: URL, key: String, done: @escaping @MainActor (TimeInterval?) -> Void) {
+    func clipFile(_ url: URL, key: String, done: @escaping @MainActor (ClipFile?) -> Void) {
         file(url, key: key) { [weak self] local in
             guard let local else { return done(nil) }
             Task { @MainActor [weak self] in
-                let seconds = try? await AVURLAsset(url: local).load(.duration).seconds
+                let asset = AVURLAsset(url: local)
+                let seconds = try? await asset.load(.duration).seconds
+                let voices = (try? await asset.loadTracks(withMediaType: .audio)) ?? []
                 guard let self, !self.closed else { return }
-                done(seconds.flatMap { $0.isFinite && $0 > 0 ? $0 : nil })
+                guard let seconds, seconds.isFinite, seconds > 0 else { return done(nil) }
+                done(ClipFile(seconds: seconds, voiced: !voices.isEmpty))
             }
         }
     }

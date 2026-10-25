@@ -55,28 +55,33 @@ class MediaTest {
         }
     }
 
-    /** A lone clip's length, as [MediaFiles.length] reads it on a real device; null when it cannot be read. */
-    private fun length(url: String): Double? {
-        val answer = AtomicReference<Result<Double?>?>(null)
-        main { MediaFiles.get(context).length(url) { answer.set(Result.success(it)) } }
-        waitFor("the length of $url") { answer.get() != null }
+    /** A lone clip's file, as [MediaFiles.clipFile] reads it on a real device; null when it cannot be read. */
+    private fun clipFile(url: String): ClipFile? {
+        val answer = AtomicReference<Result<ClipFile?>?>(null)
+        main { MediaFiles.get(context).clipFile(url) { answer.set(Result.success(it)) } }
+        waitFor("the file at $url") { answer.get() != null }
         return answer.get()!!.getOrThrow()
     }
 
     @Test
-    fun theLengthOfALoneClipIsReadFromItsFile() {
+    fun aLoneClipsLengthAndSoundTrackAreReadFromItsFile() {
         val file = File(context.cacheDir, "length-red.mp4")
         context.assets.open("clips/red.mp4").use { input -> file.outputStream().use { input.copyTo(it) } }
         val retriever = MediaMetadataRetriever()
-        val expected = try {
+        val (expected, voiced) = try {
             retriever.setDataSource(file.path)
-            retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)!!.toLong() / 1000.0
+            Pair(
+                retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)!!.toLong() / 1000.0,
+                retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_HAS_AUDIO) == "yes",
+            )
         } finally {
             retriever.release()
         }
         assertTrue(expected > 0)
-        assertEquals(expected, length(Uri.fromFile(file).toString())!!, 0.001)
-        assertNull(length(Uri.fromFile(File(context.cacheDir, "none.mp4")).toString()))
+        val read = clipFile(Uri.fromFile(file).toString())!!
+        assertEquals(expected, read.seconds, 0.001)
+        assertEquals(voiced, read.voiced)
+        assertNull(clipFile(Uri.fromFile(File(context.cacheDir, "none.mp4")).toString()))
     }
 
     /** Counts how often a file is opened. */

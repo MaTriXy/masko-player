@@ -29,7 +29,7 @@ class MaskoNativeView(context: Context, appContext: AppContext) : ExpoView(conte
   /** A lone clip's stacked file, played in place of [delivery]. */
   var clip: String? = null
   var autoPlay: Boolean? = null
-  var sound = false
+  var sound = true
   var refreshes = false
 
   var player: MaskoPlayer? = null

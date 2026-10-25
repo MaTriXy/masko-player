@@ -185,12 +185,14 @@ internal class FakeStage(private val log: MutableList<String>) : Stage {
         log += "preload ${short(url)}"
     }
 
-    /** File lengths by URL, for [clipLength]; a URL not here cannot be read. */
+    /** File lengths by URL, for [clipFile]; a URL not here cannot be read. */
     val lengths = HashMap<String, Double>()
+    /** URLs whose file has a sound track. */
+    val voiced = HashSet<String>()
 
-    override fun clipLength(url: String, done: (Double?) -> Unit) {
+    override fun clipFile(url: String, done: (ClipFile?) -> Unit) {
         log += "length ${short(url)}"
-        done(lengths[url])
+        done(lengths[url]?.let { ClipFile(it, url in voiced) })
     }
 
     override fun release() {
@@ -285,6 +287,7 @@ internal class Rig(
     /** A lone clip's stacked file, played in place of [delivery]; its length comes from [lengths]. */
     clip: String? = null,
     lengths: Map<String, Double> = emptyMap(),
+    voiced: Set<String> = emptySet(),
 ) {
     val time = FakeTime()
     /** Time the device spent in deep sleep: the wall clock moves, the main thread's timers do not. */
@@ -294,6 +297,7 @@ internal class Rig(
     val stage = FakeStage(log).also {
         it.ready = ready
         it.lengths.putAll(lengths)
+        it.voiced.addAll(voiced)
     }
     val sounds = FakeSounds(log)
     val player = if (seed == null) {

@@ -181,6 +181,19 @@ export class DomStill implements StillLayer {
 /** Events that let a page play sound (user activation). */
 const GESTURES = ['pointerdown', 'pointerup', 'mousedown', 'keydown', 'touchend', 'click'];
 
+/** Calls `fn` once, on the person's next gesture on the page; returns the cancel. */
+export function onGesture(doc: Document, fn: () => void): () => void {
+  const off = () => {
+    for (const e of GESTURES) doc.removeEventListener(e, once, true);
+  };
+  const once = () => {
+    off();
+    fn();
+  };
+  for (const e of GESTURES) doc.addEventListener(e, once, true);
+  return off;
+}
+
 /**
  * Edge sounds through `<audio>` elements. When the browser blocks sound
  * until a gesture, a one-shot sound is over (it belongs to its moment, it

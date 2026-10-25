@@ -8,7 +8,7 @@ plugins {
 }
 
 group = "ai.masko"
-version = "0.1.2"
+version = "0.1.3"
 
 val media3 = "1.6.1"
 val jna = "5.17.0"

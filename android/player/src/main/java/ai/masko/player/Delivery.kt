@@ -35,13 +35,15 @@ internal class Delivery(
 
         /**
          * The delivery a lone clip plays as (player.md, "One clip"): one pose,
-         * `clip`, whose loop is the stacked file, [seconds] long.
+         * `clip`, whose loop is the stacked file, [seconds] long, with its own
+         * voice when the file has a sound track ([voiced]).
          */
-        fun clip(stacked: String, seconds: Double): String {
+        fun clip(stacked: String, seconds: Double, voiced: Boolean): String {
             val edge = JSONObject()
                 .put("id", "clip").put("source", "clip").put("target", "clip")
                 .put("isLoop", true).put("duration", seconds)
                 .put("videos", JSONObject().put("stacked", stacked))
+                .put("hasAudio", voiced)
             val graph = JSONObject()
                 .put("runtimeGraphSchemaVersion", 1)
                 .put("initialNode", "clip")

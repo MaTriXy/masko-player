@@ -910,7 +910,7 @@ test('signed links: a file cached without CORS (its URL, not a copy) plays from 
 test('sound turned on reaches a looping pose clip at its next loop; a refused voice is not asked again each loop', async (t) => {
   const d = delivery();
   (d.runtimeGraph.edges[0] as Record<string, unknown>).hasAudio = true;
-  const { host, player, a } = await started({ delivery: d });
+  const { host, player, a } = await started({ delivery: d, sound: false });
   const plays = t.mock.method(a, 'play');
   const loop = async () => {
     await host.advance(2000);
@@ -1102,4 +1102,28 @@ test('one clip: nothing plays when no file length can be read (clip_failed)', as
   const { events, a } = await mount({ delivery: undefined, clip: waveFiles });
   assert.deepEqual(a.loads, []);
   assert.deepEqual(events, ['error:clip_failed']);
+});
+
+test('one clip: its own voice is heard with sound on, muted by default', async () => {
+  for (const sound of [false, true]) {
+    const { a } = await mount({ delivery: undefined, clip: waveFiles, sound }, (h) => h.lengths.set(url('wave'), 3));
+    assert.equal(a.playing, true);
+    assert.equal(a.muted, !sound, `sound ${sound}`);
+  }
+});
+
+test("sound is on by default; a voice the browser refused is heard after the person's first gesture", async () => {
+  const d = delivery();
+  (d.runtimeGraph.edges[0] as Record<string, unknown>).hasAudio = true;
+  const { host, a } = await mount({ delivery: d }, (h) => (h.slots[0].refuse = 'unmuted'));
+  a.frame();
+  await settle();
+  assert.equal(a.muted, true, 'refused: played muted');
+  assert.equal(a.playing, true);
+  a.refuse = 'none';
+  host.gesture();
+  await host.advance(2000);
+  a.end();
+  await settle();
+  assert.equal(a.muted, false, 'the next loop is heard');
 });

@@ -49,8 +49,9 @@ MaskoPlayerView(player: player)            // UIView on iOS, NSView on macOS
 ```
 
 One animation on its own, from its HEVC file: `MaskoPlayer(clip: url)`. The
-player reads the file's length and loops it as one pose named `clip`; a
-file it cannot read plays nothing and reports `clip_failed`.
+player reads the file's length and sound track and loops it as one pose
+named `clip`, with its voice when it has one; a file it cannot read plays
+nothing and reports `clip_failed`.
 
 - `set(_:_:)` takes a `Bool` or a number, `fire(_:)` a name. Values set right
   after the player is made choose its first pose. The player then loads the
@@ -68,8 +69,8 @@ file it cannot read plays nothing and reports `clip_failed`.
   (`seconds` is the edge's duration at this rate) and `.error(code:detail:)`.
   A refused delivery gives the engine's own code (`unreadable` for text that
   is not JSON).
-- `sound` is off by default. It lets a clip's own voice be heard; edge sounds
-  play either way. The app chooses its `AVAudioSession` category.
+- `sound` is on by default: a clip's own voice is heard; `false` mutes it.
+  Edge sounds play either way. The app chooses its `AVAudioSession` category.
 - The view turns taps, clicks, Return and Space into `click`, and the
   pointer (Mac, iPad) into `pointerHover`. Dragging and physics stay in the
   app, which sets `heldContact`, `heldShake` and `falling` itself.

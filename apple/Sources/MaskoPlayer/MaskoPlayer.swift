@@ -66,9 +66,9 @@ public final class MaskoPlayer {
     /// Hears every event, in order.
     public var onEvent: ((Event) -> Void)?
 
-    /// Lets clips' own voices (`hasAudio`) be heard. Off by default; edge
-    /// sounds play either way (rules.md 9.6).
-    public var sound = false {
+    /// Lets clips' own voices (`hasAudio`) be heard. On by default; false
+    /// mutes them. Edge sounds play either way (rules.md 9.6).
+    public var sound = true {
         didSet { muteVoices() }
     }
 
@@ -265,14 +265,14 @@ public final class MaskoPlayer {
     /// A lone clip's delivery, once its file's length is known; then the
     /// first frame loads as for a release.
     private func readClip(_ url: URL) {
-        loader.length(url, key: "clip") { [weak self] seconds in
+        loader.clipFile(url, key: "clip") { [weak self] file in
             guard let self, !self.destroyed else { return }
             self.clip = nil
-            guard let seconds else {
+            guard let file else {
                 self.emit(.error(code: "clip_failed", detail: "cannot read the length of \(url.absoluteString)"))
                 return
             }
-            let data = Delivery.clip(hevc: url, seconds: seconds)
+            let data = Delivery.clip(hevc: url, seconds: file.seconds, voiced: file.voiced)
             self.json = String(decoding: data, as: UTF8.self)
             self.engine = try? MaskoEngine(delivery: self.json)
             self.engine?.seed(seed: UInt64.random(in: 1...UInt64.max))

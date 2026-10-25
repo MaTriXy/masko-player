@@ -75,6 +75,8 @@ export interface Host {
   pixels(): number;
   /** A video file's length in seconds, from its metadata; rejects when it cannot be read. */
   clipLength(url: string): Promise<number>;
+  /** Calls `fn` once, on the person's next gesture on the page (which lets it play sound); returns the cancel. */
+  onGesture(fn: () => void): () => void;
   /** Shows or hides the tap-to-play overlay. */
   blocked(on: boolean): void;
   /** The player is destroyed: remove what the host added. */

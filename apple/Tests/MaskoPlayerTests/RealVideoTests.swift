@@ -67,17 +67,20 @@ final class RealVideoTests: XCTestCase {
         return base[y * CVPixelBufferGetBytesPerRow(frame) + x * 4 + 3]
     }
 
-    func testTheFileCacheReadsAClipsLengthFromItsFile() async throws {
+    func testTheFileCacheReadsALoneClipsLengthAndSoundTrack() async throws {
         let loop = clips.appendingPathComponent("loop.mov")
-        let expected = try await AVURLAsset(url: loop).load(.duration).seconds
+        let asset = AVURLAsset(url: loop)
+        let expected = try await asset.load(.duration).seconds
+        let voiced = try await !asset.loadTracks(withMediaType: .audio).isEmpty
         let cache = FileCache()
-        let seconds: TimeInterval? = await withCheckedContinuation { done in
-            cache.length(loop, key: "clip") { done.resume(returning: $0) }
+        let file: ClipFile? = await withCheckedContinuation { done in
+            cache.clipFile(loop, key: "clip") { done.resume(returning: $0) }
         }
-        XCTAssertEqual(try XCTUnwrap(seconds), expected, accuracy: 0.001)
+        XCTAssertEqual(try XCTUnwrap(file).seconds, expected, accuracy: 0.001)
+        XCTAssertEqual(file?.voiced, voiced)
         XCTAssertGreaterThan(expected, 0)
-        let missing: TimeInterval? = await withCheckedContinuation { done in
-            cache.length(clips.appendingPathComponent("none.mov"), key: "missing") { done.resume(returning: $0) }
+        let missing: ClipFile? = await withCheckedContinuation { done in
+            cache.clipFile(clips.appendingPathComponent("none.mov"), key: "missing") { done.resume(returning: $0) }
         }
         XCTAssertNil(missing)
     }

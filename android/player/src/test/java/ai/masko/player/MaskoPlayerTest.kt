@@ -75,6 +75,27 @@ class MaskoPlayerTest {
     }
 
     @Test
+    fun aLoneClipsOwnVoiceIsHeardUntilSoundIsTurnedOff() {
+        val url = "https://cdn.test/m/wave.mp4"
+        val rig = Rig(clip = url, lengths = mapOf(url to 3.0), voiced = setOf(url))
+        rig.turn()
+        rig.slot0.firstFrame()
+        assertEquals("sound is on by default: the file's voice is heard", 1f, rig.slot0.level, 0f)
+        rig.player.sound = false
+        assertEquals(0f, rig.slot0.level, 0f)
+    }
+
+    @Test
+    fun aLoneClipWithoutASoundTrackStaysSilent() {
+        val url = "https://cdn.test/m/wave.mp4"
+        val rig = Rig(clip = url, lengths = mapOf(url to 3.0))
+        rig.turn()
+        rig.slot0.firstFrame()
+        assertTrue(rig.player.sound)
+        assertEquals("no sound track: the clip never asks for the audio", 0f, rig.slot0.level, 0f)
+    }
+
+    @Test
     fun aStageThatIsNotReadyDelaysTheStart() {
         val rig = Rig(ready = false)
         rig.advance(5_000)
@@ -424,13 +445,13 @@ class MaskoPlayerTest {
         rig.slot0.firstFrame()
         rig.advance(1_000)
         rig.slot1.end()
-        // loop-work has a voice; sound is off by default.
+        // loop-work has a voice; sound is on by default.
         assertTrue(rig.slot0.shown)
-        assertEquals(0f, rig.slot0.level, 0f)
-        rig.player.sound = true
         assertEquals(1f, rig.slot0.level, 0f)
         rig.player.sound = false
         assertEquals(0f, rig.slot0.level, 0f)
+        rig.player.sound = true
+        assertEquals(1f, rig.slot0.level, 0f)
 
         val voiced = Rig(options = MaskoPlayer.Options(sound = true)).started()
         assertEquals("loop-idle has no voice", 0f, voiced.slot0.level, 0f)

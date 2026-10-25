@@ -193,7 +193,7 @@ function MaskoViewWithRef(props: MaskoViewProps, ref: ForwardedRef<MaskoHandle>)
     delivery: json,
     clip: clipFile || undefined,
     autoPlay,
-    sound: sound ?? false,
+    sound: sound ?? true,
     refreshes
   });
 }

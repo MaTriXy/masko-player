@@ -75,12 +75,15 @@ internal interface Stage {
      */
     fun preload(url: String, done: (Boolean) -> Unit)
 
-    /** Reads a video's length in seconds from its metadata, then calls [done], with null when it cannot be read. */
-    fun clipLength(url: String, done: (Double?) -> Unit)
+    /** Reads a lone clip's length and sound track from its metadata, then calls [done], with null when it cannot be read. */
+    fun clipFile(url: String, done: (ClipFile?) -> Unit)
 
     /** Frees the slots and cancels preloads and still loads; nothing is called back afterwards. */
     fun release()
 }
+
+/** What a lone clip's file holds: its length in seconds, and whether it has a sound track (player.md, "One clip"). */
+internal data class ClipFile(val seconds: Double, val voiced: Boolean)
 
 /** Edge sounds (rules.md 9.6). */
 internal interface Sounds {

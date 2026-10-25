@@ -43,8 +43,8 @@ class MaskoPlayer internal constructor(
          * value wins over the graph's.
          */
         val autoPlay: Boolean? = null,
-        /** Whether clips' own voices are heard at first (see [sound]). */
-        val sound: Boolean = false,
+        /** Whether clips' own voices are heard at first (see [sound]); on by default. */
+        val sound: Boolean = true,
         /** Gives a fresh delivery of the same release before the signed links expire. */
         val getDelivery: DeliverySource? = null,
     )
@@ -102,8 +102,8 @@ class MaskoPlayer internal constructor(
     val preview = Preview()
 
     /**
-     * Whether clips' own voices (`hasAudio`) are heard. Off by default. Edge
-     * sounds play either way (rules.md 9.6).
+     * Whether clips' own voices (`hasAudio`) are heard. On by default; false
+     * mutes them. Edge sounds play either way (rules.md 9.6).
      */
     var sound: Boolean = options.sound
         set(value) {
@@ -175,11 +175,11 @@ class MaskoPlayer internal constructor(
             open(deliveryJson)
             appPaused = !(options.autoPlay ?: delivery.autoPlay)
         } else {
-            stage.clipLength(clip) { seconds ->
+            stage.clipFile(clip) { file ->
                 when {
                     destroyed -> Unit
-                    seconds == null -> fail("clip_failed", "cannot read the length of $clip")
-                    else -> open(Delivery.clip(clip, seconds))
+                    file == null -> fail("clip_failed", "cannot read the length of $clip")
+                    else -> open(Delivery.clip(clip, file.seconds, file.voiced))
                 }
             }
         }

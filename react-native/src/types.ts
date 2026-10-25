@@ -75,7 +75,7 @@ export interface MaskoViewOptions {
    * Giving or taking it away loads the release again, which restarts the mascot.
    */
   getDelivery?: () => DeliveryInput | Promise<DeliveryInput>;
-  /** Lets clips with their own voice be heard. Off by default; edge sounds play either way. */
+  /** Lets clips with their own voice be heard. On by default; false mutes them. Edge sounds play either way. */
   sound?: boolean;
   /** Starts at once. Defaults to the canvas's `autoPlay`, else true. Read when a release loads. */
   autoPlay?: boolean;

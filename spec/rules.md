@@ -475,8 +475,8 @@ sounds finish; a move stops every sound before its own. Nothing else stops a
 sound, and a looping sound that is playing is never started again: a pose
 clip that loops, or comes back after another clip of the same pose, leaves
 its looping sound running, so each looping sound plays once at most. A
-clip's own voice (`hasAudio`) is heard only when the app allows sound, which
-is off by default.
+clip's own voice (`hasAudio`) is heard unless the app turns sound off; sound
+is on by default.
 
 ### 9.7 Preloading
 

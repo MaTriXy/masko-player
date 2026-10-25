@@ -56,7 +56,7 @@ Without a build step, one file with the engine inlined,
 script that defines `window.MaskoPlayer`, not a module to import.
 
 ```html
-<script src="https://cdn.jsdelivr.net/npm/@masko/player@0.1.2/dist/masko-player.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@masko/player@0.1.3/dist/masko-player.js"></script>
 <script>
   const mascot = MaskoPlayer.mount(document.getElementById('mascot'), { delivery });
 </script>
@@ -73,8 +73,9 @@ mountMascot(element, { clip: { webm: 'https://…/wave.webm', hevc: 'https://…
 ```
 
 The player picks the file the browser shows with transparency, reads its
-length, and loops it as one pose named `clip`. A clip whose length cannot be
-read plays nothing and reports `error` `clip_failed`.
+length, and loops it as one pose named `clip`, with its own voice when the
+file has one. A clip whose length cannot be read plays nothing and reports
+`error` `clip_failed`.
 
 ## What the app can call
 
@@ -86,10 +87,12 @@ read plays nothing and reports `error` `clip_failed`.
 - `updateDelivery(delivery)`: fresh links of the release that is playing.
   Another release is refused with `error` `refresh_mismatch`.
 - `setSound(on)`: lets clips' own voices be heard, or not, from the next
-  clip or loop on.
+  clip or loop on. Browsers refuse sound before the person's first click or
+  key press on the page: the clip then plays muted, and its voice is heard
+  from the next clip or loop after that.
 - Events: `pose`, `clip`, `reactionDone`, `movement`, `error`.
-- Options: `sound` (off by default; lets a clip's own voice be heard, edge
-  sounds play either way), `autoPlay` (defaults to the canvas), `pointer`
+- Options: `sound` (on by default: a clip's own voice is heard; false mutes
+  it; edge sounds play either way), `autoPlay` (defaults to the canvas), `pointer`
   (on by default: clicks, Enter or Space on the focused mascot and the
   pointer reach the canvas as `click` and `pointerHover`).
 

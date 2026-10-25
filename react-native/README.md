@@ -31,7 +31,7 @@ mascot.current?.fire('celebrate');
 
 One animation on its own: `<MaskoView clip={{ hevc, stacked }} />` in
 place of `delivery`. iOS plays the HEVC file, Android the stacked MP4; each
-loops as one pose named `clip`. A clip without the file for the platform, or
+loops as one pose named `clip`, with its voice when the file has one. A clip without the file for the platform, or
 whose length cannot be read, reports `clip_failed`.
 
 - `delivery` is the `delivery` object of
@@ -54,8 +54,8 @@ whose length cannot be read, reports `clip_failed`.
   the app to move the mascot over `seconds`; the player never moves itself)
   and `onError({ code, detail })`. A delivery that is not JSON gives
   `error` `unreadable` on both platforms.
-- `sound` is off by default. It lets a clip's own voice be heard; edge
-  sounds play either way. On iOS the app chooses its `AVAudioSession`
+- `sound` is on by default: a clip's own voice is heard; `false` mutes it.
+  Edge sounds play either way. On iOS the app chooses its `AVAudioSession`
   category; the Android player never takes audio focus.
 - `autoPlay` is read when a release loads. With `false` the mascot shows its
   first frame and waits for `play()`. The prop wins over the graph's

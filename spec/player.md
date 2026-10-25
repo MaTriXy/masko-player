@@ -109,14 +109,18 @@ delivery as any other:
     "initialNode": "clip",
     "nodes": [{ "id": "clip" }],
     "edges": [{ "id": "clip", "source": "clip", "target": "clip", "isLoop": true,
-                "duration": <the file's length in seconds>, "videos": { <the files> } }],
+                "duration": <the file's length in seconds>, "videos": { <the files> },
+                "hasAudio": <whether the file has a sound track> }],
     "inputs": []
   }
 }
 ```
 
 The pose and the clip are both `clip`, so the app hears `pose` `clip` and
-`clip` `clip` on every loop. The length matters: the engine's safety net
+`clip` `clip` on every loop. Apple and Android read whether the file has a
+sound track, so a silent file never takes the device's audio; a web player
+cannot tell before it plays, marks `hasAudio: true`, and the browser plays a
+file without a sound track silently. Sound on, the file's own voice is heard. The length matters: the engine's safety net
 (rules.md 9.3) ends a loop whose end is not reported `duration + 1 s` after
 it showed. When no length can be read, nothing plays and the player reports
 `error` `clip_failed`. Calls made before the length is read are dropped,
@@ -133,8 +137,11 @@ The same names on every platform:
   anything shows, `clip` is null and `time` 0; a still's `time` is 0.
 - `autoPlay`: the app's value wins when it gives one, else the graph's
   `autoPlay`, else true (rules.md 11.1).
-- `sound`: off by default. When on, a clip's own voice (`hasAudio`) is
-  heard; edge sounds play either way.
+- `sound`: on by default. A clip's own voice (`hasAudio`) is heard unless
+  the app turns sound off; edge sounds play either way. A browser refuses
+  sound before the person's first gesture on the page: a web player then
+  plays the clip muted, and asks for its voice again from the next clip or
+  loop after that gesture.
 - Events, with the same data everywhere:
   - `pose { pose }`: the mascot entered this pose.
   - `clip { clip, kind, rate }`: a clip is on screen. `clip` is the edge, or

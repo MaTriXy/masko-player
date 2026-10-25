@@ -106,7 +106,7 @@ function MaskoPlayerView(props: MaskoPlayerProps, ref: ForwardedRef<MaskoHandle>
   }, [props.delivery]);
 
   useEffect(() => {
-    player.current?.setSound(props.sound ?? false);
+    player.current?.setSound(props.sound ?? true);
   }, [props.sound]);
 
   useImperativeHandle(

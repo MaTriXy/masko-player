@@ -126,25 +126,27 @@ internal class MediaFiles private constructor(private val context: Context) {
     }
 
     /**
-     * Reads a video's length in seconds from its metadata, off the main
-     * thread; [done] runs on the main thread, with null when it cannot be read.
+     * Reads a lone clip's length and whether it has a sound track from its
+     * metadata, off the main thread; [done] runs on the main thread, with null
+     * when it cannot be read.
      */
-    fun length(url: String, done: (Double?) -> Unit): Request {
+    fun clipFile(url: String, done: (ClipFile?) -> Unit): Request {
         val waiting = AtomicReference(done)
         work.execute {
             if (waiting.get() == null) return@execute
-            val seconds = readLength(url)
-            main.post { waiting.getAndSet(null)?.invoke(seconds) }
+            val file = readClipFile(url)
+            main.post { waiting.getAndSet(null)?.invoke(file) }
         }
         return Request { waiting.set(null) }
     }
 
-    private fun readLength(url: String): Double? {
+    private fun readClipFile(url: String): ClipFile? {
         val retriever = MediaMetadataRetriever()
         return try {
             if (isRemote(url)) retriever.setDataSource(url, emptyMap()) else retriever.setDataSource(context, Uri.parse(url))
-            retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)
-                ?.toLongOrNull()?.takeIf { it > 0 }?.let { it / 1000.0 }
+            val ms = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)?.toLongOrNull()
+            val voiced = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_HAS_AUDIO) == "yes"
+            ms?.takeIf { it > 0 }?.let { ClipFile(it / 1000.0, voiced) }
         } catch (_: Exception) {
             null
         } finally {

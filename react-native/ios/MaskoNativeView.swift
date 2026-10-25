@@ -18,7 +18,7 @@ final class MaskoNativeView: ExpoView {
   /// A lone clip's HEVC file, played in place of `delivery`.
   var clip: String?
   var autoPlay: Bool?
-  var sound = false
+  var sound = true
   var refreshes = false
 
   private(set) var player: MaskoPlayer?

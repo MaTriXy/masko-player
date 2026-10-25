@@ -47,7 +47,7 @@ export interface PlayerOptions {
   clip?: ClipFiles;
   /** Returns a fresh delivery of the same release, for signed links that expire. */
   getDelivery?: () => DeliveryInput | Promise<DeliveryInput>;
-  /** Lets clips with their own voice (`hasAudio`) be heard. Off by default. */
+  /** Lets clips with their own voice (`hasAudio`) be heard. On by default; false mutes them. */
   sound?: boolean;
   /** Starts at once. Defaults to the canvas's `autoPlay`, else true. */
   autoPlay?: boolean;
@@ -156,6 +156,8 @@ export class Player {
   /** Files that failed to load, tried last until the links are refreshed. */
   private readonly failedKeys = new Set<string>();
   private voices: boolean;
+  /** Waiting for the person's next gesture, after the browser refused a voice. */
+  private voiceGesture: (() => void) | null = null;
 
   readonly preview = {
     /** Editors and tools: cut to a pose at once (rules.md 13). */
@@ -169,7 +171,7 @@ export class Player {
     this.options = options;
     this.clock = new PlayClock(() => host.now());
     this.cache = new ClipCache(host.files);
-    this.voices = options.sound ?? false;
+    this.voices = options.sound ?? true;
     this.seed = options.seed ?? Math.floor(Math.random() * 2 ** 52) + 1;
     if (options.autoPlay !== undefined) this.wantStart = options.autoPlay;
     if (options.clip) {
@@ -341,6 +343,8 @@ export class Player {
     this.early = [];
     this.deferred = [];
     this.listeners.clear();
+    this.voiceGesture?.();
+    this.voiceGesture = null;
     this.host.dispose();
   }
 
@@ -765,9 +769,16 @@ export class Player {
       if (name === 'AbortError') return;
       if (name === 'NotAllowedError') {
         if (!s.muted) {
-          // The browser refuses sound without a gesture: play muted.
+          // The browser refuses sound without a gesture: play muted, and ask
+          // again from the next clip or loop after the person's first gesture.
           s.muted = true;
           s.voiceRefused = true;
+          this.voiceGesture ??= this.host.onGesture(() => {
+            this.voiceGesture = null;
+            const screen = this.screen;
+            if (screen.type === 'clip') screen.showing.voiceRefused = false;
+            if (this.pending) this.pending.voiceRefused = false;
+          });
           if (this.running()) this.playShowing(s);
           return;
         }
