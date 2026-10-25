@@ -3,8 +3,8 @@ build/
 *.tgz
 # Made by the podspec (links to ../apple) or by `npm pack` (copies).
 ios/vendor/
-# Made by `npm pack`: ai.masko:player as a Maven repository.
-android/maven/
+# Made by `npm pack`: the Kotlin player's sources and engine (scripts/vendor.mjs).
+android/player/
 android/build/
 android/.gradle/
 LICENSE

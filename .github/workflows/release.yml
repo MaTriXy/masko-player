@@ -58,11 +58,11 @@ jobs:
       - uses: actions/checkout@v7.0.1
         with:
           persist-credentials: false
-      - name: The tag is the package's version and ai.masko:player's
+      - name: The tag is the package's version and its Android library's
         run: |
           test "$(node -p "require('./react-native/package.json').version")" = "$GITHUB_REF_NAME"
           grep -qx "version = \"$GITHUB_REF_NAME\"" android/player/build.gradle.kts
-          grep -q "ai.masko:player:$GITHUB_REF_NAME'" react-native/android/build.gradle
+          grep -qx "version = '$GITHUB_REF_NAME'" react-native/android/build.gradle
       - uses: actions/setup-java@v6.0.1
         with:
           distribution: temurin

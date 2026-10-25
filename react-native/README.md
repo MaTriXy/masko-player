@@ -130,14 +130,12 @@ so an app should keep only these, for example with
   repository `pod install` links `ios/vendor/` to `../apple`, so apps build
   the current `apple/Sources`. `npm pack` copies them in instead, with the
   engine's iOS slices only.
-- **Android.** `android/build.gradle` depends on `ai.masko:player:0.1.0`. In
-  this repository it comes from `android/player/build/repo`, which
-  `scripts/build-react-native.sh` publishes; run it again after changing
-  `android/player/src`. `npm pack` copies that Maven repository into
-  `android/maven/`, and the Gradle build adds it to the app's repositories
-  for `ai.masko:player` only. Once `ai.masko:player` is on Maven Central,
-  the package drops `android/maven/` and resolves it from `mavenCentral()`,
-  which every React Native app already lists.
+- **Android.** `android/build.gradle` compiles the Kotlin player into this
+  library, with its bindings, engine libraries and R8 rules, and declares
+  the player's own dependencies (Media3, JNA). In this repository it reads
+  `android/player/src/main`; `npm pack` copies it into `android/player/`.
+  No Maven repository is involved, so an Expo build
+  (`npx expo run:android`, which configures on demand) finds it too.
 
 ## Build and test
 

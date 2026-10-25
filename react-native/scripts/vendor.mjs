@@ -4,8 +4,9 @@
 // - ios/vendor/MaskoPlayer: the Swift player (apple/Sources/MaskoPlayer).
 // - ios/vendor/MaskoPlayerFFI.xcframework: the engine for iOS devices and the
 //   simulator, from apple/MaskoPlayerFFI.xcframework (scripts/build-apple.sh).
-// - android/maven: ai.masko:player as a Maven repository
-//   (scripts/build-react-native.sh publishes it to android/player/build/repo).
+// - android/player: the Kotlin player's sources, bindings and engine libraries
+//   (android/player/src/main, built by scripts/build-android.sh) and its
+//   R8 rules, which android/build.gradle builds into the library.
 // - LICENSE and THIRD_PARTY_NOTICES.md, which every package built from this
 //   repository ships.
 
@@ -26,10 +27,13 @@ function need(path, how) {
 
 const sources = join(repo, 'apple/Sources/MaskoPlayer');
 const ffi = join(repo, 'apple/MaskoPlayerFFI.xcframework');
-const maven = join(repo, 'android/player/build/repo');
+const kotlin = join(repo, 'android/player/src/main');
 need(sources, 'run this from the masko-player repository.');
 need(join(ffi, 'Info.plist'), 'run scripts/build-apple.sh.');
-need(join(maven, 'ai/masko/player'), 'run scripts/build-react-native.sh.');
+for (const abi of ['arm64-v8a', 'armeabi-v7a', 'x86_64']) {
+  need(join(kotlin, 'jniLibs', abi, 'libmasko_player_ffi.so'), 'run scripts/build-android.sh.');
+}
+need(join(kotlin, 'generated/ai/masko/player/engine'), 'run scripts/build-android.sh.');
 
 const vendor = join(pkg, 'ios/vendor');
 rmSync(vendor, { recursive: true, force: true });
@@ -47,11 +51,17 @@ for (const slice of readdirSync(ffi).filter((name) => name.startsWith('ios-'))) 
 args.push('-output', join(vendor, 'MaskoPlayerFFI.xcframework'));
 execFileSync('xcodebuild', args, { stdio: ['ignore', 'ignore', 'inherit'] });
 
-const androidMaven = join(pkg, 'android/maven');
-rmSync(androidMaven, { recursive: true, force: true });
-cpSync(join(maven, 'ai/masko/player'), join(androidMaven, 'ai/masko/player'), { recursive: true });
+const androidPlayer = join(pkg, 'android/player');
+rmSync(androidPlayer, { recursive: true, force: true });
+for (const part of ['java', 'generated', 'jniLibs']) {
+  cpSync(join(kotlin, part), join(androidPlayer, part), {
+    recursive: true,
+    filter: (from) => !from.endsWith('.DS_Store')
+  });
+}
+cpSync(join(repo, 'android/player/consumer-rules.pro'), join(androidPlayer, 'consumer-rules.pro'));
 
 cpSync(join(repo, 'LICENSE'), join(pkg, 'LICENSE'));
 cpSync(join(repo, 'THIRD_PARTY_NOTICES.md'), join(pkg, 'THIRD_PARTY_NOTICES.md'));
 
-console.log(`Vendored the Swift player, the iOS engine and ai.masko:player into ${pkg}`);
+console.log(`Vendored the Swift and Kotlin players and their engines into ${pkg}`);

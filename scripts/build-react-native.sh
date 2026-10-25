@@ -5,10 +5,10 @@
 # - the engine for iOS, apple/MaskoPlayerFFI.xcframework (scripts/build-apple.sh),
 #   when it is missing; the podspec links it and apple/Sources into the pod;
 # - the engine for Android (scripts/build-android.sh), when it is missing;
-# - ai.masko:player, published to the local Maven repository
-#   android/player/build/repo, where the package's Gradle build finds it.
+#   the package's Gradle build compiles android/player/src/main into the
+#   library, after a check that the engine matches the current sources.
 #
-# Run it again after changing android/player/src. Usage: scripts/build-react-native.sh
+# Usage: scripts/build-react-native.sh
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -25,6 +25,5 @@ if [[ ! -f "$PLAYER/src/main/generated/ai/masko/player/engine/masko_player_ffi.k
   "$ROOT/scripts/build-android.sh"
 fi
 
-echo "==> ai.masko:player to android/player/build/repo"
-(cd "$ROOT/android" && ./gradlew --quiet :player:publishReleasePublicationToLocalRepository)
-ls "$PLAYER/build/repo/ai/masko/player"
+echo "==> The Android engine matches its sources"
+(cd "$ROOT/android" && ./gradlew --quiet :player:checkEngineLibraries)

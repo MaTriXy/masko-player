@@ -9,31 +9,41 @@ applyKotlinExpoModulesCorePlugin()
 useCoreDependencies()
 useDefaultAndroidSdkVersions()
 
-// ai.masko:player, the Kotlin player. In the masko-player repository it comes
-// from the library next door, published by scripts/build-react-native.sh;
-// `npm pack` copies that Maven repository into maven/ (scripts/vendor.mjs).
-def maskoPlayerRepository = [
-  file('../../android/player/build/repo'),
-  file('maven')
-].find { new File(it, 'ai/masko/player').isDirectory() }
-if (maskoPlayerRepository == null) {
-  throw new GradleException(
-    "ai.masko:player is missing: run scripts/build-react-native.sh in the masko-player repository.")
-}
-// The app resolves this library's dependencies with its own repositories.
-rootProject.allprojects {
-  repositories {
-    maven {
-      url = maskoPlayerRepository.toURI()
-      content { includeModule('ai.masko', 'player') }
-    }
+// The Kotlin player (android/player) is built into this library with its
+// bindings and engine: a package from npm carries a copy in player/
+// (scripts/vendor.mjs); in the masko-player repository it is read where it
+// is. No Maven repository is involved, so every app build finds it, also
+// Expo's (`--configure-on-demand`, which never sees a repository a library
+// adds).
+def vendored = file('player')
+def player = vendored.isDirectory()
+  ? [sources: vendored, rules: new File(vendored, 'consumer-rules.pro')]
+  : [sources: file('../../android/player/src/main'), rules: file('../../android/player/consumer-rules.pro')]
+['java/ai/masko/player', 'generated/ai/masko/player/engine', 'jniLibs/arm64-v8a'].each { part ->
+  if (!new File(player.sources, part).isDirectory()) {
+    throw new GradleException(
+      "The Kotlin player is missing ${part}: run scripts/build-react-native.sh in the masko-player repository.")
   }
 }
 
 android {
   namespace "ai.masko.player.reactnative"
+  defaultConfig {
+    consumerProguardFiles player.rules
+  }
+  sourceSets {
+    main {
+      java.srcDirs += [new File(player.sources, 'java'), new File(player.sources, 'generated')]
+      jniLibs.srcDirs += [new File(player.sources, 'jniLibs')]
+    }
+  }
 }
 
+// The Kotlin player's own dependencies, as in android/player/build.gradle.kts.
 dependencies {
-  implementation 'ai.masko:player:0.1.0'
+  implementation 'androidx.media3:media3-exoplayer:1.6.1'
+  implementation 'androidx.media3:media3-datasource:1.6.1'
+  implementation 'androidx.media3:media3-database:1.6.1'
+  implementation 'net.java.dev.jna:jna:5.17.0@aar'
+  implementation 'androidx.annotation:annotation:1.9.1'
 }
