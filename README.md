@@ -124,6 +124,18 @@ React Native (these checks need no native build; the example app needs
 
 Each platform's README has its own details and device checks.
 
+## Releases
+
+1. Set the version in `web/package.json`, `react-native/package.json`,
+   `android/player/build.gradle.kts` and `react-native/android/build.gradle`.
+2. Build the Swift package's engine with `scripts/release-apple.sh <version>`
+   and commit `Package.swift` (`apple/README.md`, "Releases").
+3. Tag that commit with the version itself (`0.2.0`, no `v`) and push the
+   tag. `.github/workflows/release.yml` builds and publishes
+   `@masko/player` and `@masko/player-react-native` to npm. npm trusts that
+   workflow (trusted publishing), so no token or one-time code is needed.
+4. Make the GitHub release for the tag and attach the Swift engine's zip.
+
 ## License
 
 MIT. See `LICENSE`. The compiled engine contains Rust crates under their

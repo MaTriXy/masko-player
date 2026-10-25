@@ -1,0 +1,101 @@
+# Publishes @masko/player and @masko/player-react-native to npm when a
+# version tag (0.2.0, no "v") is pushed. npm trusts this workflow directly
+# (trusted publishing): there is no npm token and no one-time code. Each
+# package's settings on npmjs.com name masko-ai/masko-player and this file,
+# release.yml; renaming it stops the publishing.
+name: Release
+
+on:
+  push:
+    tags: ['[0-9]+.[0-9]+.[0-9]+']
+
+permissions:
+  contents: read
+  # Lets npm verify that a publish comes from this workflow.
+  id-token: write
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  web:
+    name: Publish @masko/player
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+      - name: The tag is the package's version
+        run: test "$(node -p "require('./web/package.json').version")" = "$GITHUB_REF_NAME"
+      - uses: ./.github/actions/rust
+      - uses: actions/setup-node@v7.1.0
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+      - name: Install packages
+        working-directory: web
+        run: npm ci
+      - name: Build the engine and the package
+        run: scripts/build-web.sh --package
+      - name: Typecheck and test
+        working-directory: web
+        run: |
+          npm run typecheck
+          npm test
+      - name: Publish
+        working-directory: web
+        run: npx --yes npm@12 publish --access public
+
+  react-native:
+    name: Publish @masko/player-react-native
+    # The package carries the iOS engine, which only builds on a Mac, and the
+    # Android engine.
+    runs-on: macos-15
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+      - name: The tag is the package's version and ai.masko:player's
+        run: |
+          test "$(node -p "require('./react-native/package.json').version")" = "$GITHUB_REF_NAME"
+          grep -qx "version = \"$GITHUB_REF_NAME\"" android/player/build.gradle.kts
+          grep -q "ai.masko:player:$GITHUB_REF_NAME'" react-native/android/build.gradle
+      - uses: actions/setup-java@v6.0.1
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: gradle/actions/setup-gradle@v6.4.0
+        with:
+          cache-provider: basic
+      - name: Install the NDK of scripts/build-android.sh
+        run: |
+          # shellcheck disable=SC2016 # the pattern matches a literal ${
+          ndk="$(sed -n 's/^NDK_VERSION="\${MASKO_NDK_VERSION:-\([^}]*\)}"$/\1/p' scripts/build-android.sh)"
+          test -n "$ndk"
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --install "ndk;$ndk"
+          echo "ANDROID_NDK_HOME=$ANDROID_HOME/ndk/$ndk" >> "$GITHUB_ENV"
+      - uses: ./.github/actions/rust
+      - uses: actions/setup-node@v7.1.0
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+      - name: Build the native players
+        run: |
+          xcodebuild -version
+          scripts/build-react-native.sh
+      - name: Install packages
+        working-directory: react-native
+        run: npm ci
+      - name: Typecheck and test
+        working-directory: react-native
+        run: |
+          npm run typecheck
+          npm test
+      - name: Publish
+        working-directory: react-native
+        # prepack copies the Swift player, the iOS engine and ai.masko:player
+        # into the package.
+        run: npx --yes npm@12 publish --access public

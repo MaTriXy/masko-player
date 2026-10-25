@@ -179,7 +179,8 @@ which the view hands to `updateDelivery`). Each one shows in the app's log.
 
 ## Releases
 
-`npm publish` runs `prepack`, which needs `apple/MaskoPlayerFFI.xcframework`
+A version tag publishes it from `.github/workflows/release.yml` (the
+repository's README, "Releases"). `npm publish` runs `prepack`, which needs `apple/MaskoPlayerFFI.xcframework`
 (`scripts/build-apple.sh`) and the published `ai.masko:player`
 (`scripts/build-react-native.sh`): it copies the Swift player, the iOS engine
 and the Maven repository into the package, and builds `build/` with `tsc`.
