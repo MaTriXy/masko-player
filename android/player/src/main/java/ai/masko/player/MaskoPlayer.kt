@@ -4,6 +4,7 @@ import ai.masko.player.engine.EngineClipKind
 import ai.masko.player.engine.EngineCommand
 import ai.masko.player.engine.LoadFailure
 import ai.masko.player.engine.MaskoEngine
+import android.media.MediaCodecList
 import org.json.JSONObject
 import java.util.concurrent.CopyOnWriteArrayList
 import kotlin.random.Random
@@ -736,13 +737,27 @@ class MaskoPlayer internal constructor(
         if (before != null && after != null && after <= before) refreshIn(RETRY_MS)
     }
 
-    private companion object {
+    companion object {
+        /**
+         * The `formats` to ask the release delivery for (player.md, "Asking
+         * for AV1"): `av1` when this phone has an AV1 decoder, which Android
+         * 10 and later ship, else empty, and the delivery keeps its stacked
+         * H.264 files.
+         */
+        @JvmStatic
+        val formats: String by lazy {
+            val av1 = MediaCodecList(MediaCodecList.REGULAR_CODECS).codecInfos.any { info ->
+                !info.isEncoder && info.supportedTypes.any { it.equals("video/av01", ignoreCase = true) }
+            }
+            if (av1) "av1" else ""
+        }
+
         /** Refresh this long before the links expire, or halfway when they expire sooner than twice this. */
-        const val REFRESH_LEAD_MS = 5 * 60_000L
+        private const val REFRESH_LEAD_MS = 5 * 60_000L
         /** Try again this long after a failed refresh. */
-        const val RETRY_MS = 30_000L
+        private const val RETRY_MS = 30_000L
         /** A getDelivery that has not replied after this long has failed. */
-        const val REPLY_TIMEOUT_MS = 60_000L
+        private const val REPLY_TIMEOUT_MS = 60_000L
     }
 }
 

@@ -45,10 +45,11 @@ struct Delivery {
         var target: String?
         /// A pose's own clip, which loops on its pose.
         var isLoop: Bool
-        /// The base HEVC-with-alpha file.
-        var hevc: URL?
-        /// Size variants with an HEVC file, smallest first (manifest mode).
-        var variants: [(size: Int, hevc: URL)]
+        /// The base file: stacked AV1 when the clip has one (a delivery asked
+        /// with `formats=av1`), else HEVC with alpha.
+        var file: URL?
+        /// Size variants of that kind, smallest first (manifest mode).
+        var variants: [(size: Int, file: URL)]
         var sound: Sound?
         var movement: MaskoJSON?
         var hasAudio: Bool
@@ -70,13 +71,17 @@ struct Delivery {
         var edges: [String: Edge] = [:]
         for e in wire.runtimeGraph.edges {
             let videos = e.videos?.value
-            let variants = (videos?.variants?.value ?? [:])
+            let sizes = videos?.variants?.value ?? [:]
+            // A clip with an AV1 file plays it, at its base and in every size.
+            let av1 = videos?.av1?.url != nil || sizes.values.contains { $0.value?.av1?.url != nil }
+            let variants = sizes
                 .compactMap { key, files -> (Int, URL)? in
-                    guard let size = Int(key), let hevc = files.value?.hevc?.url else { return nil }
-                    return (size, hevc)
+                    let file = av1 ? files.value?.av1?.url : files.value?.hevc?.url
+                    guard let size = Int(key), let file else { return nil }
+                    return (size, file)
                 }
                 .sorted { $0.0 < $1.0 }
-                .map { (size: $0.0, hevc: $0.1) }
+                .map { (size: $0.0, file: $0.1) }
             let sound = e.sound?.value.flatMap { s in
                 s.url?.url.map {
                     Sound(url: $0, volume: min(max(s.volume?.value ?? 1, 0), 1), loop: s.loop?.value ?? false)
@@ -86,7 +91,7 @@ struct Delivery {
                 source: e.source?.value,
                 target: e.target?.value,
                 isLoop: e.isLoop?.value ?? false,
-                hevc: videos?.hevc?.url,
+                file: av1 ? videos?.av1?.url : videos?.hevc?.url,
                 variants: variants,
                 sound: sound,
                 movement: e.movement,
@@ -110,9 +115,9 @@ struct Delivery {
     }
 
     /// The delivery a lone clip plays as (player.md, "One clip"): one pose,
-    /// `clip`, whose loop is the HEVC file, `seconds` long, with its own
-    /// voice when the file has a sound track (`voiced`).
-    static func clip(hevc: URL, seconds: TimeInterval, voiced: Bool) -> Data {
+    /// `clip`, whose loop is the file (HEVC, or stacked AV1), `seconds` long,
+    /// with its own voice when the file has a sound track (`voiced`).
+    static func clip(file: URL, seconds: TimeInterval, voiced: Bool) -> Data {
         let delivery: [String: Any] = [
             "deliverySchemaVersion": 1,
             "playerContract": 1,
@@ -123,7 +128,7 @@ struct Delivery {
                 "nodes": [["id": "clip"]],
                 "edges": [[
                     "id": "clip", "source": "clip", "target": "clip", "isLoop": true,
-                    "duration": seconds, "videos": ["hevc": hevc.absoluteString], "hasAudio": voiced,
+                    "duration": seconds, "videos": ["hevc": file.absoluteString], "hasAudio": voiced,
                 ]],
                 "inputs": [Any](),
             ],
@@ -137,13 +142,13 @@ struct Delivery {
     func file(edge id: String, pixels: Double?) -> (url: URL, key: String)? {
         guard let edge = edges[id] else { return nil }
         if let pixels, let v = edge.variants.first(where: { Double($0.size) >= pixels }) {
-            return (v.hevc, "\(id)@\(v.size)")
+            return (v.file, "\(id)@\(v.size)")
         }
-        if let hevc = edge.hevc {
-            return (hevc, id)
+        if let file = edge.file {
+            return (file, id)
         }
         if let largest = edge.variants.last {
-            return (largest.hevc, "\(id)@\(largest.size)")
+            return (largest.file, "\(id)@\(largest.size)")
         }
         return nil
     }
@@ -157,7 +162,7 @@ struct Delivery {
     /// Takes the links of a fresh delivery of the same release.
     mutating func takeLinks(from fresh: Delivery) {
         for (id, edge) in fresh.edges where edges[id] != nil {
-            edges[id]?.hevc = edge.hevc
+            edges[id]?.file = edge.file
             edges[id]?.variants = edge.variants
             edges[id]?.sound = edge.sound
         }
@@ -224,10 +229,12 @@ struct Delivery {
 
     private struct Files: Decodable {
         var hevc: Lenient<String>?
+        var av1: Lenient<String>?
     }
 
     private struct Videos: Decodable {
         var hevc: Lenient<String>?
+        var av1: Lenient<String>?
         var variants: Lenient<[String: Lenient<Files>]>?
     }
 

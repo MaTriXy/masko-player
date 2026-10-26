@@ -1,8 +1,10 @@
 #!/usr/bin/env bash
 # Installs what the engine builds need into .toolchain/, inside this
 # repository: rustup, the Rust toolchain and targets of rust-toolchain.toml,
-# and the wasm-bindgen CLI version scripts/build-web.sh checks. It never
-# touches your own Rust (~/.rustup, ~/.cargo) or your shell profile.
+# the wasm-bindgen CLI version scripts/build-web.sh checks, and on a Mac the
+# meson and ninja versions scripts/build-dav1d-apple.sh checks, in a Python
+# virtual environment (.toolchain/meson). It never touches your own Rust
+# (~/.rustup, ~/.cargo), your own Python or your shell profile.
 # scripts/env.sh uses .toolchain/ once it exists.
 #
 # Then it lists the other tools each platform needs, and which ones this
@@ -42,6 +44,25 @@ if [[ "$have_bindgen" != "$WANT_BINDGEN" ]]; then
   cargo install wasm-bindgen-cli --version "$WANT_BINDGEN" --locked
 fi
 wasm-bindgen --version
+
+# The Apple AV1 decoder, dav1d, builds with meson and ninja. They come from
+# PyPI into their own virtual environment, made with the python3 on PATH.
+if [[ "$(uname -s)" == "Darwin" ]]; then
+  WANT_MESON="$(sed -n 's/^WANT_MESON="\([^"]*\)"$/\1/p' scripts/build-dav1d-apple.sh)"
+  WANT_NINJA="$(sed -n 's/^WANT_NINJA="\([^"]*\)"$/\1/p' scripts/build-dav1d-apple.sh)"
+  [[ -n "$WANT_MESON" && -n "$WANT_NINJA" ]] || { echo "no WANT_MESON or WANT_NINJA in scripts/build-dav1d-apple.sh" >&2; exit 1; }
+  MESON_ENV="$ROOT/.toolchain/meson"
+  installed() { "$MESON_ENV/bin/python" -c "import importlib.metadata as m; print(m.version('$1'))" 2>/dev/null || true; }
+  if [[ "$(installed meson)" != "$WANT_MESON" || "$(installed ninja)" != "$WANT_NINJA" ]]; then
+    echo "==> meson $WANT_MESON and ninja $WANT_NINJA into .toolchain/meson"
+    command -v python3 >/dev/null || { echo "python3 is needed to install meson" >&2; exit 1; }
+    # A virtual environment whose Python is gone (an upgrade removed it) is made again.
+    "$MESON_ENV/bin/python" -c '' 2>/dev/null || python3 -m venv --clear "$MESON_ENV"
+    "$MESON_ENV/bin/python" -m pip install --quiet --disable-pip-version-check \
+      "meson==$WANT_MESON" "ninja==$WANT_NINJA"
+  fi
+  echo "meson $("$MESON_ENV/bin/meson" --version), ninja $("$MESON_ENV/bin/ninja" --version)"
+fi
 
 # What else each platform needs. Nothing below is installed by this script.
 # shellcheck source=env.sh
@@ -84,6 +105,8 @@ check "ffmpeg with libvpx-vp9, for the browser tests' clips" ffmpeg_has libvpx-v
 echo
 echo "Apple (apple/, macOS only):"
 check "Xcode 16 or later, with an iOS simulator" xcodebuild -version
+check "visionOS SDK, for the visionOS slices of apple/dav1d.xcframework" xcrun --sdk xros --show-sdk-path
+echo "  meson and ninja for scripts/build-dav1d-apple.sh are in .toolchain/meson (above)."
 echo
 echo "Android (android/):"
 check "Java 17 (JDK)" java_17

@@ -234,6 +234,10 @@
                     "description": "Colour above, transparency below, for Android players.",
                     "type": "string"
                   },
+                  "av1": {
+                    "description": "The stacked layout in AV1, for the Masko app players: in a delivery asked with formats=av1, in place of stacked or hevc.",
+                    "type": "string"
+                  },
                   "variants": {
                     "description": "Size variants by pixel size, in manifest mode.",
                     "type": "object",
@@ -251,6 +255,10 @@
                         },
                         "stacked": {
                           "description": "Colour above, transparency below, for Android players.",
+                          "type": "string"
+                        },
+                        "av1": {
+                          "description": "The stacked layout in AV1, for the Masko app players: in a delivery asked with formats=av1, in place of stacked or hevc.",
                           "type": "string"
                         }
                       },

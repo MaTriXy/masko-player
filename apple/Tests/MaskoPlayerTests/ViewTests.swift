@@ -114,7 +114,8 @@ final class ViewTests: XCTestCase {
         let stage = player.stage as! AVStage
         XCTAssertTrue(stage.layer.superlayer === host)
         XCTAssertEqual(stage.layer.frame.size, CGSize(width: 120, height: 80))
-        XCTAssertEqual(stage.avSlots[0].layer.frame.size, CGSize(width: 120, height: 80))
+        XCTAssertEqual(stage.clipSlots[0].layer.frame.size, CGSize(width: 120, height: 80))
+        XCTAssertEqual(stage.clipSlots[0].av1.layer.frame.size, CGSize(width: 120, height: 80))
         XCTAssertEqual(player.displayPixels, Double(120 * scale))
 
         // Another player takes the view's place.

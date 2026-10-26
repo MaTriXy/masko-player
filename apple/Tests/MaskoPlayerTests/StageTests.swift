@@ -11,7 +11,7 @@ final class StageTests: XCTestCase {
     #if !os(visionOS)
     func testAMascotNeverKeepsTheScreenAwake() {
         let stage = AVStage()
-        for slot in stage.avSlots {
+        for slot in stage.clipSlots.map(\.hevc) {
             XCTAssertFalse(slot.player.preventsDisplaySleepDuringVideoPlayback)
         }
     }

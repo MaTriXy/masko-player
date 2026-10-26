@@ -15,6 +15,11 @@ import Foundation
 /// ```
 @MainActor
 public final class MaskoPlayer {
+    /// The `formats` to ask the release delivery for (player.md, "Asking for
+    /// AV1"): `av1`, which this player plays on every device, with the
+    /// device's AV1 decoder or with dav1d.
+    nonisolated public static let formats = "av1"
+
     /// What the app hears (spec/player.md, "What the app sees").
     public enum Event: Equatable, Sendable {
         /// The mascot is on this pose now.
@@ -274,7 +279,7 @@ public final class MaskoPlayer {
                 self.emit(.error(code: "clip_failed", detail: "cannot read the length of \(url.absoluteString)"))
                 return
             }
-            let data = Delivery.clip(hevc: url, seconds: file.seconds, voiced: file.voiced)
+            let data = Delivery.clip(file: url, seconds: file.seconds, voiced: file.voiced)
             self.json = String(decoding: data, as: UTF8.self)
             self.engine = try? MaskoEngine(delivery: self.json)
             self.engine?.seed(seed: UInt64.random(in: 1...UInt64.max))

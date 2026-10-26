@@ -9,14 +9,26 @@ import PackageDescription
 // that adds this package by URL gets no build there (the xcframework is
 // git-ignored), so it downloads the release zip; scripts/release-apple.sh
 // writes its URL and checksum here.
-let releaseURL = "https://github.com/masko-ai/masko-player/releases/download/0.1.5/MaskoPlayerFFI.xcframework.zip"
-let releaseChecksum = "a909ed3ac5ec86d5774f659a4ed176c6aed607b227876931926c9d7e34b566c0"
+let releaseURL = "https://github.com/masko-ai/masko-player/releases/download/0.1.6/MaskoPlayerFFI.xcframework.zip"
+let releaseChecksum = "c35aca58fdc442072f41e3eaca7ba49518d1e25a9b04dd1063baacb68789c5db"
 
 let localEngine = "apple/MaskoPlayerFFI.xcframework"
 let engine: Target =
     FileManager.default.fileExists(atPath: Context.packageDirectory + "/" + localEngine + "/Info.plist")
     ? .binaryTarget(name: "MaskoPlayerFFI", path: localEngine)
     : .binaryTarget(name: "MaskoPlayerFFI", url: releaseURL, checksum: releaseChecksum)
+
+// dav1d decodes AV1 on devices without an AV1 decoder. Like the engine, it
+// is the local xcframework when built (scripts/build-dav1d-apple.sh), else its
+// release zip; scripts/release-apple.sh writes that zip's URL and checksum.
+let dav1dReleaseURL = "https://github.com/masko-ai/masko-player/releases/download/0.1.6/dav1d.xcframework.zip"
+let dav1dReleaseChecksum = "b472daf71c79bf61ed9f375362352b5f6e6e4f82bd59465ea88f8f34442648b0"
+
+let localDav1d = "apple/dav1d.xcframework"
+let dav1d: Target =
+    FileManager.default.fileExists(atPath: Context.packageDirectory + "/" + localDav1d + "/Info.plist")
+    ? .binaryTarget(name: "Dav1d", path: localDav1d)
+    : .binaryTarget(name: "Dav1d", url: dav1dReleaseURL, checksum: dav1dReleaseChecksum)
 
 let package = Package(
     name: "MaskoPlayer",
@@ -26,9 +38,10 @@ let package = Package(
     ],
     targets: [
         engine,
+        dav1d,
         .target(
             name: "MaskoPlayer",
-            dependencies: ["MaskoPlayerFFI"],
+            dependencies: ["MaskoPlayerFFI", "Dav1d"],
             path: "apple/Sources/MaskoPlayer",
             resources: [.copy("PrivacyInfo.xcprivacy")]
         ),

@@ -107,7 +107,7 @@ internal class EdgeMedia(
     val target: String,
     val isLoop: Boolean,
     val conditional: Boolean,
-    /** The base stacked file: colour above, transparency below. */
+    /** The base stacked file, AV1 or H.264: colour above, transparency below. */
     val stacked: String?,
     /** Stacked size variants, smallest first (manifest mode). */
     val variants: List<Pair<Int, String>>,
@@ -133,11 +133,14 @@ internal class EdgeMedia(
     companion object {
         fun read(id: String, e: JSONObject): EdgeMedia {
             val videos = e.optJSONObject("videos")
+            // AV1 and H.264 stacked files share one layout; a delivery asked
+            // with `formats=av1` names `av1` (player.md, "The file and the size").
+            val kind = if (videos != null && names(videos, "av1")) "av1" else "stacked"
             val variants = ArrayList<Pair<Int, String>>()
             videos?.optJSONObject("variants")?.let { all ->
                 for (key in all.keys()) {
                     val size = key.toIntOrNull() ?: continue
-                    val url = all.optJSONObject(key)?.optText("stacked") ?: continue
+                    val url = all.optJSONObject(key)?.optText(kind) ?: continue
                     variants += size to url
                 }
             }
@@ -153,13 +156,20 @@ internal class EdgeMedia(
                 target = e.optString("target"),
                 isLoop = e.optBoolean("isLoop", false),
                 conditional = hasConditions(e),
-                stacked = videos?.optText("stacked"),
+                stacked = videos?.optText(kind),
                 variants = variants,
                 sound = sound,
                 hasAudio = e.optBoolean("hasAudio", false),
                 movement = e.optJSONObject("movement"),
                 duration = e.optDouble("duration", 0.0),
             )
+        }
+
+        /** Whether [videos] names a [kind] file, at its base or in a size of `variants`. */
+        private fun names(videos: JSONObject, kind: String): Boolean {
+            if (videos.optText(kind) != null) return true
+            val all = videos.optJSONObject("variants") ?: return false
+            return all.keys().asSequence().any { all.optJSONObject(it)?.optText(kind) != null }
         }
 
         /** A non-empty `conditionGroups` replaces `conditions`; empty groups are dropped (rules.md 2.1). */

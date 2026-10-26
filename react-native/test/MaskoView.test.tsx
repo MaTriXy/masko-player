@@ -34,6 +34,7 @@ function resetCalls() {
 jest.mock('expo', () => {
   const { forwardRef, useImperativeHandle } = jest.requireActual('react');
   return {
+    requireNativeModule: () => ({ formats: () => 'av1' }),
     requireNativeView: (name: string) => {
       fake.requested.push(name);
       return forwardRef((props: NativeProps, ref: unknown) => {
@@ -362,4 +363,9 @@ describe('getDelivery', () => {
     await settle();
     expect(fake.calls.answerDelivery.mock.calls).toEqual([[4, null]]);
   });
+});
+
+test('maskoFormats gives what the native player asks the delivery for', () => {
+  const { maskoFormats } = jest.requireActual('../src') as typeof import('../src');
+  expect(maskoFormats()).toBe('av1');
 });

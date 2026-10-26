@@ -1,4 +1,4 @@
-export { MaskoView } from './MaskoView';
+export { MaskoView, maskoFormats } from './MaskoView';
 export type {
   ClipFiles,
   Delivery,

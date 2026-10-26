@@ -86,8 +86,11 @@ whose length cannot be read, reports `clip_failed`.
   player pauses itself, and resumes where it stopped when it is back: out
   of its window or with the app in the background on iOS, detached or with
   its window hidden on Android.
-- iOS plays each edge's `videos.hevc` (HEVC with alpha), Android its
-  `videos.stacked` (colour above, transparency below). On Android, fetch the
+- iOS plays each edge's `videos.av1` (stacked AV1) when it has one, else its
+  `videos.hevc` (HEVC with alpha); Android its `videos.av1` when it has one,
+  else its `videos.stacked` (colour above, transparency below). AV1 files
+  come in a delivery asked with `formats=av1` (`../spec/player.md`, "Asking
+  for AV1"). On Android, fetch the
   release delivery with `target=android`; an older release without stacked
   files shows each pose's still until the canvas is released again
   (`../android/README.md`).

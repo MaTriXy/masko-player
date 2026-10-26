@@ -136,6 +136,7 @@ struct WireVideos {
     webm: Option<String>,
     hevc: Option<String>,
     stacked: Option<String>,
+    av1: Option<String>,
     #[serde(default)]
     variants: WireVariants,
 }
@@ -146,6 +147,7 @@ struct WireFiles {
     webm: Option<String>,
     hevc: Option<String>,
     stacked: Option<String>,
+    av1: Option<String>,
 }
 
 /// `videos.variants`: true when one of its sizes names a file (rules.md 1.4).
@@ -166,7 +168,10 @@ impl<'de> Deserialize<'de> for WireVariants {
             ) -> Result<WireVariants, A::Error> {
                 let mut any = false;
                 while let Some((_, f)) = m.next_entry::<IgnoredAny, WireFiles>()? {
-                    any |= f.webm.is_some() || f.hevc.is_some() || f.stacked.is_some();
+                    any |= f.webm.is_some()
+                        || f.hevc.is_some()
+                        || f.stacked.is_some()
+                        || f.av1.is_some();
                 }
                 Ok(WireVariants(any))
             }
@@ -616,6 +621,7 @@ fn decode_graph(g: WireGraph) -> Result<Release, LoadError> {
             has_video: e.videos.webm.is_some()
                 || e.videos.hevc.is_some()
                 || e.videos.stacked.is_some()
+                || e.videos.av1.is_some()
                 || e.videos.variants.0,
             sound: e
                 .sound

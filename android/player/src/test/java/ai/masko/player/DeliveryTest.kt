@@ -27,6 +27,14 @@ class DeliveryTest {
     }
 
     @Test
+    fun anAv1FileWinsOverTheStackedOne() {
+        val json = TestDelivery.json()
+            .replace("\"stacked\": \"https://cdn.test/m/loop-idle.mp4", "\"av1\": \"https://cdn.test/m/loop-idle-av1.mp4\", \"stacked\": \"https://cdn.test/m/loop-idle.mp4")
+        val idle = Delivery.parse(json)!!.edges.getValue("loop-idle")
+        assertEquals("https://cdn.test/m/loop-idle-av1.mp4", idle.video(0))
+    }
+
+    @Test
     fun aRefreshMustBeTheSameRelease() {
         assertTrue(delivery.sameRelease(Delivery.parse(TestDelivery.json(sig = 2))!!))
         assertFalse(delivery.sameRelease(Delivery.parse(TestDelivery.json(releaseId = "rel-2"))!!))

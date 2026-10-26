@@ -113,10 +113,11 @@ jobs:
         with:
           persist-credentials: false
       - uses: ./.github/actions/rust
-      - name: Build the engine
+      - name: Build the engine and dav1d
         run: |
           xcodebuild -version
           scripts/build-apple.sh
+          scripts/build-dav1d-apple.sh
       - name: Test
         run: swift test
       - name: Release zip

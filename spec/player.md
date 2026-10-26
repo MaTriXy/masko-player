@@ -85,19 +85,35 @@ transparency:
 | ------------------------------------------- | ---- |
 | Safari, and any browser on iPhone and iPad   | `hevc` |
 | Chrome, Firefox, Edge                        | `webm` (HEVC only on Safari, because some Chrome setups decode HEVC but draw a box) |
-| iPhone, iPad and Mac apps                    | `hevc` |
-| Android apps                                 | `stacked` (colour above, transparency below), drawn with a shader |
+| iPhone, iPad and Mac apps                    | `av1` when the clip has one, else `hevc` |
+| Android apps                                 | `av1` when the clip has one, else `stacked` |
 
-With `videos.variants` (manifest mode), take the smallest size at least as
-large as the mascot on screen times the screen density, else the base file.
+`stacked` and `av1` are the same picture: colour above, transparency below,
+drawn with a shader; `stacked` is encoded with H.264, `av1` with AV1, two to
+three times lighter at the same look. A clip's sizes are of the same kind as
+its base file. With `videos.variants` (manifest mode), take the smallest size
+at least as large as the mascot on screen times the screen density, else the
+base file.
 If a file fails, a web player tries the other format once before reporting
 `clipFailed`.
+
+## Asking for AV1
+
+A delivery names `av1` files only when it is asked for them. Each app player
+has `formats`, the formats to add to the delivery request
+(`formats=<formats>`): `av1` on Apple devices, which decode AV1 with the
+device's AV1 decoder or with dav1d inside the player, and `av1` on Android
+phones that have an AV1 decoder (Android 10 and later ship one), else
+nothing. The server then gives each clip that has an AV1 file its `av1` in
+place of `stacked` or `hevc`, so the player never chooses between files or
+tries one after another. A delivery asked without `formats` is the one
+players without AV1 have always read.
 
 ## One clip
 
 A player also plays one animation on its own, from its file links in place
-of a delivery: `webm` and `hevc` on the web, `hevc` on iPhone, iPad and Mac,
-`stacked` on Android. It reads the file's length from its metadata (on the
+of a delivery: `webm` and `hevc` on the web, `hevc` or a stacked AV1 file on
+iPhone, iPad and Mac, `stacked` or a stacked AV1 file on Android. It reads the file's length from its metadata (on the
 web, the preferred format first, then the other one), then plays this
 delivery as any other:
 

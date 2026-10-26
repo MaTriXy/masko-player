@@ -58,13 +58,23 @@ class RealVideoTest {
         await("$event x$count", timeoutMs) { events().count { it == event } >= count }
 
     @Test
-    fun stackedClipsPlayAndSwapOnlyAfterTheirFirstFrame() {
+    fun stackedClipsPlayAndSwapOnlyAfterTheirFirstFrame() = playsAndSwaps(DELIVERY, "swap")
+
+    /** The same clips in AV1 (`videos.av1`), on the phone's own AV1 decoder. */
+    @Test
+    fun av1ClipsPlayAndSwapOnlyAfterTheirFirstFrame() = playsAndSwaps(av1(DELIVERY), "swap-av1")
+
+    /** Android 10 and later ship an AV1 decoder, so the player asks the delivery for AV1. */
+    @Test
+    fun thisPhoneAsksForAv1() = assertEquals("av1", MaskoPlayer.formats)
+
+    private fun playsAndSwaps(delivery: String, name: String) {
         ActivityScenario.launch(TestActivity::class.java).use { scenario ->
             lateinit var view: MaskoPlayerView
             scenario.onActivity { activity ->
                 view = MaskoPlayerView(activity)
                 activity.root.addView(view, FrameLayout.LayoutParams(SIZE, SIZE))
-                val player = view.load(DELIVERY)
+                val player = view.load(delivery)
                 player.addListener(object : MaskoPlayer.Listener {
                     override fun onPose(pose: String) = record("pose:$pose")
                     override fun onClip(clip: String, kind: MaskoPlayer.ClipKind, rate: Double) = record("clip:$clip")
@@ -111,7 +121,7 @@ class RealVideoTest {
             scenario.onActivity { view.player!!.destroy() }
         }
 
-        dump("swap")
+        dump(name)
         val blue = timeOf("clip:loop-blue", 2) - timeOf("clip:loop-blue", 1)
         assertTrue("a 1 s loop in a reused slot restarts on its end: $blue ms", blue in 700..1_700)
         val all = events()
@@ -191,13 +201,18 @@ class RealVideoTest {
     }
 
     @Test
-    fun transparencyIsTheLumaOfTheLowerHalf() {
+    fun transparencyIsTheLumaOfTheLowerHalf() = tintedTransparency(TINT)
+
+    @Test
+    fun av1TransparencyIsTheLumaOfTheLowerHalf() = tintedTransparency(av1(TINT))
+
+    private fun tintedTransparency(delivery: String) {
         ActivityScenario.launch(TestActivity::class.java).use { scenario ->
             lateinit var view: MaskoPlayerView
             scenario.onActivity { activity ->
                 view = MaskoPlayerView(activity)
                 activity.root.addView(view, FrameLayout.LayoutParams(SIZE, SIZE))
-                view.load(TINT).addListener(object : MaskoPlayer.Listener {
+                view.load(delivery).addListener(object : MaskoPlayer.Listener {
                     override fun onClip(clip: String, kind: MaskoPlayer.ClipKind, rate: Double) = record("clip:$clip")
                     override fun onError(code: String, detail: String?) = record("error:$code")
                 })
@@ -235,6 +250,11 @@ class RealVideoTest {
 
     internal companion object {
         const val SIZE = 400
+
+        /** The same delivery with each clip's AV1 file in `videos.av1` (make-clips.sh). */
+        fun av1(delivery: String) = delivery.replace(Regex("\"stacked\": \"(asset:///clips/[a-z]+)\\.mp4\"")) {
+            "\"av1\": \"${it.groupValues[1]}-av1.mp4\""
+        }
 
         fun colourAt(bitmap: Bitmap, x: Int, y: Int): String {
             val c = bitmap.getPixel(x, y)

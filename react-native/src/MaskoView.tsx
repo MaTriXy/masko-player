@@ -2,7 +2,7 @@
 // (ai.masko:player, Kotlin) as a React Native view. The handle comes through
 // a ref, the events as props, as in @masko/player/react.
 
-import { requireNativeView } from 'expo';
+import { requireNativeModule, requireNativeView } from 'expo';
 import {
   createElement,
   forwardRef,
@@ -62,6 +62,15 @@ let nativeView: ComponentType<NativeProps> | undefined;
 function NativeMaskoView(): ComponentType<NativeProps> {
   nativeView ??= requireNativeView<NativeProps>('MaskoPlayer');
   return nativeView;
+}
+
+/**
+ * The formats to ask the release delivery for, as `formats=<this>`: `av1` on
+ * iPhone and iPad, and on Android phones with an AV1 decoder, else empty.
+ * AV1 files are 2 to 3 times lighter than HEVC or stacked H.264.
+ */
+export function maskoFormats(): string {
+  return requireNativeModule<{ formats(): string }>('MaskoPlayer').formats();
 }
 
 const NOTHING: Position = { clip: null, time: 0 };

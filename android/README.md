@@ -14,7 +14,7 @@ default). Once `ai.masko:player` is on Maven Central:
 ```kotlin
 // settings.gradle.kts: repositories { google(); mavenCentral() }
 dependencies {
-    implementation("ai.masko:player:0.1.5")
+    implementation("ai.masko:player:0.1.6")
 }
 ```
 
@@ -35,10 +35,13 @@ into the engine, MPL-2.0 uniffi among them).
 
 ## Android files
 
-Android plays the `stacked` file of each edge (colour above, transparency
-below), drawn with a shader. Fetch the release delivery with
-`target=android` (`GET /v1/canvases/{canvasId}/releases/{releaseId}/delivery?target=android`
-on the Masko API): it lists only those files. A release made before the API
+Android plays the `stacked` or `av1` file of each edge (colour above,
+transparency below), drawn with a shader. Fetch the release delivery with
+`target=android` and `MaskoPlayer.formats`
+(`GET /v1/canvases/{canvasId}/releases/{releaseId}/delivery?target=android&formats=${MaskoPlayer.formats}`
+on the Masko API): it lists only those files, AV1 where the phone has an AV1
+decoder (Android 10 and later), two to three times lighter than the H.264
+stacked files (`../spec/player.md`, "Asking for AV1"). A release made before the API
 put stacked files in releases has none; there every clip reports
 `clipFailed`, so the engine reports `error` `clip_failed`, skips each move
 straight to its target pose, and shows each pose's still
@@ -201,7 +204,7 @@ The build needs Java 17; Gradle downloads it when this machine has none (the
 foojay toolchain resolver in `settings.gradle.kts`).
 
 `./gradlew :player:publishReleasePublicationToLocalRepository` writes
-`ai.masko:player:0.1.5` to `player/build/repo` (the React Native package
+`ai.masko:player:0.1.6` to `player/build/repo` (the React Native package
 takes it from there; `../scripts/build-react-native.sh` runs it), with its
 sources and javadoc jars, signed when a signing key is set.
 

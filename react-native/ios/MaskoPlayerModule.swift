@@ -7,6 +7,9 @@ public final class MaskoPlayerModule: Module {
   public func definition() -> ModuleDefinition {
     Name("MaskoPlayer")
 
+    // The formats to ask the release delivery for (formats=...).
+    Function("formats") { MaskoPlayer.formats }
+
     View(MaskoNativeView.self) {
       Events("onPose", "onClip", "onReactionDone", "onMovement", "onError", "onDeliveryRequest")
 

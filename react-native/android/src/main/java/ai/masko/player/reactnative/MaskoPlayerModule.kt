@@ -12,6 +12,9 @@ class MaskoPlayerModule : Module() {
   override fun definition() = ModuleDefinition {
     Name("MaskoPlayer")
 
+    // The formats to ask the release delivery for (formats=...).
+    Function("formats") { ai.masko.player.MaskoPlayer.formats }
+
     View(MaskoNativeView::class) {
       Events("onPose", "onClip", "onReactionDone", "onMovement", "onError", "onDeliveryRequest")
 

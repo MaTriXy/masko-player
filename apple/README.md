@@ -96,9 +96,14 @@ nothing and reports `clip_failed`.
   running, clips that failed are tried again. It returns false, and reports
   `refresh_mismatch` for another release or `refresh_failed` for a delivery
   it cannot read.
-- The player picks each edge's `videos.hevc` file (HEVC with alpha), or with
+- The player picks each edge's `videos.av1` file (stacked AV1) when it has
+  one, else its `videos.hevc` file (HEVC with alpha), or with
   `videos.variants` the smallest size at least as large as the view in
-  pixels. A pose clip that started before the view had a size switches to
+  pixels. Ask the release delivery for AV1 with `formats=` and
+  `MaskoPlayer.formats`: AV1 files are two to three times lighter, and the
+  player decodes them on every device, with the device's AV1 decoder
+  (iPhone 15 Pro, M3 Macs and later) or with dav1d (`../spec/player.md`,
+  "Asking for AV1"). A pose clip that started before the view had a size switches to
   the right file at its next loop.
 - Downloads go in `tmp/MaskoPlayer/`. `destroy()` cancels the ones in
   flight and deletes the files; a launch deletes what earlier launches left.
@@ -124,8 +129,12 @@ nothing and reports `clip_failed`.
   (arm64, x86_64), iOS devices (arm64), the iOS simulator (arm64, x86_64),
   Mac Catalyst (arm64, x86_64), visionOS devices (arm64) and the visionOS
   simulator (arm64). It is built locally and git-ignored.
+- `dav1d.xcframework`: dav1d, the AV1 decoder for devices without one, as a
+  static library for the same platforms, built by
+  `../scripts/build-dav1d-apple.sh`. It is built locally and git-ignored.
 - `tools/make-test-clips.swift`: writes the HEVC-with-alpha test clips in
-  `Tests/MaskoPlayerTests/Clips`.
+  `Tests/MaskoPlayerTests/Clips`; `tools/make-av1-test-clips.sh` writes the
+  stacked AV1 ones.
 
 `Package.swift` uses `apple/MaskoPlayerFFI.xcframework` when it exists, and
 the release zip otherwise.

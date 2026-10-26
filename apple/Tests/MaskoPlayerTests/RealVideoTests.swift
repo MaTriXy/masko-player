@@ -1,4 +1,5 @@
 import AVFoundation
+import Metal
 import XCTest
 
 @testable import MaskoPlayer
@@ -10,11 +11,14 @@ final class SpyStage: Stage {
     let real = AVStage()
     var slots: [VideoSlot] { real.slots }
     private(set) var swaps: [(slot: Int, frame: CVPixelBuffer?, layerReady: Bool)] = []
+    /// For AV1 clips: whether the slot had drawn the clip's first frame.
+    private(set) var av1Swaps: [(slot: Int, drawn: Bool)] = []
 
     func present(_ content: StageContent) {
         if case let .slot(i) = content {
-            let slot = real.avSlots[i]
+            let slot = real.clipSlots[i].hevc
             swaps.append((i, slot.firstFrame, slot.layer.isReadyForDisplay))
+            av1Swaps.append((i, real.clipSlots[i].av1.firstFrameShown))
         }
         real.present(content)
     }
@@ -25,9 +29,11 @@ final class SpyStage: Stage {
 final class RealVideoTests: XCTestCase {
     let clips = Bundle.module.url(forResource: "Clips", withExtension: nil)!
 
-    func delivery() -> Data {
-        let loop = clips.appendingPathComponent("loop.mov").absoluteString
-        let move = clips.appendingPathComponent("move.mov").absoluteString
+    /// The real-video delivery; `av1` names the stacked AV1 clips in `videos.av1`.
+    func delivery(av1: Bool = false) -> Data {
+        let key = av1 ? "av1" : "hevc"
+        let loop = clips.appendingPathComponent(av1 ? "loop-av1.mp4" : "loop.mov").absoluteString
+        let move = clips.appendingPathComponent(av1 ? "move-av1.mp4" : "move.mov").absoluteString
         return Data(
             """
             {
@@ -45,14 +51,14 @@ final class RealVideoTests: XCTestCase {
                 "nodes": [{"id": "idle", "name": "Idle"}, {"id": "wave", "name": "Wave"}],
                 "edges": [
                   {"id": "idle-loop", "source": "idle", "target": "idle", "isLoop": true, "duration": 0.5,
-                   "videos": {"hevc": "\(loop)"}},
+                   "videos": {"\(key)": "\(loop)"}},
                   {"id": "wave-loop", "source": "wave", "target": "wave", "isLoop": true, "duration": 0.5,
-                   "videos": {"hevc": "\(loop)"}},
+                   "videos": {"\(key)": "\(loop)"}},
                   {"id": "to-wave", "source": "idle", "target": "wave", "isLoop": false, "duration": 0.4,
-                   "conditions": [{"input": "behavior::pointerHover"}], "videos": {"hevc": "\(move)"},
+                   "conditions": [{"input": "behavior::pointerHover"}], "videos": {"\(key)": "\(move)"},
                    "movement": {"dx": 10}},
                   {"id": "wave-back", "source": "wave", "target": "idle", "isLoop": false, "duration": 0.4,
-                   "conditions": [{"input": "behavior::pointerHover", "value": false}], "videos": {"hevc": "\(move)"}}
+                   "conditions": [{"input": "behavior::pointerHover", "value": false}], "videos": {"\(key)": "\(move)"}}
                 ]
               }
             }
@@ -158,6 +164,107 @@ final class RealVideoTests: XCTestCase {
         // swaps a moment after the decoded frame.
         XCTAssertTrue(stage.swaps.allSatisfy(\.layerReady), "and its layer had it ready for display")
         #endif
+        XCTAssertFalse(log.contains { $0.event.hasPrefix("error:") }, "\(log.map(\.event))")
+        let position = player.position()
+        XCTAssertEqual(position.clip, "idle-loop")
+        XCTAssertLessThanOrEqual(position.time, 0.5)
+    }
+
+    func testAV1ClipsDecodeToTransparentPictures() async throws {
+        let loop = clips.appendingPathComponent("loop-av1.mp4")
+        XCTAssertTrue(AV1Clip.isAV1(loop))
+        XCTAssertFalse(AV1Clip.isAV1(clips.appendingPathComponent("loop.mov")))
+        let clip = try await AV1Clip.read(loop)
+        XCTAssertEqual(clip.frames.count, 15)
+        XCTAssertEqual(clip.duration, 0.5, accuracy: 0.01)
+        XCTAssertEqual(clip.width, 96)
+        XCTAssertEqual(clip.height, 192)
+        XCTAssertNotNil(clip.sound, "the voiced clip's sound is read from the same file")
+        XCTAssertEqual(clip.frameIndex(at: 0), 0)
+        XCTAssertEqual(clip.frameIndex(at: 0.25), 7)
+        XCTAssertEqual(clip.frameIndex(at: 9), 14)
+
+        // Decoded (dav1d here, or the device's AV1 decoder) and drawn by the
+        // shader: transparent in the corner, opaque orange in the centre.
+        let renderer = try XCTUnwrap(StackedRenderer.shared)
+        let decoder = try XCTUnwrap(AV1Decoder(clip: clip, device: renderer.device))
+        decoder.want(upTo: 0)
+        var frame: DecodedFrame?
+        for _ in 0..<500 where frame == nil {
+            frame = decoder.take(upTo: 0, after: -1)?.1
+            try await Task.sleep(nanoseconds: 2_000_000)
+        }
+        let picture = try XCTUnwrap(frame, "frame 0 decoded")
+        let description = MTLTextureDescriptor.texture2DDescriptor(
+            pixelFormat: .bgra8Unorm, width: 96, height: 96, mipmapped: false)
+        description.usage = [.renderTarget, .shaderRead]
+        description.storageMode = .shared
+        let target = try XCTUnwrap(renderer.device.makeTexture(descriptor: description))
+        let drawn: Bool = await withCheckedContinuation { done in
+            renderer.render(picture, into: target) { done.resume(returning: $0) }
+        }
+        XCTAssertTrue(drawn)
+        var pixels = [UInt8](repeating: 0, count: 96 * 96 * 4)
+        target.getBytes(&pixels, bytesPerRow: 96 * 4, from: MTLRegionMake2D(0, 0, 96, 96), mipmapLevel: 0)
+        func bgra(_ x: Int, _ y: Int) -> [UInt8] { Array(pixels[(y * 96 + x) * 4..<(y * 96 + x) * 4 + 4]) }
+        XCTAssertEqual(bgra(2, 2)[3], 0, "transparent where the clip is transparent")
+        let centre = bgra(48, 48)
+        XCTAssertEqual(centre[3], 255, "opaque where the clip is opaque")
+        // #F95D02, give or take the encoding.
+        XCTAssertEqual(Int(centre[2]), 0xF9, accuracy: 12)
+        XCTAssertEqual(Int(centre[1]), 0x5D, accuracy: 12)
+        XCTAssertEqual(Int(centre[0]), 0x02, accuracy: 12)
+    }
+
+    func testRealAV1ClipsSwapOnADrawnFrameAndEndOnTheirLength() throws {
+        let stage = SpyStage()
+        let player = MaskoPlayer(
+            delivery: delivery(av1: true), autoPlay: nil, stage: stage, loader: FileCache(), sounds: AVSounds(),
+            host: .real)
+        defer { player.destroy() }
+        var log: [(event: String, at: Date)] = []
+        var waiting: (String, Int, XCTestExpectation)?
+        player.onEvent = { event in
+            let text: String
+            switch event {
+            case let .pose(p): text = "pose:\(p)"
+            case let .clip(c, _, _): text = "clip:\(c)"
+            case let .reactionDone(n, _): text = "done:\(n)"
+            case let .movement(e, _, _, _): text = "movement:\(e)"
+            case let .error(code, _): text = "error:\(code)"
+            }
+            log.append((text, Date()))
+            if let (want, count, expectation) = waiting, log.filter({ $0.event == want }).count >= count {
+                waiting = nil
+                expectation.fulfill()
+            }
+        }
+        func wait(for event: String, count: Int = 1) {
+            let e = expectation(description: "\(event) x\(count)")
+            waiting = (event, count, e)
+            self.wait(for: [e], timeout: 5)
+        }
+
+        // The first clip shows once its first frame is drawn, then loops on its
+        // length, well before the safety net (1.5 s).
+        player.boot()
+        wait(for: "clip:idle-loop", count: 2)
+        let shows = log.filter { $0.event == "clip:idle-loop" }.map(\.at)
+        let loop = shows[1].timeIntervalSince(shows[0])
+        XCTAssertGreaterThan(loop, 0.4)
+        XCTAssertLessThan(loop, 1.2, "the clip's end, not the safety net, ended it")
+        XCTAssertEqual(stage.av1Swaps.map(\.slot), [0], "a loop restarts in its slot")
+
+        // A person's move swaps to the other slot after its first frame, and back.
+        player.hover(true)
+        wait(for: "clip:wave-loop")
+        XCTAssertEqual(
+            log.map(\.event).filter { !$0.hasPrefix("clip:idle-loop") },
+            ["pose:idle", "clip:to-wave", "movement:to-wave", "pose:wave", "clip:wave-loop"])
+        player.hover(false)
+        wait(for: "clip:idle-loop", count: 3)
+        XCTAssertEqual(stage.av1Swaps.map(\.slot), [0, 1, 0, 1, 0])
+        XCTAssertTrue(stage.av1Swaps.allSatisfy(\.drawn), "every swap had its first frame drawn")
         XCTAssertFalse(log.contains { $0.event.hasPrefix("error:") }, "\(log.map(\.event))")
         let position = player.position()
         XCTAssertEqual(position.clip, "idle-loop")

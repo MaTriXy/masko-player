@@ -79,7 +79,6 @@ final class AVSlot: VideoSlot {
         player.isMuted = true
         layer = AVPlayerLayer(player: player)
         layer.videoGravity = .resizeAspect
-        layer.isHidden = true
     }
 
     var isMuted: Bool {
@@ -220,19 +219,86 @@ final class Watch {
     }
 }
 
-/// The real stage: two `AVPlayerLayer`s and a still layer in one container
-/// layer, which `MaskoPlayerView` hosts.
+/// A stage slot that plays either kind of file: HEVC with alpha in an
+/// `AVSlot`, stacked AV1 in an `AV1Slot`. Each load picks by the file's
+/// codec, so one delivery may hold both.
+@MainActor
+final class ClipSlot: VideoSlot {
+    let layer = CALayer()
+    let hevc = AVSlot()
+    let av1 = AV1Slot()
+    private var current: VideoSlot
+
+    var onEnd: (@MainActor () -> Void)? {
+        didSet {
+            hevc.onEnd = onEnd
+            av1.onEnd = onEnd
+        }
+    }
+    var onFail: (@MainActor () -> Void)? {
+        didSet {
+            hevc.onFail = onFail
+            av1.onFail = onFail
+        }
+    }
+
+    init() {
+        current = hevc
+        layer.isHidden = true
+        layer.addSublayer(hevc.layer)
+        layer.addSublayer(av1.layer)
+        hevc.layer.isHidden = false
+        av1.layer.isHidden = true
+    }
+
+    var isMuted: Bool {
+        get { current.isMuted }
+        set {
+            hevc.isMuted = newValue
+            av1.isMuted = newValue
+        }
+    }
+
+    var clipTime: Double { current.clipTime }
+
+    func load(_ file: URL, ready: @escaping @MainActor (Bool) -> Void) {
+        let next: VideoSlot = AV1Clip.isAV1(file) ? av1 : hevc
+        if next !== current {
+            current.pause()
+            if current === av1 { av1.unload() } else { hevc.unload() }
+            current = next
+            CATransaction.begin()
+            CATransaction.setDisableActions(true)
+            hevc.layer.isHidden = next !== hevc
+            av1.layer.isHidden = next !== av1
+            CATransaction.commit()
+        }
+        current.load(file, ready: ready)
+    }
+
+    func play(rate: Double) { current.play(rate: rate) }
+    func restart(rate: Double) { current.restart(rate: rate) }
+    func pause() { current.pause() }
+
+    func unload() {
+        hevc.unload()
+        av1.unload()
+    }
+}
+
+/// The real stage: two slots and a still layer in one container layer,
+/// which `MaskoPlayerView` hosts.
 @MainActor
 final class AVStage: Stage {
     let layer = CALayer()
     let stillLayer = CALayer()
-    let avSlots = [AVSlot(), AVSlot()]
-    var slots: [VideoSlot] { avSlots }
+    let clipSlots = [ClipSlot(), ClipSlot()]
+    var slots: [VideoSlot] { clipSlots }
 
     init() {
         stillLayer.contentsGravity = .resizeAspect
         stillLayer.isHidden = true
-        for slot in avSlots {
+        for slot in clipSlots {
             layer.addSublayer(slot.layer)
         }
         layer.addSublayer(stillLayer)
@@ -241,7 +307,7 @@ final class AVStage: Stage {
     func present(_ content: StageContent) {
         CATransaction.begin()
         CATransaction.setDisableActions(true)
-        for (i, slot) in avSlots.enumerated() {
+        for (i, slot) in clipSlots.enumerated() {
             slot.layer.isHidden = content != .slot(i)
         }
         switch content {
@@ -260,7 +326,8 @@ final class AVStage: Stage {
         CATransaction.begin()
         CATransaction.setDisableActions(true)
         layer.frame = bounds
-        for sub in [stillLayer] + avSlots.map(\.layer) {
+        let all: [CALayer] = [stillLayer] + clipSlots.flatMap { [$0.layer, $0.hevc.layer, $0.av1.layer] }
+        for sub in all {
             sub.frame = CGRect(origin: .zero, size: bounds.size)
             sub.contentsScale = scale
         }
@@ -268,6 +335,6 @@ final class AVStage: Stage {
     }
 
     func unload() {
-        avSlots.forEach { $0.unload() }
+        clipSlots.forEach { $0.unload() }
     }
 }
