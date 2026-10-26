@@ -197,11 +197,13 @@ function act(p: IdealPlayer, step: Obj): void {
   const now = p.clock();
   const e = p.engine;
   let commands: Command[] = [];
+  // `"instant": true` on a set or fire step (rules.md 5.8).
+  const instant = step.instant === true;
   if ('start' in step) commands = e.start(now);
   else if ('set' in step) {
     const [name, value] = step.set as [string, Value];
-    commands = e.set(name, value, now);
-  } else if ('fire' in step) commands = e.fire(step.fire as string, now);
+    commands = e.set(name, value, instant, now);
+  } else if ('fire' in step) commands = e.fire(step.fire as string, instant, now);
   else if ('click' in step) commands = e.click(now);
   else if ('hover' in step) commands = e.hover(step.hover as boolean, now);
   else if ('advance' in step) p.advanceTo(now + (step.advance as number));

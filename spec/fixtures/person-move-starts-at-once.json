@@ -1,6 +1,6 @@
 {
   "name": "person-move-starts-at-once",
-  "about": "Pointer over the mascot starts its move at once, mid-loop.",
+  "about": "Pointer over the mascot starts its move at once, mid-loop; the pointer leaving starts the way back at once.",
   "rules": ["3.5", "5.2"],
   "canvas": "ko-coffee",
   "steps": [
@@ -49,12 +49,9 @@
       "expect": {
         "clock": 3100,
         "pose": "hover-perk",
-        "clip": "loop-hover-perk",
-        "next": {
-          "clip": "return-hover-perk",
-          "at": "end"
-        },
-        "events": []
+        "clip": "return-hover-perk",
+        "next": null,
+        "events": ["shown:return-hover-perk"]
       }
     }
   ]

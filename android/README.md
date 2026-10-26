@@ -14,7 +14,7 @@ default). Once `ai.masko:player` is on Maven Central:
 ```kotlin
 // settings.gradle.kts: repositories { google(); mavenCentral() }
 dependencies {
-    implementation("ai.masko:player:0.1.6")
+    implementation("ai.masko:player:0.1.7")
 }
 ```
 
@@ -62,12 +62,17 @@ player.addListener(object : MaskoPlayer.Listener {
 })
 player.set("working", true)
 player.fire("celebrate")
+player.set("heldContact", true, instant = true) // now, straight into the held pose
 player.sound = false                           // mutes clips' own voices; on by default
 player.pause(); player.play(); player.reset()
 player.position()                              // clip on screen and its clip time
 player.updateDelivery(freshJson)               // new links for the same release
 player.destroy()                               // when you are done with it
 ```
+
+`set` and `fire` take `instant = true` last: what that value starts then
+happens now and goes straight into its target pose, skipping every
+transition clip and route (`spec/rules.md` 5.8).
 
 One animation on its own, from its stacked MP4 (a link, or a file inside the
 app: `file://`, `asset:///`): `view.loadClip(stackedUrl)`. The player reads
@@ -204,7 +209,7 @@ The build needs Java 17; Gradle downloads it when this machine has none (the
 foojay toolchain resolver in `settings.gradle.kts`).
 
 `./gradlew :player:publishReleasePublicationToLocalRepository` writes
-`ai.masko:player:0.1.6` to `player/build/repo` (the React Native package
+`ai.masko:player:0.1.7` to `player/build/repo` (the React Native package
 takes it from there; `../scripts/build-react-native.sh` runs it), with its
 sources and javadoc jars, signed when a signing key is set.
 

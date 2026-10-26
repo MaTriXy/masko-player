@@ -16,7 +16,7 @@ import { createPlayer, type MaskoHandle, type MountOptions } from './mount.ts';
 import type { MaskoEventName, MaskoEvents, MaskoListener, Player } from './player.ts';
 
 export type { MaskoHandle, MountOptions } from './mount.ts';
-export type { MaskoEvents, Position } from './player.ts';
+export type { MaskoEvents, Position, ValueOptions } from './player.ts';
 
 export type MaskoPlayerProps = MountOptions & {
   className?: string;
@@ -112,8 +112,8 @@ function MaskoPlayerView(props: MaskoPlayerProps, ref: ForwardedRef<MaskoHandle>
   useImperativeHandle(
     ref,
     (): MaskoHandle => ({
-      set: (name, value) => player.current?.set(name, value),
-      fire: (name) => player.current?.fire(name),
+      set: (name, value, options) => player.current?.set(name, value, options),
+      fire: (name, options) => player.current?.fire(name, options),
       reset: () => player.current?.reset(),
       play: () => player.current?.play(),
       pause: () => player.current?.pause(),

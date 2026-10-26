@@ -36,16 +36,16 @@ public final class MaskoPlayerModule: Module {
         MainActor.assumeIsolated { view.propsChanged() }
       }
 
-      AsyncFunction("setBool") { (view: MaskoNativeView, name: String, value: Bool) in
-        MainActor.assumeIsolated { view.player?.set(name, value) }
+      AsyncFunction("setBool") { (view: MaskoNativeView, name: String, value: Bool, instant: Bool) in
+        MainActor.assumeIsolated { view.player?.set(name, value, instant: instant) }
       }.runOnQueue(.main)
 
-      AsyncFunction("setNumber") { (view: MaskoNativeView, name: String, value: Double) in
-        MainActor.assumeIsolated { view.player?.set(name, value) }
+      AsyncFunction("setNumber") { (view: MaskoNativeView, name: String, value: Double, instant: Bool) in
+        MainActor.assumeIsolated { view.player?.set(name, value, instant: instant) }
       }.runOnQueue(.main)
 
-      AsyncFunction("fire") { (view: MaskoNativeView, name: String) in
-        MainActor.assumeIsolated { view.player?.fire(name) }
+      AsyncFunction("fire") { (view: MaskoNativeView, name: String, instant: Bool) in
+        MainActor.assumeIsolated { view.player?.fire(name, instant: instant) }
       }.runOnQueue(.main)
 
       AsyncFunction("reset") { (view: MaskoNativeView) in

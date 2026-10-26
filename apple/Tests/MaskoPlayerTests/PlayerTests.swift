@@ -601,6 +601,31 @@ final class PlayerTests: XCTestCase {
         XCTAssertEqual(sounds.log.last, "play hum 0.5 loop")
     }
 
+    // MARK: - Instant (rules.md 5.8)
+
+    func testAnInstantSetEntersThePoseWithNoMoveClipMovementOrMoveSound() {
+        let player = started()
+        host.advance(0.5)
+        player.set("working", true, instant: true)
+        XCTAssertEqual(events, ["pose:working"], "the pose is entered mid-loop")
+        XCTAssertEqual(b.clip, "work-loop", "the next clip is the pose clip, not the move")
+        b.decodeFirstFrame()
+        XCTAssertEqual(events, ["pose:working", "clip:work-loop"])
+        XCTAssertEqual(
+            sounds.log, ["play hum 0.5 loop", "stop looping"], "no move sound; entering stops the looping one")
+    }
+
+    func testAnInstantFireEntersItsPoseAtOnce() {
+        let player = started()
+        player.set("score", 2, instant: true)
+        player.set("pace", 1.5, instant: true)
+        XCTAssertEqual(events, [])
+        player.fire("nap", instant: true)
+        XCTAssertEqual(events.first, "pose:napping")
+        XCTAssertFalse(events.contains("clip:to-nap"), "the move did not play")
+        XCTAssertEqual(player.engine!.state().pose, "napping")
+    }
+
     func testASoundStoppedBeforeItsFileArrivesNeverPlays() {
         let player = started()
         loader.holding = true

@@ -39,8 +39,15 @@ impl MaskoEngine {
         json(self.inner.reset(ms(now)))
     }
 
-    /// `set(name, value)` with a boolean or a number.
-    pub fn set(&mut self, name: &str, value: JsValue, now: f64) -> Result<String, JsError> {
+    /// `set(name, value)` with a boolean or a number; with `instant`, what it
+    /// starts starts now and goes straight into its target pose (rules.md 5.8).
+    pub fn set(
+        &mut self,
+        name: &str,
+        value: JsValue,
+        instant: bool,
+        now: f64,
+    ) -> Result<String, JsError> {
         let value = if let Some(b) = value.as_bool() {
             Value::Bool(b)
         } else if let Some(n) = value.as_f64() {
@@ -48,11 +55,13 @@ impl MaskoEngine {
         } else {
             return Err(JsError::new("set takes a boolean or a number"));
         };
-        Ok(json(self.inner.set(name, value, ms(now))))
+        Ok(json(self.inner.set(name, value, instant, ms(now))))
     }
 
-    pub fn fire(&mut self, name: &str, now: f64) -> String {
-        json(self.inner.fire(name, ms(now)))
+    /// `fire(name)`; with `instant`, what it starts starts now and goes
+    /// straight into its target pose (rules.md 5.8).
+    pub fn fire(&mut self, name: &str, instant: bool, now: f64) -> String {
+        json(self.inner.fire(name, instant, ms(now)))
     }
 
     pub fn click(&mut self, now: f64) -> String {

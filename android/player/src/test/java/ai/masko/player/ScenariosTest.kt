@@ -205,17 +205,19 @@ private class IdealPlayer(
 private fun act(p: IdealPlayer, step: JSONObject) {
     val e = p.engine
     val now = e.state().clock
+    // `"instant": true` on a set or fire step (rules.md 5.8).
+    val instant = step.optBoolean("instant", false)
     val commands: List<EngineCommand> = when {
         step.has("start") -> e.start(now)
         step.has("set") -> {
             val s = step.getJSONArray("set")
             when (val v = s.get(1)) {
-                is Boolean -> e.setBool(s.getString(0), v, now)
-                is Number -> e.setNumber(s.getString(0), v.toDouble(), now)
+                is Boolean -> e.setBool(s.getString(0), v, instant, now)
+                is Number -> e.setNumber(s.getString(0), v.toDouble(), instant, now)
                 else -> error("not a value: $v")
             }
         }
-        step.has("fire") -> e.fire(step.getString("fire"), now)
+        step.has("fire") -> e.fire(step.getString("fire"), instant, now)
         step.has("click") -> e.click(now)
         step.has("hover") -> e.hover(step.getBoolean("hover"), now)
         step.has("advance") -> {

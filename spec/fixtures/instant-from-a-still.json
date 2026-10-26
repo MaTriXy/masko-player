@@ -1,0 +1,42 @@
+{
+  "name": "instant-from-a-still",
+  "about": "An instant start from a pose shown as a still enters its target directly, where a start without instant would play its move from the still.",
+  "rules": ["5.8", "5.3", "9.5"],
+  "canvas": "ko-coffee",
+  "steps": [
+    {
+      "failClip": "loop-idle"
+    },
+    {
+      "start": true,
+      "expect": {
+        "clock": 0,
+        "pose": "idle",
+        "clip": "still:idle",
+        "next": null,
+        "events": ["pose:idle", "error:clip_failed", "shown:still:idle"]
+      }
+    },
+    {
+      "advance": 500,
+      "expect": {
+        "clock": 500,
+        "pose": "idle",
+        "clip": "still:idle",
+        "next": null,
+        "events": []
+      }
+    },
+    {
+      "set": ["attention", true],
+      "instant": true,
+      "expect": {
+        "clock": 500,
+        "pose": "fan-wave",
+        "clip": "loop-fan-wave",
+        "next": null,
+        "events": ["pose:fan-wave", "shown:loop-fan-wave"]
+      }
+    }
+  ]
+}

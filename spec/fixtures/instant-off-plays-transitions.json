@@ -1,0 +1,69 @@
+{
+  "name": "instant-off-plays-transitions",
+  "about": "Without instant, the same grab plays every transition, as before: the way out of the working pose at once, then the move into the held pose.",
+  "rules": ["5.8", "5.2", "6.2", "6.4"],
+  "canvas": "ko-coffee",
+  "patch": {
+    "delivery": {
+      "runtimeGraph": {
+        "initialNode": "laptop-working"
+      }
+    },
+    "defaults": {
+      "behavior::working": true
+    }
+  },
+  "steps": [
+    {
+      "start": true,
+      "expect": {
+        "clock": 0,
+        "pose": "laptop-working",
+        "clip": "loop-laptop-working",
+        "next": null,
+        "events": ["pose:laptop-working", "shown:loop-laptop-working"]
+      }
+    },
+    {
+      "advance": 1500,
+      "expect": {
+        "clock": 1500,
+        "pose": "laptop-working",
+        "clip": "loop-laptop-working",
+        "next": null,
+        "events": []
+      }
+    },
+    {
+      "set": ["heldContact", true],
+      "instant": false,
+      "expect": {
+        "clock": 1500,
+        "pose": "laptop-working",
+        "clip": "return-laptop-working",
+        "next": null,
+        "events": ["shown:return-laptop-working"]
+      }
+    },
+    {
+      "clipEnded": true,
+      "expect": {
+        "clock": 4259,
+        "pose": "idle",
+        "clip": "enter-held-contact-squish",
+        "next": null,
+        "events": ["pose:idle", "shown:enter-held-contact-squish"]
+      }
+    },
+    {
+      "clipEnded": true,
+      "expect": {
+        "clock": 5592,
+        "pose": "held-contact-squish",
+        "clip": "loop-held-contact-squish",
+        "next": null,
+        "events": ["pose:held-contact-squish", "shown:loop-held-contact-squish"]
+      }
+    }
+  ]
+}

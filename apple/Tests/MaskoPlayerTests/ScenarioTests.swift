@@ -36,7 +36,7 @@ final class ScenarioTests: XCTestCase {
             }
         }
         print("\(paths.count - bad) of \(paths.count) scenarios pass")
-        XCTAssertEqual(paths.count, 78, "the number of scenarios changed")
+        XCTAssertEqual(paths.count, 91, "the number of scenarios changed")
         XCTAssertEqual(bad, 0, "\(bad) scenarios failed")
     }
 
@@ -237,15 +237,17 @@ final class ScenarioTests: XCTestCase {
         let e = p.engine
         let now = e.state().clock
         var commands: [EngineCommand] = []
+        // `"instant": true` on a set or fire step (rules.md 5.8).
+        let instant = step["instant"]?.bool ?? false
         if step["start"] != nil {
             commands = e.start(now: now)
         } else if let s = step["set"]?.array, s.count == 2, let name = s[0].string {
             switch try Self.value(s[1]) {
-            case let .bool(b): commands = e.setBool(name: name, value: b, now: now)
-            case let .number(n): commands = e.setNumber(name: name, value: n, now: now)
+            case let .bool(b): commands = e.setBool(name: name, value: b, instant: instant, now: now)
+            case let .number(n): commands = e.setNumber(name: name, value: n, instant: instant, now: now)
             }
         } else if let name = step["fire"]?.string {
-            commands = e.fire(name: name, now: now)
+            commands = e.fire(name: name, instant: instant, now: now)
         } else if step["click"] != nil {
             commands = e.click(now: now)
         } else if let on = step["hover"]?.bool {

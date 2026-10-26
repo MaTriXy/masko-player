@@ -27,6 +27,7 @@ const mascot = useRef<MaskoHandle>(null);
 
 mascot.current?.set('working', true);
 mascot.current?.fire('celebrate');
+mascot.current?.set('heldContact', true, { instant: true }); // now, straight into the held pose
 ```
 
 One animation on its own: `<MaskoView clip={{ hevc, stacked }} />` in
@@ -37,7 +38,10 @@ whose length cannot be read, reports `clip_failed`.
 - `delivery` is the `delivery` object of
   `GET /v1/canvases/{canvasId}/releases/{releaseId}/delivery`, its JSON, or
   the response around it.
-- The ref: `set(name, value)` with a boolean or a number, `fire(name)`,
+- The ref: `set(name, value)` with a boolean or a number, `fire(name)`
+  (both take `{ instant: true }` last: what that value starts happens now
+  and goes straight into its target pose, skipping every transition clip and
+  route, `spec/rules.md` 5.8),
   `reset()`, `play()`, `pause()`, `position()` (a promise of
   `{ clip, time }`, the clip on screen and its clip time in seconds, with
   `clip` null before anything shows) and

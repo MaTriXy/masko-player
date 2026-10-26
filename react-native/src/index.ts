@@ -7,5 +7,6 @@ export type {
   MaskoHandle,
   MaskoViewProps,
   Position,
-  Value
+  Value,
+  ValueOptions
 } from './types';

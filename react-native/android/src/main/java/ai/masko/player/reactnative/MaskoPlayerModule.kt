@@ -28,9 +28,13 @@ class MaskoPlayerModule : Module() {
       OnViewDidUpdateProps { view: MaskoNativeView -> view.propsChanged() }
       OnViewDestroys { view: MaskoNativeView -> view.unload() }
 
-      AsyncFunction("setBool") { view: MaskoNativeView, name: String, value: Boolean -> view.player?.set(name, value) }
-      AsyncFunction("setNumber") { view: MaskoNativeView, name: String, value: Double -> view.player?.set(name, value) }
-      AsyncFunction("fire") { view: MaskoNativeView, name: String -> view.player?.fire(name) }
+      AsyncFunction("setBool") { view: MaskoNativeView, name: String, value: Boolean, instant: Boolean ->
+        view.player?.set(name, value, instant)
+      }
+      AsyncFunction("setNumber") { view: MaskoNativeView, name: String, value: Double, instant: Boolean ->
+        view.player?.set(name, value, instant)
+      }
+      AsyncFunction("fire") { view: MaskoNativeView, name: String, instant: Boolean -> view.player?.fire(name, instant) }
       AsyncFunction("reset") { view: MaskoNativeView -> view.player?.reset() }
       AsyncFunction("play") { view: MaskoNativeView -> view.player?.play() }
       AsyncFunction("pause") { view: MaskoNativeView -> view.player?.pause() }

@@ -291,22 +291,26 @@ public final class MaskoPlayer {
     // MARK: - What the app calls
 
     /// Holds a boolean until the next `set` of that name (rules.md 3.2).
-    public func set(_ name: String, _ value: Bool) {
-        call { $0.setBool(name: name, value: value, now: $1) }
+    /// With `instant`, what it starts happens now and goes straight into
+    /// its target pose, skipping every transition clip and route (5.8).
+    public func set(_ name: String, _ value: Bool, instant: Bool = false) {
+        call { $0.setBool(name: name, value: value, instant: instant, now: $1) }
     }
 
-    /// Holds a number until the next `set` of that name (rules.md 3.2).
-    public func set(_ name: String, _ value: Double) {
-        call { $0.setNumber(name: name, value: value, now: $1) }
+    /// Holds a number until the next `set` of that name (rules.md 3.2),
+    /// with `instant` as for a boolean.
+    public func set(_ name: String, _ value: Double, instant: Bool = false) {
+        call { $0.setNumber(name: name, value: value, instant: instant, now: $1) }
     }
 
-    public func set(_ name: String, _ value: Int) {
-        set(name, Double(value))
+    public func set(_ name: String, _ value: Int, instant: Bool = false) {
+        set(name, Double(value), instant: instant)
     }
 
-    /// Makes the name read true until a clip uses it (rules.md 3.3).
-    public func fire(_ name: String) {
-        call { $0.fire(name: name, now: $1) }
+    /// Makes the name read true until a clip uses it (rules.md 3.3), with
+    /// `instant` as for `set`.
+    public func fire(_ name: String, instant: Bool = false) {
+        call { $0.fire(name: name, instant: instant, now: $1) }
     }
 
     /// The person clicked or tapped the mascot (rules.md 3.5).

@@ -152,10 +152,10 @@ final class RealVideoTests: XCTestCase {
             log.map(\.event).filter { !$0.hasPrefix("clip:idle-loop") },
             ["pose:idle", "clip:to-wave", "movement:to-wave", "pose:wave", "clip:wave-loop"])
 
-        // The way back waits for the loop's end, loaded ahead in the hidden
-        // slot, and swaps in on a decoded frame too.
+        // The pointer leaving starts the way back at once (rules.md 5.2),
+        // and it swaps in on a decoded frame too.
         player.hover(false)
-        XCTAssertEqual(player.engine?.state().nextClip, "wave-back")
+        XCTAssertEqual(player.engine?.state().clip, "wave-back")
         wait(for: "clip:idle-loop", count: 3)
         XCTAssertEqual(stage.swaps.map(\.slot), [0, 1, 0, 1, 0])
         XCTAssertTrue(stage.swaps.allSatisfy { $0.frame != nil }, "every swap had a decoded frame")

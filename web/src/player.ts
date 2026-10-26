@@ -40,6 +40,15 @@ export interface MaskoEvents {
   error: { code: string; detail?: string };
 }
 
+/** Options of `set` and `fire`. */
+export interface ValueOptions {
+  /**
+   * What this value starts happens now and goes straight into its target pose, skipping every
+   * transition clip and route (rules.md 5.8). Off by default.
+   */
+  instant?: boolean;
+}
+
 export type MaskoEventName = keyof MaskoEvents;
 export type MaskoListener<K extends MaskoEventName> = (event: MaskoEvents[K]) => void;
 
@@ -67,7 +76,10 @@ export interface Position {
 type Call = (engine: Engine, now: number) => Command[];
 type Hold = 'app' | 'blocked' | 'hidden';
 
-/** A call kept for later, with the name it sets (`set:<name>`) or fires (`fire:<name>`), if any. */
+/**
+ * A call kept for later, with the name it sets (`set:<name>`) or fires (`fire:<name>`, or
+ * `fire:<name>:instant`), if any.
+ */
 interface Kept {
   fn: Call;
   key?: string;
@@ -196,16 +208,19 @@ export class Player {
 
   // ------------------------------------------------------------- app calls
 
-  set(name: string, value: Value): void {
+  set(name: string, value: Value, options?: ValueOptions): void {
     if (typeof value !== 'boolean' && typeof value !== 'number') {
       this.later(() => this.emit('error', { code: 'bad_value', detail: `set(${name}) takes a boolean or a number` }));
       return;
     }
-    this.appCall((e, now) => e.set(name, value, now), `set:${name}`);
+    const instant = options?.instant === true;
+    this.appCall((e, now) => e.set(name, value, instant, now), `set:${name}`);
   }
 
-  fire(name: string): void {
-    this.appCall((e, now) => e.fire(name, now), `fire:${name}`);
+  fire(name: string, options?: ValueOptions): void {
+    const instant = options?.instant === true;
+    // An instant fire is kept beside a plain one of the same name: it makes that fire instant.
+    this.appCall((e, now) => e.fire(name, instant, now), instant ? `fire:${name}:instant` : `fire:${name}`);
   }
 
   /** The person clicked the mascot. Ignored while the mascot is not playing. */

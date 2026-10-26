@@ -1,0 +1,61 @@
+{
+  "name": "instant-fire-claimed",
+  "about": "A fire with instant enters its reaction pose at once; the start claims it, it lasts through that pose's first loop, and the way back then plays its clip.",
+  "rules": ["5.8", "3.3", "5.5"],
+  "canvas": "ko-coffee",
+  "steps": [
+    {
+      "start": true,
+      "expect": {
+        "clock": 0,
+        "pose": "idle",
+        "clip": "loop-idle",
+        "next": null,
+        "events": ["pose:idle", "shown:loop-idle"]
+      }
+    },
+    {
+      "advance": 1000,
+      "expect": {
+        "clock": 1000,
+        "pose": "idle",
+        "clip": "loop-idle",
+        "next": null,
+        "events": []
+      }
+    },
+    {
+      "fire": "boop",
+      "instant": true,
+      "expect": {
+        "clock": 1000,
+        "pose": "overboop-fluster",
+        "clip": "loop-overboop-fluster",
+        "next": null,
+        "events": ["pose:overboop-fluster", "shown:loop-overboop-fluster"],
+        "fired": ["action::boop"]
+      }
+    },
+    {
+      "loopEnded": true,
+      "expect": {
+        "clock": 5000,
+        "pose": "overboop-fluster",
+        "clip": "return-overboop-fluster",
+        "next": null,
+        "events": ["spent:action::boop", "shown:return-overboop-fluster"],
+        "fired": []
+      }
+    },
+    {
+      "clipEnded": true,
+      "expect": {
+        "clock": 6818,
+        "pose": "idle",
+        "clip": "loop-idle",
+        "next": null,
+        "events": ["pose:idle", "shown:loop-idle"]
+      }
+    }
+  ]
+}

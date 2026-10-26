@@ -582,7 +582,10 @@ internal protocol MaskoEngineProtocol: AnyObject, Sendable {
     
     func clipShown(edge: String, now: UInt64)  -> [EngineCommand]
     
-    func fire(name: String, now: UInt64)  -> [EngineCommand]
+    /**
+     * `fire(name)`; with `instant`, as `set_bool`.
+     */
+    func fire(name: String, instant: Bool, now: UInt64)  -> [EngineCommand]
     
     func hover(on: Bool, now: UInt64)  -> [EngineCommand]
     
@@ -602,9 +605,13 @@ internal protocol MaskoEngineProtocol: AnyObject, Sendable {
     
     func seed(seed: UInt64) 
     
-    func setBool(name: String, value: Bool, now: UInt64)  -> [EngineCommand]
+    /**
+     * `set(name, value)`; with `instant`, what it starts starts now and goes
+     * straight into its target pose (rules.md 5.8).
+     */
+    func setBool(name: String, value: Bool, instant: Bool, now: UInt64)  -> [EngineCommand]
     
-    func setNumber(name: String, value: Double, now: UInt64)  -> [EngineCommand]
+    func setNumber(name: String, value: Double, instant: Bool, now: UInt64)  -> [EngineCommand]
     
     func start(now: UInt64)  -> [EngineCommand]
     
@@ -739,12 +746,16 @@ internal func clipShown(edge: String, now: UInt64) -> [EngineCommand]  {
 })
 }
     
-internal func fire(name: String, now: UInt64) -> [EngineCommand]  {
+    /**
+     * `fire(name)`; with `instant`, as `set_bool`.
+     */
+internal func fire(name: String, instant: Bool, now: UInt64) -> [EngineCommand]  {
     return try!  FfiConverterSequenceTypeEngineCommand.lift(try! rustCall() {
         uniffiCallStatus in
     uniffi_masko_player_ffi_fn_method_maskoengine_fire(
             self.uniffiCloneHandle(),
         FfiConverterString.lower(name),
+        FfiConverterBool.lower(instant),
         FfiConverterUInt64.lower(now),uniffiCallStatus
     )
 })
@@ -838,25 +849,31 @@ internal func seed(seed: UInt64)  {try! rustCall() {
 }
 }
     
-internal func setBool(name: String, value: Bool, now: UInt64) -> [EngineCommand]  {
+    /**
+     * `set(name, value)`; with `instant`, what it starts starts now and goes
+     * straight into its target pose (rules.md 5.8).
+     */
+internal func setBool(name: String, value: Bool, instant: Bool, now: UInt64) -> [EngineCommand]  {
     return try!  FfiConverterSequenceTypeEngineCommand.lift(try! rustCall() {
         uniffiCallStatus in
     uniffi_masko_player_ffi_fn_method_maskoengine_set_bool(
             self.uniffiCloneHandle(),
         FfiConverterString.lower(name),
         FfiConverterBool.lower(value),
+        FfiConverterBool.lower(instant),
         FfiConverterUInt64.lower(now),uniffiCallStatus
     )
 })
 }
     
-internal func setNumber(name: String, value: Double, now: UInt64) -> [EngineCommand]  {
+internal func setNumber(name: String, value: Double, instant: Bool, now: UInt64) -> [EngineCommand]  {
     return try!  FfiConverterSequenceTypeEngineCommand.lift(try! rustCall() {
         uniffiCallStatus in
     uniffi_masko_player_ffi_fn_method_maskoengine_set_number(
             self.uniffiCloneHandle(),
         FfiConverterString.lower(name),
         FfiConverterDouble.lower(value),
+        FfiConverterBool.lower(instant),
         FfiConverterUInt64.lower(now),uniffiCallStatus
     )
 })
@@ -1561,7 +1578,7 @@ private let initializationResult: InitializationResult = {
     if (uniffi_masko_player_ffi_checksum_method_maskoengine_clip_shown() != 14829) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_masko_player_ffi_checksum_method_maskoengine_fire() != 6875) {
+    if (uniffi_masko_player_ffi_checksum_method_maskoengine_fire() != 41787) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_masko_player_ffi_checksum_method_maskoengine_hover() != 56183) {
@@ -1591,10 +1608,10 @@ private let initializationResult: InitializationResult = {
     if (uniffi_masko_player_ffi_checksum_method_maskoengine_seed() != 2341) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_masko_player_ffi_checksum_method_maskoengine_set_bool() != 29027) {
+    if (uniffi_masko_player_ffi_checksum_method_maskoengine_set_bool() != 39566) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_masko_player_ffi_checksum_method_maskoengine_set_number() != 13955) {
+    if (uniffi_masko_player_ffi_checksum_method_maskoengine_set_number() != 12924) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_masko_player_ffi_checksum_method_maskoengine_start() != 20075) {

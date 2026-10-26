@@ -350,7 +350,8 @@ internal class FaultyEngine(private val real: MaskoEngine) : MaskoEngine(NoHandl
     override fun clipEnded(edge: String, now: ULong): List<EngineCommand> = maybe("clipEnded") { real.clipEnded(edge, now) }
     override fun clipFailed(edge: String, now: ULong): List<EngineCommand> = maybe("clipFailed") { real.clipFailed(edge, now) }
     override fun clipShown(edge: String, now: ULong): List<EngineCommand> = maybe("clipShown") { real.clipShown(edge, now) }
-    override fun fire(name: String, now: ULong): List<EngineCommand> = maybe("fire") { real.fire(name, now) }
+    override fun fire(name: String, instant: Boolean, now: ULong): List<EngineCommand> =
+        maybe("fire") { real.fire(name, instant, now) }
     override fun hover(on: Boolean, now: ULong): List<EngineCommand> = maybe("hover") { real.hover(on, now) }
     override fun markPlayable(edge: String) = maybe("markPlayable") { real.markPlayable(edge) }
     override fun markUnplayable(edge: String) = maybe("markUnplayable") { real.markUnplayable(edge) }
@@ -360,8 +361,10 @@ internal class FaultyEngine(private val real: MaskoEngine) : MaskoEngine(NoHandl
     override fun previewShowPose(pose: String, now: ULong): List<EngineCommand> = maybe("previewShowPose") { real.previewShowPose(pose, now) }
     override fun reset(now: ULong): List<EngineCommand> = maybe("reset") { real.reset(now) }
     override fun seed(seed: ULong) = maybe("seed") { real.seed(seed) }
-    override fun setBool(name: String, value: Boolean, now: ULong): List<EngineCommand> = maybe("setBool") { real.setBool(name, value, now) }
-    override fun setNumber(name: String, value: Double, now: ULong): List<EngineCommand> = maybe("setNumber") { real.setNumber(name, value, now) }
+    override fun setBool(name: String, value: Boolean, instant: Boolean, now: ULong): List<EngineCommand> =
+        maybe("setBool") { real.setBool(name, value, instant, now) }
+    override fun setNumber(name: String, value: Double, instant: Boolean, now: ULong): List<EngineCommand> =
+        maybe("setNumber") { real.setNumber(name, value, instant, now) }
     override fun start(now: ULong): List<EngineCommand> = maybe("start") { real.start(now) }
     override fun state(): EngineState = maybe("state") { real.state() }
     override fun useRolls(rolls: List<Double>) = maybe("useRolls") { real.useRolls(rolls) }

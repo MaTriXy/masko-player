@@ -1,0 +1,68 @@
+{
+  "name": "let-go-starts-the-way-back-at-once",
+  "about": "Letting go mid held loop starts the way back at once, and it plays its move.",
+  "rules": ["5.2"],
+  "canvas": "ko-coffee",
+  "steps": [
+    {
+      "start": true,
+      "expect": {
+        "clock": 0,
+        "pose": "idle",
+        "clip": "loop-idle",
+        "next": null,
+        "events": ["pose:idle", "shown:loop-idle"]
+      }
+    },
+    {
+      "set": ["heldContact", true],
+      "expect": {
+        "clock": 0,
+        "pose": "idle",
+        "clip": "enter-held-contact-squish",
+        "next": null,
+        "events": ["shown:enter-held-contact-squish"]
+      }
+    },
+    {
+      "clipEnded": true,
+      "expect": {
+        "clock": 1333,
+        "pose": "held-contact-squish",
+        "clip": "loop-held-contact-squish",
+        "next": null,
+        "events": ["pose:held-contact-squish", "shown:loop-held-contact-squish"]
+      }
+    },
+    {
+      "advance": 500,
+      "expect": {
+        "clock": 1833,
+        "pose": "held-contact-squish",
+        "clip": "loop-held-contact-squish",
+        "next": null,
+        "events": []
+      }
+    },
+    {
+      "set": ["heldContact", false],
+      "expect": {
+        "clock": 1833,
+        "pose": "held-contact-squish",
+        "clip": "return-held-contact-squish",
+        "next": null,
+        "events": ["shown:return-held-contact-squish"]
+      }
+    },
+    {
+      "clipEnded": true,
+      "expect": {
+        "clock": 3500,
+        "pose": "idle",
+        "clip": "loop-idle",
+        "next": null,
+        "events": ["pose:idle", "shown:loop-idle"]
+      }
+    }
+  ]
+}

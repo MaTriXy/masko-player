@@ -163,12 +163,13 @@ export class Engine {
     return commands(this.inner.reset(now));
   }
 
-  set(name: string, value: Value, now: number): Command[] {
-    return commands(this.inner.set(name, value, now));
+  /** `instant`: what it starts starts now, straight into its target pose (rules.md 5.8). */
+  set(name: string, value: Value, instant: boolean, now: number): Command[] {
+    return commands(this.inner.set(name, value, instant, now));
   }
 
-  fire(name: string, now: number): Command[] {
-    return commands(this.inner.fire(name, now));
+  fire(name: string, instant: boolean, now: number): Command[] {
+    return commands(this.inner.fire(name, instant, now));
   }
 
   click(now: number): Command[] {

@@ -1,0 +1,68 @@
+{
+  "name": "pointer-leaves-starts-the-way-back-at-once",
+  "about": "The pointer leaving mid hover loop starts the way back at once, and it plays its move.",
+  "rules": ["5.2", "3.5"],
+  "canvas": "ko-coffee",
+  "steps": [
+    {
+      "start": true,
+      "expect": {
+        "clock": 0,
+        "pose": "idle",
+        "clip": "loop-idle",
+        "next": null,
+        "events": ["pose:idle", "shown:loop-idle"]
+      }
+    },
+    {
+      "hover": true,
+      "expect": {
+        "clock": 0,
+        "pose": "idle",
+        "clip": "enter-hover-perk",
+        "next": null,
+        "events": ["shown:enter-hover-perk"]
+      }
+    },
+    {
+      "clipEnded": true,
+      "expect": {
+        "clock": 1600,
+        "pose": "hover-perk",
+        "clip": "loop-hover-perk",
+        "next": null,
+        "events": ["pose:hover-perk", "shown:loop-hover-perk"]
+      }
+    },
+    {
+      "advance": 1000,
+      "expect": {
+        "clock": 2600,
+        "pose": "hover-perk",
+        "clip": "loop-hover-perk",
+        "next": null,
+        "events": []
+      }
+    },
+    {
+      "hover": false,
+      "expect": {
+        "clock": 2600,
+        "pose": "hover-perk",
+        "clip": "return-hover-perk",
+        "next": null,
+        "events": ["shown:return-hover-perk"]
+      }
+    },
+    {
+      "clipEnded": true,
+      "expect": {
+        "clock": 4418,
+        "pose": "idle",
+        "clip": "loop-idle",
+        "next": null,
+        "events": ["pose:idle", "shown:loop-idle"]
+      }
+    }
+  ]
+}

@@ -5,7 +5,14 @@ import { preferredFormats, type ClipFiles, type DeliveryInput } from './delivery
 import { DomSlot, DomSounds, DomStill, FetchLoader, clipLength, onGesture } from './dom.ts';
 import type { Value } from './engine.ts';
 import type { Host } from './media.ts';
-import { Player, type MaskoEventName, type MaskoListener, type PlayerOptions, type Position } from './player.ts';
+import {
+  Player,
+  type MaskoEventName,
+  type MaskoListener,
+  type PlayerOptions,
+  type Position,
+  type ValueOptions
+} from './player.ts';
 
 /**
  * What the player plays: a release `delivery`, or one animation's `clip`
@@ -27,8 +34,9 @@ interface MountCommon {
 
 /** What `mountMascot` returns: the same calls on every platform. */
 export interface MaskoHandle {
-  set(name: string, value: Value): void;
-  fire(name: string): void;
+  /** `{ instant: true }`: what it starts happens now, straight into its target pose. */
+  set(name: string, value: Value, options?: ValueOptions): void;
+  fire(name: string, options?: ValueOptions): void;
   reset(): void;
   play(): void;
   pause(): void;
@@ -226,8 +234,8 @@ export function createPlayer(element: HTMLElement, options: MountOptions): { pla
 /** The app's handle on a player. */
 export function handleFor(player: Player): MaskoHandle {
   return {
-    set: (name, value) => player.set(name, value),
-    fire: (name) => player.fire(name),
+    set: (name, value, options) => player.set(name, value, options),
+    fire: (name, options) => player.fire(name, options),
     reset: () => player.reset(),
     play: () => player.play(),
     pause: () => player.pause(),

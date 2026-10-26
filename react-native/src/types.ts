@@ -19,6 +19,15 @@ export type DeliveryInput = Delivery | string | { delivery: Delivery } | { data:
 /** A value for `set`: a boolean or a number. */
 export type Value = boolean | number;
 
+/** Options of `set` and `fire`. */
+export interface ValueOptions {
+  /**
+   * What this value starts happens now and goes straight into its target pose, skipping every
+   * transition clip and route (rules.md 5.8). Off by default.
+   */
+  instant?: boolean;
+}
+
 /** What a clip on screen is: a pose's clip or a move. */
 export type ClipKind = 'pose' | 'move';
 
@@ -44,8 +53,9 @@ export interface Position {
 
 /** What the ref gives: the same calls on every platform. */
 export interface MaskoHandle {
-  set(name: string, value: Value): void;
-  fire(name: string): void;
+  /** `{ instant: true }`: what it starts happens now, straight into its target pose. */
+  set(name: string, value: Value, options?: ValueOptions): void;
+  fire(name: string, options?: ValueOptions): void;
   reset(): void;
   play(): void;
   pause(): void;

@@ -238,13 +238,25 @@ class MaskoPlayer internal constructor(
         listeners -= listener
     }
 
-    fun set(name: String, value: Boolean) = appCall("set") { engine.setBool(name, value, it) }
+    /**
+     * Holds a value until the next `set` of that name (rules.md 3.2). With
+     * [instant], what it starts happens now and goes straight into its target
+     * pose, skipping every transition clip and route (rules.md 5.8).
+     */
+    @JvmOverloads
+    fun set(name: String, value: Boolean, instant: Boolean = false) =
+        appCall("set") { engine.setBool(name, value, instant, it) }
 
-    fun set(name: String, value: Double) = appCall("set") { engine.setNumber(name, value, it) }
+    @JvmOverloads
+    fun set(name: String, value: Double, instant: Boolean = false) =
+        appCall("set") { engine.setNumber(name, value, instant, it) }
 
-    fun set(name: String, value: Int) = set(name, value.toDouble())
+    @JvmOverloads
+    fun set(name: String, value: Int, instant: Boolean = false) = set(name, value.toDouble(), instant)
 
-    fun fire(name: String) = appCall("fire") { engine.fire(name, it) }
+    /** Makes the name read true until a clip uses it (rules.md 3.3), with [instant] as for [set]. */
+    @JvmOverloads
+    fun fire(name: String, instant: Boolean = false) = appCall("fire") { engine.fire(name, instant, it) }
 
     /** Values go back to their defaults and the mascot starts again (rules.md 11.3). */
     fun reset() = appCall("reset") { engine.reset(it) }

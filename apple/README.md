@@ -43,6 +43,7 @@ let player = MaskoPlayer(delivery: json)   // the release delivery object
 player.onEvent = { event in print(event) } // pose, clip, reactionDone, movement, error
 player.set("working", true)
 player.fire("celebrate")
+player.set("heldContact", true, instant: true) // now, straight into the held pose
 
 MaskoView(player: player)                  // SwiftUI
 MaskoPlayerView(player: player)            // UIView on iOS, NSView on macOS
@@ -53,8 +54,11 @@ player reads the file's length and sound track and loops it as one pose
 named `clip`, with its voice when it has one; a file it cannot read plays
 nothing and reports `clip_failed`.
 
-- `set(_:_:)` takes a `Bool` or a number, `fire(_:)` a name. Values set right
-  after the player is made choose its first pose. The player then loads the
+- `set(_:_:instant:)` takes a `Bool` or a number, `fire(_:instant:)` a name.
+  With `instant: true`, what that value starts happens now and goes straight
+  into its target pose, skipping every transition clip and route
+  (`spec/rules.md` 5.8). Values set right after the player is made choose
+  its first pose. The player then loads the
   first frame and starts, at play time 0, once that frame is on screen; with
   `autoPlay` off it shows that frame and waits for `play()`.
 - `play()`, `pause()`, `reset()`, `destroy()`, `position()` (a `Position`:

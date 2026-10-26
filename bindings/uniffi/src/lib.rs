@@ -138,16 +138,31 @@ impl MaskoEngine {
         commands(self.with(|e| e.reset(now)))
     }
 
-    pub fn set_bool(&self, name: String, value: bool, now: u64) -> Vec<EngineCommand> {
-        commands(self.with(|e| e.set(&name, Value::Bool(value), now)))
+    /// `set(name, value)`; with `instant`, what it starts starts now and goes
+    /// straight into its target pose (rules.md 5.8).
+    pub fn set_bool(
+        &self,
+        name: String,
+        value: bool,
+        instant: bool,
+        now: u64,
+    ) -> Vec<EngineCommand> {
+        commands(self.with(|e| e.set(&name, Value::Bool(value), instant, now)))
     }
 
-    pub fn set_number(&self, name: String, value: f64, now: u64) -> Vec<EngineCommand> {
-        commands(self.with(|e| e.set(&name, Value::Number(value), now)))
+    pub fn set_number(
+        &self,
+        name: String,
+        value: f64,
+        instant: bool,
+        now: u64,
+    ) -> Vec<EngineCommand> {
+        commands(self.with(|e| e.set(&name, Value::Number(value), instant, now)))
     }
 
-    pub fn fire(&self, name: String, now: u64) -> Vec<EngineCommand> {
-        commands(self.with(|e| e.fire(&name, now)))
+    /// `fire(name)`; with `instant`, as `set_bool`.
+    pub fn fire(&self, name: String, instant: bool, now: u64) -> Vec<EngineCommand> {
+        commands(self.with(|e| e.fire(&name, instant, now)))
     }
 
     pub fn click(&self, now: u64) -> Vec<EngineCommand> {

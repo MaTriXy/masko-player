@@ -1,0 +1,72 @@
+{
+  "name": "instant-cuts-a-move",
+  "about": "An instant start during a move stops that move at once and enters its own target.",
+  "rules": ["5.8", "10.1"],
+  "canvas": "ko-coffee",
+  "steps": [
+    {
+      "start": true,
+      "expect": {
+        "clock": 0,
+        "pose": "idle",
+        "clip": "loop-idle",
+        "next": null,
+        "events": ["pose:idle", "shown:loop-idle"]
+      }
+    },
+    {
+      "set": ["working", true],
+      "expect": {
+        "clock": 0,
+        "pose": "idle",
+        "clip": "loop-idle",
+        "next": {
+          "clip": "enter-laptop-working",
+          "at": "end"
+        },
+        "events": []
+      }
+    },
+    {
+      "loopEnded": true,
+      "expect": {
+        "clock": 4000,
+        "pose": "idle",
+        "clip": "enter-laptop-working",
+        "next": null,
+        "events": ["shown:enter-laptop-working"]
+      }
+    },
+    {
+      "advance": 1000,
+      "expect": {
+        "clock": 5000,
+        "pose": "idle",
+        "clip": "enter-laptop-working",
+        "next": null,
+        "events": []
+      }
+    },
+    {
+      "set": ["attention", true],
+      "instant": true,
+      "expect": {
+        "clock": 5000,
+        "pose": "fan-wave",
+        "clip": "loop-fan-wave",
+        "next": null,
+        "events": ["interrupted:enter-laptop-working", "pose:fan-wave", "shown:loop-fan-wave"]
+      }
+    },
+    {
+      "loopEnded": true,
+      "expect": {
+        "clock": 9000,
+        "pose": "fan-wave",
+        "clip": "loop-fan-wave",
+        "next": null,
+        "events": ["shown:loop-fan-wave"]
+      }
+    }
+  ]
+}

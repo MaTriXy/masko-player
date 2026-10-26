@@ -1,0 +1,59 @@
+{
+  "name": "instant-target-here-stays",
+  "about": "An instant start whose Any State target is the pose the mascot is on keeps it there, with no restart.",
+  "rules": ["5.8", "4.2"],
+  "canvas": "ko-coffee",
+  "patch": {
+    "delivery": {
+      "runtimeGraph": {
+        "initialNode": "laptop-working"
+      }
+    },
+    "defaults": {
+      "behavior::working": true
+    }
+  },
+  "steps": [
+    {
+      "start": true,
+      "expect": {
+        "clock": 0,
+        "pose": "laptop-working",
+        "clip": "loop-laptop-working",
+        "next": null,
+        "events": ["pose:laptop-working", "shown:loop-laptop-working"]
+      }
+    },
+    {
+      "advance": 1000,
+      "expect": {
+        "clock": 1000,
+        "pose": "laptop-working",
+        "clip": "loop-laptop-working",
+        "next": null,
+        "events": []
+      }
+    },
+    {
+      "set": ["working", true],
+      "instant": true,
+      "expect": {
+        "clock": 1000,
+        "pose": "laptop-working",
+        "clip": "loop-laptop-working",
+        "next": null,
+        "events": []
+      }
+    },
+    {
+      "loopEnded": true,
+      "expect": {
+        "clock": 4000,
+        "pose": "laptop-working",
+        "clip": "loop-laptop-working",
+        "next": null,
+        "events": ["shown:loop-laptop-working"]
+      }
+    }
+  ]
+}

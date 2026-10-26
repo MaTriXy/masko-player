@@ -22,8 +22,8 @@ rule itself.
 | The delivery is loaded                       | `new(delivery JSON)`; a refusal is an `error` event with its code |
 | Before starting, the app sets or fires values | `set` / `fire` with play time 0       |
 | The mascot starts (`autoPlay`, or `play()`)  | `start(0)`                            |
-| The app calls `set(name, value)`             | `set(name, value, now)`               |
-| The app calls `fire(name)`                   | `fire(name, now)`                     |
+| The app calls `set(name, value)`             | `set(name, value, instant, now)`      |
+| The app calls `fire(name)`                   | `fire(name, instant, now)`            |
 | The person clicks the mascot                 | `click(now)` (always `action::click`) |
 | The pointer enters or leaves the mascot      | `hover(true/false, now)` (always `behavior::pointerHover`) |
 | The engine's `nextWake()` time arrives       | `advance(now)`; then read `nextWake()` again |
@@ -153,6 +153,11 @@ The same names on every platform:
   `destroy()`, and `position()`: `{ clip, time }`, the clip on screen (an
   edge, or `still:<pose>`) and its clip time in seconds, read only. Before
   anything shows, `clip` is null and `time` 0; a still's `time` is 0.
+- `set` and `fire` take an `instant` option, off by default: what that
+  value starts happens now and goes straight into its target pose, skipping
+  every transition clip and route (rules.md 5.8). On the web and in React
+  Native it is `{ instant: true }` after the value or name, in Swift
+  `instant: true`, in Kotlin `instant = true`.
 - `autoPlay`: the app's value wins when it gives one, else the graph's
   `autoPlay`, else true (rules.md 11.1).
 - `sound`: on by default. A clip's own voice (`hasAudio`) is heard unless

@@ -1127,3 +1127,37 @@ test("sound is on by default; a voice the browser refused is heard after the per
   await settle();
   assert.equal(a.muted, false, 'the next loop is heard');
 });
+
+test('instant: set with instant enters the pose at once, with no move clip, movement or move sound', async () => {
+  const { host, player, events, b } = await started();
+  await host.advance(500);
+  player.set('working', true, { instant: true });
+  await settle();
+  assert.equal(events.at(-1), 'pose:working', 'the pose is entered mid-loop');
+  assert.equal(b.loads.length, 1);
+  assert.ok(b.loads[0].includes('work-loop'), 'the next clip is the pose clip, not the move');
+  b.frame();
+  await settle();
+  assert.equal(events.at(-1), 'clip:work-loop');
+  assert.ok(!events.includes('clip:to-work') && !events.includes('movement:to-work'));
+  const sounds = host.sounds.played;
+  assert.deepEqual(
+    sounds.map((s) => [s.url, s.state]),
+    [[url('hum', 'mp3'), 'stopped']],
+    'no move sound; entering stops the looping one'
+  );
+});
+
+test('instant: a fire kept while paused becomes instant when it is fired again with instant', async () => {
+  const { player, events, b } = await started();
+  player.pause();
+  player.fire('click');
+  player.fire('click', { instant: true });
+  player.play();
+  await settle();
+  // Straight into working with no clip on the way; there the way back holds at once, as on any
+  // arrival, and the claimed fire is spent as the mascot leaves.
+  assert.ok(events.includes('pose:working'));
+  assert.ok(!events.includes('clip:poke'), 'the move did not play');
+  assert.ok(b.loads[0].includes('to-idle'));
+});

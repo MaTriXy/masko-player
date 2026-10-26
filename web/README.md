@@ -28,6 +28,7 @@ const mascot = mountMascot(document.getElementById('mascot')!, {
 mascot.on('pose', ({ pose }) => console.log(pose));
 mascot.set('working', true);
 mascot.fire('celebrate');
+mascot.set('heldContact', true, { instant: true }); // now, straight into the held pose
 ```
 
 The element sets the mascot's size; one without a height gets a square
@@ -56,7 +57,7 @@ Without a build step, one file with the engine inlined,
 script that defines `window.MaskoPlayer`, not a module to import.
 
 ```html
-<script src="https://cdn.jsdelivr.net/npm/@masko/player@0.1.6/dist/masko-player.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@masko/player@0.1.7/dist/masko-player.js"></script>
 <script>
   const mascot = MaskoPlayer.mount(document.getElementById('mascot'), { delivery });
 </script>
@@ -81,7 +82,9 @@ file has one. A clip whose length cannot be read plays nothing and reports
 
 - `set(name, value)` with a boolean or a number, `fire(name)`. Values set
   before the start choose the first pose, also the first frame shown with
-  `autoPlay` false.
+  `autoPlay` false. Both take `{ instant: true }` last: what that value
+  starts then happens now and goes straight into its target pose, skipping
+  every transition clip and route (`spec/rules.md` 5.8).
 - `play()`, `pause()`, `reset()`, `destroy()`, `position()`, and
   `preview.showPose(id)` / `preview.playMove(id)` (editors only).
 - `updateDelivery(delivery)`: fresh links of the release that is playing.
@@ -100,8 +103,8 @@ file has one. A clip whose length cannot be read plays nothing and reports
 
 Calls made inside an event handler run once the player has finished what
 told the handler. While the mascot is paused or the page is hidden, calls
-wait for play: the last `set` of each name and one `fire` of each name are
-kept, at most 1000 calls.
+wait for play: the last `set` of each name and one `fire` of each name (one
+more when it is fired with `instant`) are kept, at most 1000 calls.
 
 ## What the player does by itself
 

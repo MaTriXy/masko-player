@@ -1,0 +1,79 @@
+{
+  "name": "instant-grab-skips-the-way-home",
+  "about": "A grab set with instant goes from a working pose straight into the held pose, mid-loop, with no move or route; letting go plays the way home at once.",
+  "rules": ["5.8", "5.2", "4.2"],
+  "canvas": "ko-coffee",
+  "patch": {
+    "delivery": {
+      "runtimeGraph": {
+        "initialNode": "laptop-working"
+      }
+    },
+    "defaults": {
+      "behavior::working": true
+    }
+  },
+  "steps": [
+    {
+      "start": true,
+      "expect": {
+        "clock": 0,
+        "pose": "laptop-working",
+        "clip": "loop-laptop-working",
+        "next": null,
+        "events": ["pose:laptop-working", "shown:loop-laptop-working"]
+      }
+    },
+    {
+      "advance": 1500,
+      "expect": {
+        "clock": 1500,
+        "pose": "laptop-working",
+        "clip": "loop-laptop-working",
+        "next": null,
+        "events": []
+      }
+    },
+    {
+      "set": ["heldContact", true],
+      "instant": true,
+      "expect": {
+        "clock": 1500,
+        "pose": "held-contact-squish",
+        "clip": "loop-held-contact-squish",
+        "next": null,
+        "events": ["pose:held-contact-squish", "shown:loop-held-contact-squish"]
+      }
+    },
+    {
+      "loopEnded": true,
+      "expect": {
+        "clock": 2856,
+        "pose": "held-contact-squish",
+        "clip": "loop-held-contact-squish",
+        "next": null,
+        "events": ["shown:loop-held-contact-squish"]
+      }
+    },
+    {
+      "set": ["heldContact", false],
+      "expect": {
+        "clock": 2856,
+        "pose": "held-contact-squish",
+        "clip": "return-held-contact-squish",
+        "next": null,
+        "events": ["shown:return-held-contact-squish"]
+      }
+    },
+    {
+      "clipEnded": true,
+      "expect": {
+        "clock": 4523,
+        "pose": "idle",
+        "clip": "enter-laptop-working",
+        "next": null,
+        "events": ["pose:idle", "shown:enter-laptop-working"]
+      }
+    }
+  ]
+}

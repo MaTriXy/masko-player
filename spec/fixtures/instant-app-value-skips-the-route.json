@@ -1,0 +1,59 @@
+{
+  "name": "instant-app-value-skips-the-route",
+  "about": "An app value set with instant starts at once, mid-loop, and enters its Any State target though the pose has no direct move there: no route.",
+  "rules": ["5.8", "4.2", "6.2"],
+  "canvas": "ko-coffee",
+  "patch": {
+    "delivery": {
+      "runtimeGraph": {
+        "initialNode": "laptop-working"
+      }
+    },
+    "defaults": {
+      "behavior::working": true
+    }
+  },
+  "steps": [
+    {
+      "start": true,
+      "expect": {
+        "clock": 0,
+        "pose": "laptop-working",
+        "clip": "loop-laptop-working",
+        "next": null,
+        "events": ["pose:laptop-working", "shown:loop-laptop-working"]
+      }
+    },
+    {
+      "advance": 1500,
+      "expect": {
+        "clock": 1500,
+        "pose": "laptop-working",
+        "clip": "loop-laptop-working",
+        "next": null,
+        "events": []
+      }
+    },
+    {
+      "set": ["attention", true],
+      "instant": true,
+      "expect": {
+        "clock": 1500,
+        "pose": "fan-wave",
+        "clip": "loop-fan-wave",
+        "next": null,
+        "events": ["pose:fan-wave", "shown:loop-fan-wave"]
+      }
+    },
+    {
+      "loopEnded": true,
+      "expect": {
+        "clock": 5500,
+        "pose": "fan-wave",
+        "clip": "loop-fan-wave",
+        "next": null,
+        "events": ["shown:loop-fan-wave"]
+      }
+    }
+  ]
+}

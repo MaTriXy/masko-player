@@ -69,7 +69,7 @@ fn start_shows_the_initial_loop_and_preloads_its_moves() {
 fn a_move_that_fails_on_screen_skips_to_its_target() {
     let mut e = load(&delivery("")).unwrap();
     e.start(0);
-    e.set("working", Value::Bool(true), 100);
+    e.set("working", Value::Bool(true), false, 100);
     // An app's move waits for the loop to end.
     assert_eq!(e.state().next.map(|n| n.clip), Some("to-work".into()));
     let c = e.clip_ended("idle-loop", 2000);
@@ -109,7 +109,7 @@ fn sounds_follow_the_clips() {
     // The looping sound is not started again on the next loop.
     let c = e.clip_ended("idle-loop", 2000);
     assert!(!c.iter().any(|c| matches!(c, Command::PlaySound { .. })));
-    e.set("working", Value::Bool(true), 2100);
+    e.set("working", Value::Bool(true), false, 2100);
     let c = e.clip_ended("idle-loop", 4000);
     let stop = c.iter().position(|c| {
         *c == Command::StopSounds {
@@ -184,7 +184,7 @@ fn a_late_call_runs_what_was_due_first() {
     e.clip_shown("idle-loop", 0);
     // The player missed its wake-up: the safety net at 3000 runs before the
     // set at 3500.
-    let c = e.set("working", Value::Bool(true), 3500);
+    let c = e.set("working", Value::Bool(true), false, 3500);
     assert!(c.contains(&Command::Error {
         code: "missing_end".into(),
         detail: Some("idle-loop".into())
@@ -197,7 +197,7 @@ fn the_safety_net_counts_from_when_the_clip_is_on_screen() {
     let mut e = load(&delivery("")).unwrap();
     e.start(0);
     e.clip_shown("idle-loop", 0);
-    e.set("working", Value::Bool(true), 100);
+    e.set("working", Value::Bool(true), false, 100);
     e.clip_ended("idle-loop", 2000);
     assert_eq!(e.state().clip.as_deref(), Some("to-work"));
     // The move's file takes 2.5 s to arrive: no safety net while it loads.
@@ -217,7 +217,7 @@ fn a_clip_never_shown_counts_as_failed_after_10_seconds() {
     let mut e = load(&delivery("")).unwrap();
     e.start(0);
     e.clip_shown("idle-loop", 0);
-    e.set("working", Value::Bool(true), 100);
+    e.set("working", Value::Bool(true), false, 100);
     e.clip_ended("idle-loop", 2000);
     let c = e.advance(12_000);
     assert!(c.contains(&Command::Error {
@@ -278,7 +278,7 @@ fn a_named_clip_that_fails_on_screen_spends_its_fire_after_its_stand_in() {
     let mut e = load(&delivery(WAVE)).unwrap();
     e.start(0);
     e.clip_shown("idle-loop", 0);
-    e.fire("wave", 100);
+    e.fire("wave", false, 100);
     let c = e.clip_ended("idle-loop", 2000);
     assert_eq!(shown(&c), ["idle-wave"]);
     e.clip_shown("idle-wave", 2000);
@@ -296,7 +296,7 @@ fn a_named_clip_that_fails_on_screen_spends_its_fire_after_its_stand_in() {
     assert_eq!(shown(&c), ["idle-loop"]);
     assert!(e.pending_fires().is_empty());
     // The next fire is not swallowed: it chooses the named clip again.
-    e.fire("wave", 4200);
+    e.fire("wave", false, 4200);
     let c = e.clip_ended("idle-loop", 6100);
     assert!(c.contains(&Command::Error {
         code: "clip_failed".into(),
@@ -321,7 +321,7 @@ fn set_refuses_numbers_that_are_not_finite() {
     .unwrap();
     e.start(0);
     for v in [f64::NAN, f64::INFINITY, f64::NEG_INFINITY] {
-        let c = e.set("pace", Value::Number(v), 10);
+        let c = e.set("pace", Value::Number(v), false, 10);
         assert_eq!(
             c,
             [Command::Error {
@@ -330,7 +330,7 @@ fn set_refuses_numbers_that_are_not_finite() {
             }]
         );
         assert_eq!(e.value("pace"), Value::Number(1.0));
-        let c = e.set("working", Value::Number(v), 10);
+        let c = e.set("working", Value::Number(v), false, 10);
         assert_eq!(
             c,
             [Command::Error {
@@ -341,7 +341,7 @@ fn set_refuses_numbers_that_are_not_finite() {
         assert_eq!(e.value("working"), Value::Bool(false));
     }
     // A finite number too large for the rate still gives a finite rate.
-    e.set("pace", Value::Number(f64::MAX), 20);
+    e.set("pace", Value::Number(f64::MAX), false, 20);
     let c = e.clip_ended("idle-loop", 1000);
     assert!(c.contains(&Command::ShowClip {
         edge: "idle-loop".into(),
@@ -363,7 +363,7 @@ fn a_priority_of_minus_zero_ranks_as_zero() {
     ))
     .unwrap();
     e.start(0);
-    e.set("working", Value::Bool(true), 10);
+    e.set("working", Value::Bool(true), false, 10);
     // Equal priorities: canvas order decides.
     assert_eq!(e.state().next.map(|n| n.clip), Some("to-a".into()));
 }
@@ -397,7 +397,7 @@ fn each_looping_sound_plays_once_while_the_mascot_stays_on_its_pose() {
         ]
     );
     // Entering another pose stops them; coming back starts them once more.
-    e.set("working", Value::Bool(true), t);
+    e.set("working", Value::Bool(true), false, t);
     t += 2000;
     let c = e.clip_ended("idle-yawn", t);
     assert_eq!(
@@ -412,7 +412,7 @@ fn each_looping_sound_plays_once_while_the_mascot_stays_on_its_pose() {
         ]
     );
     e.clip_ended("to-work", t + 1000);
-    e.set("working", Value::Bool(false), t + 1000);
+    e.set("working", Value::Bool(false), false, t + 1000);
     e.clip_ended("work-loop", t + 3000);
     let c = e.clip_ended("to-idle", t + 4000);
     assert_eq!(
@@ -431,7 +431,7 @@ const DANCE: &str = r#",
 /// Fires `dance` and plays the idle loop to its end: the dance move is on
 /// screen with its looping drum.
 fn dancing(e: &mut masko_player_engine::Engine, t: u64) {
-    e.fire("dance", t);
+    e.fire("dance", false, t);
     let c = e.clip_ended("idle-loop", t + 2000);
     assert_eq!(shown(&c), ["dance"]);
 }
@@ -511,8 +511,8 @@ fn play_times_at_the_end_of_the_clock_do_not_overflow() {
     let mut e = load(&delivery(DANCE)).unwrap();
     e.start(end - 10);
     e.clip_shown("idle-loop", end - 10);
-    e.set("working", Value::Bool(true), end - 5);
-    e.fire("dance", end - 5);
+    e.set("working", Value::Bool(true), false, end - 5);
+    e.fire("dance", false, end - 5);
     e.click(end - 4);
     e.hover(true, end - 3);
     e.clip_ended("idle-loop", end - 2);

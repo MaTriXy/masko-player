@@ -1,6 +1,6 @@
 {
   "name": "person-move-interrupts-a-move",
-  "about": "A grab during a move stops that move and starts at once; letting go takes the shortest way home.",
+  "about": "A grab during a move stops that move and starts at once; letting go takes the shortest way home, at once.",
   "rules": ["10", "5.2", "6.2"],
   "canvas": "ko-coffee",
   "steps": [
@@ -72,12 +72,9 @@
       "expect": {
         "clock": 6333,
         "pose": "held-contact-squish",
-        "clip": "loop-held-contact-squish",
-        "next": {
-          "clip": "return-held-contact-squish",
-          "at": "end"
-        },
-        "events": []
+        "clip": "return-held-contact-squish",
+        "next": null,
+        "events": ["shown:return-held-contact-squish"]
       }
     }
   ]

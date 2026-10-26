@@ -234,12 +234,18 @@ fn value(v: &Value) -> V {
 
 fn act(p: &mut Player, step: &Value) {
     let now = p.engine.clock();
+    // `"instant": true` on a set or fire step (rules.md 5.8).
+    let instant = step
+        .get("instant")
+        .and_then(Value::as_bool)
+        .unwrap_or(false);
     let commands = if step.get("start").is_some() {
         p.engine.start(now)
     } else if let Some(s) = step.get("set") {
-        p.engine.set(s[0].as_str().unwrap(), value(&s[1]), now)
+        p.engine
+            .set(s[0].as_str().unwrap(), value(&s[1]), instant, now)
     } else if let Some(f) = step.get("fire") {
-        p.engine.fire(f.as_str().unwrap(), now)
+        p.engine.fire(f.as_str().unwrap(), instant, now)
     } else if step.get("click").is_some() {
         p.engine.click(now)
     } else if let Some(h) = step.get("hover") {

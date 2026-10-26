@@ -209,21 +209,29 @@ describe('ref', () => {
     handle.set('score', 3.5);
     handle.set('flag', false);
     handle.set('count', 0);
+    handle.set('heldContact', true, { instant: true });
+    handle.set('level', 2, { instant: true });
     handle.fire('celebrate');
+    handle.fire('boop', { instant: true });
     handle.reset();
     handle.pause();
     handle.play();
     handle.preview.showPose('idle');
     handle.preview.playMove('wave');
     expect(fake.calls.setBool.mock.calls).toEqual([
-      ['working', true],
-      ['flag', false]
+      ['working', true, false],
+      ['flag', false, false],
+      ['heldContact', true, true]
     ]);
     expect(fake.calls.setNumber.mock.calls).toEqual([
-      ['score', 3.5],
-      ['count', 0]
+      ['score', 3.5, false],
+      ['count', 0, false],
+      ['level', 2, true]
     ]);
-    expect(fake.calls.fire.mock.calls).toEqual([['celebrate']]);
+    expect(fake.calls.fire.mock.calls).toEqual([
+      ['celebrate', false],
+      ['boop', true]
+    ]);
     expect(fake.calls.reset).toHaveBeenCalledTimes(1);
     expect(fake.calls.pause).toHaveBeenCalledTimes(1);
     expect(fake.calls.play).toHaveBeenCalledTimes(1);

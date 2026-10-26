@@ -24,9 +24,9 @@ type NativeEvent<T> = { nativeEvent: T };
 
 /** The native view's own calls, run on the main thread in the order they are made. */
 export interface NativeCalls {
-  setBool(name: string, value: boolean): Promise<void>;
-  setNumber(name: string, value: number): Promise<void>;
-  fire(name: string): Promise<void>;
+  setBool(name: string, value: boolean, instant: boolean): Promise<void>;
+  setNumber(name: string, value: number, instant: boolean): Promise<void>;
+  fire(name: string, instant: boolean): Promise<void>;
   reset(): Promise<void>;
   play(): Promise<void>;
   pause(): Promise<void>;
@@ -177,9 +177,11 @@ function MaskoViewWithRef(props: MaskoViewProps, ref: ForwardedRef<MaskoHandle>)
       if (n) f(n).catch(() => undefined);
     };
     return {
-      set: (name, value) =>
-        call((n) => (typeof value === 'boolean' ? n.setBool(name, value) : n.setNumber(name, value))),
-      fire: (name) => call((n) => n.fire(name)),
+      set: (name, value, options) => {
+        const instant = options?.instant === true;
+        call((n) => (typeof value === 'boolean' ? n.setBool(name, value, instant) : n.setNumber(name, value, instant)));
+      },
+      fire: (name, options) => call((n) => n.fire(name, options?.instant === true)),
       reset: () => call((n) => n.reset()),
       play: () => call((n) => n.play()),
       pause: () => call((n) => n.pause()),

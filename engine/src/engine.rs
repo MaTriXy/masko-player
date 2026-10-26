@@ -169,11 +169,22 @@ struct Claim {
     route: bool,
 }
 
+/// A pending fire (rules.md 3.3).
+#[derive(Debug)]
+struct Fire {
+    name: String,
+    claim: Option<Claim>,
+    /// Fired with instant: instant until it is spent (rules.md 5.8).
+    instant: bool,
+}
+
 #[derive(Debug, Clone, Copy)]
 struct Plan {
     edge: usize,
     hop: usize,
     route: bool,
+    /// An instant start: now, and straight into its target (rules.md 5.8).
+    instant: bool,
 }
 
 impl Plan {
@@ -220,11 +231,16 @@ enum Due {
     Wake,
 }
 
+/// Why the engine decides: a boundary (rules.md 0), or another
+/// event.
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum Boundary {
     None,
     Entry,
     End,
+    /// Not a boundary: a person input turned off (rules.md 5.2). It holds
+    /// the start decided before, which keeps its moment.
+    Release(Option<usize>),
 }
 
 /// Where the extra-clip rolls come from (rules.md 7.3): the fixed numbers
@@ -355,7 +371,9 @@ pub struct Engine {
     last_extra: HashMap<String, usize>,
     chain: (u32, u64),
     held: HashMap<String, Value>,
-    fires: Vec<(String, Option<Claim>)>,
+    /// The held values set with instant (rules.md 5.8).
+    held_instant: HashSet<String>,
+    fires: Vec<Fire>,
     pose: Option<String>,
     screen: Option<Screen>,
     decided: Option<Decided>,
@@ -381,6 +399,7 @@ impl Engine {
             last_extra: HashMap::new(),
             chain: (0, 0),
             held: HashMap::new(),
+            held_instant: HashSet::new(),
             fires: Vec::new(),
             pose: None,
             screen: None,
@@ -427,30 +446,32 @@ impl Engine {
         self.take()
     }
 
-    /// `set(name, value)` (rules.md 3.2).
-    pub fn set(&mut self, name: &str, value: Value, now: u64) -> Vec<Command> {
+    /// `set(name, value)` (rules.md 3.2); with `instant`, what it starts
+    /// starts now and goes straight into its target pose (5.8).
+    pub fn set(&mut self, name: &str, value: Value, instant: bool, now: u64) -> Vec<Command> {
         self.run_until(now, true);
-        self.set_value(name, value);
+        self.set_value(name, value, instant);
         self.take()
     }
 
-    /// `fire(name)` (rules.md 3.3).
-    pub fn fire(&mut self, name: &str, now: u64) -> Vec<Command> {
+    /// `fire(name)` (rules.md 3.3); with `instant`, what it starts starts
+    /// now and goes straight into its target pose (5.8).
+    pub fn fire(&mut self, name: &str, instant: bool, now: u64) -> Vec<Command> {
         self.run_until(now, true);
-        self.fire_name(name);
+        self.fire_name(name, instant);
         self.take()
     }
 
     /// The person clicked the mascot: always `action::click`, whatever the
     /// canvas declares (rules.md 3.5).
     pub fn click(&mut self, now: u64) -> Vec<Command> {
-        self.fire("action::click", now)
+        self.fire("action::click", false, now)
     }
 
     /// The pointer entered or left the mascot: always
     /// `behavior::pointerHover` (rules.md 3.5).
     pub fn hover(&mut self, on: bool, now: u64) -> Vec<Command> {
-        self.set("behavior::pointerHover", Value::Bool(on), now)
+        self.set("behavior::pointerHover", Value::Bool(on), false, now)
     }
 
     /// Play time moved on: runs every timer and safety net due.
@@ -589,7 +610,7 @@ impl Engine {
 
     /// The fires still pending, sorted.
     pub fn pending_fires(&self) -> Vec<String> {
-        let mut names: Vec<String> = self.fires.iter().map(|(n, _)| n.clone()).collect();
+        let mut names: Vec<String> = self.fires.iter().map(|f| f.name.clone()).collect();
         names.sort();
         names
     }
@@ -610,6 +631,7 @@ impl Engine {
             })
             .map(|(n, (_, d))| (n.clone(), Value::from(*d)))
             .collect();
+        self.held_instant.clear();
         self.fires.clear();
         self.pose = None;
         self.screen = None;
@@ -631,7 +653,7 @@ impl Engine {
     }
 
     fn fire_index(&self, name: &str) -> Option<usize> {
-        self.fires.iter().position(|(n, _)| n == name)
+        self.fires.iter().position(|f| f.name == name)
     }
 
     fn on(&self, name: &str) -> bool {
@@ -646,7 +668,7 @@ impl Engine {
                 !self
                     .held
                     .keys()
-                    .chain(self.fires.iter().map(|(n, _)| n))
+                    .chain(self.fires.iter().map(|f| &f.name))
                     .any(|n| n.starts_with("behavior::") && n != "behavior::rest" && self.on(n)),
             ),
             _ if self.fire_index(name).is_some() => Value::Bool(true),
@@ -692,7 +714,7 @@ impl Engine {
         names
     }
 
-    fn set_value(&mut self, name: &str, value: Value) {
+    fn set_value(&mut self, name: &str, value: Value, instant: bool) {
         if !value.number().is_finite() {
             self.push_error("bad_value", Some(name));
             return;
@@ -709,35 +731,61 @@ impl Engine {
             .is_some_and(|(k, _)| k == "trigger")
         {
             if value.number() != 0.0 {
-                self.fire_name(&name);
+                self.fire_name(&name, instant);
             } else if let Some(i) = self.fire_index(&name) {
                 self.fires.remove(i);
                 self.consider(Boundary::None, false);
             }
             return;
         }
-        if self.held.get(&name) == Some(&value) {
+        // Only a value that is on stays instant; a set without instant ends
+        // it (rules.md 5.8).
+        let instant = instant && value.number() != 0.0;
+        if self.held.get(&name) == Some(&value) && self.held_instant.contains(&name) == instant {
             return;
         }
+        if instant {
+            self.held_instant.insert(name.clone());
+        } else {
+            self.held_instant.remove(&name);
+        }
+        // The person stopping counts as the person (rules.md 5.2).
+        let released = PERSON.contains(&name.as_str())
+            && self.held.get(&name).is_some_and(|v| v.number() != 0.0)
+            && value.number() == 0.0;
         self.held.insert(name, value);
-        self.consider(Boundary::None, false);
+        let boundary = if released {
+            Boundary::Release(self.decided.map(|d| d.plan.edge))
+        } else {
+            Boundary::None
+        };
+        self.consider(boundary, false);
     }
 
-    fn fire_name(&mut self, name: &str) {
+    fn fire_name(&mut self, name: &str, instant: bool) {
         let name = self.resolve(name);
-        if self.fire_index(&name).is_some() {
+        if let Some(i) = self.fire_index(&name) {
+            // A pending fire fired again with instant is instant (rules.md 5.8).
+            if instant && !self.fires[i].instant {
+                self.fires[i].instant = true;
+                self.consider(Boundary::None, false);
+            }
             return;
         }
-        self.fires.push((name, None));
+        self.fires.push(Fire {
+            name,
+            claim: None,
+            instant,
+        });
         self.consider(Boundary::None, false);
     }
 
     fn spend(&mut self, name: &str) {
         if let Some(i) = self.fire_index(name) {
-            let (name, claim) = self.fires.remove(i);
+            let f = self.fires.remove(i);
             self.out.push(Command::Spent {
-                name,
-                used: claim.is_some(),
+                name: f.name,
+                used: f.claim.is_some(),
             });
         }
     }
@@ -746,28 +794,34 @@ impl Engine {
         let names: Vec<String> = self
             .fires
             .iter()
-            .filter(|(_, c)| !keep(c))
-            .map(|(n, _)| n.clone())
+            .filter(|f| !keep(&f.claim))
+            .map(|f| f.name.clone())
             .collect();
         for n in names {
             self.spend(&n);
         }
     }
 
-    fn unclaim_where(&mut self, f: impl Fn(&Claim) -> bool) {
-        for (_, claim) in self.fires.iter_mut() {
-            if claim.as_ref().is_some_and(&f) {
-                *claim = None;
+    fn unclaim_where(&mut self, which: impl Fn(&Claim) -> bool) {
+        for f in self.fires.iter_mut() {
+            if f.claim.as_ref().is_some_and(&which) {
+                f.claim = None;
             }
         }
     }
 
     fn claim(&mut self, names: &[String], claim: Claim) {
-        for (n, c) in self.fires.iter_mut() {
-            if c.is_none() && names.contains(n) {
-                *c = Some(claim.clone());
+        for f in self.fires.iter_mut() {
+            if f.claim.is_none() && names.contains(&f.name) {
+                f.claim = Some(claim.clone());
             }
         }
+    }
+
+    /// A name the app set or fired with instant (rules.md 5.8). Only values
+    /// that are on stay instant.
+    fn is_instant(&self, name: &str) -> bool {
+        self.held_instant.contains(name) || self.fires.iter().any(|f| f.instant && f.name == name)
     }
 
     // ---------------------------------------------------------------- 4. What plays next
@@ -792,18 +846,24 @@ impl Engine {
         });
         for i in cands {
             let e = &self.g.edges[i];
+            let instant = self.instant(i);
             if e.source.is_none() {
                 if e.target == p {
                     return Some(Decision::Stay);
                 }
-                match self.route_hop(p, &e.target) {
-                    None => continue,
-                    Some(hop) => {
-                        return Some(Decision::Start(Plan {
-                            edge: i,
-                            hop,
-                            route: true,
-                        }))
+                // An instant start needs no route: it reaches any pose
+                // (rules.md 5.8).
+                if !instant {
+                    match self.route_hop(p, &e.target) {
+                        None => continue,
+                        Some(hop) => {
+                            return Some(Decision::Start(Plan {
+                                edge: i,
+                                hop,
+                                route: true,
+                                instant,
+                            }))
+                        }
                     }
                 }
             }
@@ -811,6 +871,7 @@ impl Engine {
                 edge: i,
                 hop: i,
                 route: false,
+                instant,
             }));
         }
         None
@@ -868,9 +929,9 @@ impl Engine {
                 }
             }
             Boundary::End => return At::Time(self.now),
-            Boundary::None => {}
+            Boundary::None | Boundary::Release(_) => {}
         }
-        if self.by_person(plan) {
+        if self.at_once(plan, boundary) {
             return At::Time(self.now);
         }
         if no_conditions {
@@ -891,6 +952,26 @@ impl Engine {
         })
     }
 
+    /// An instant name (rules.md 5.8) in one of the edge's holding groups.
+    fn instant(&self, edge: usize) -> bool {
+        self.holding_groups(edge)
+            .iter()
+            .any(|g| g.iter().any(|c| self.is_instant(&c.input)))
+    }
+
+    /// A start that happens at once and interrupts a move: one by the person
+    /// (rules.md 5.2), a new one the person's stop decides (5.2), or an
+    /// instant one (5.8).
+    fn at_once(&self, plan: Plan, boundary: Boundary) -> bool {
+        let released = match boundary {
+            Boundary::Release(before) => {
+                before != Some(plan.edge) && !self.g.edges[plan.edge].groups.is_empty()
+            }
+            _ => false,
+        };
+        plan.instant || released || self.by_person(plan)
+    }
+
     /// Decides (4) and starts now when the moment is now. True when a start
     /// happened.
     fn consider(&mut self, boundary: Boundary, spend_unclaimed_first: bool) -> bool {
@@ -906,9 +987,12 @@ impl Engine {
         if let Some(s) = self.screen {
             if s.kind == ScreenKind::Move {
                 self.decided = None;
-                if boundary == Boundary::None {
+                if matches!(boundary, Boundary::None | Boundary::Release(_)) {
                     if let Some(Decision::Start(plan)) = self.decide() {
-                        if Some(plan.hop) != s.edge && self.by_person(plan) {
+                        // An instant start never goes on with the move: it
+                        // cuts it.
+                        let other = plan.instant || Some(plan.hop) != s.edge;
+                        if other && self.at_once(plan, boundary) {
                             self.interrupt(plan);
                             return true;
                         }
@@ -962,7 +1046,13 @@ impl Engine {
         if spend_unclaimed_first {
             self.spend_where(|c| c.is_some());
         }
-        self.show_move(plan.hop);
+        if plan.instant {
+            // Straight into the target, with no clip on the way (rules.md 5.8).
+            let target = plan.target(&self.g).to_owned();
+            self.enter(&target);
+        } else {
+            self.show_move(plan.hop);
+        }
     }
 
     // ---------------------------------------------------------------- 9. Moves
@@ -1263,8 +1353,8 @@ impl Engine {
     /// clip's length. A fire the failed clip claimed is spent when what plays
     /// in its place ends (rules.md 3.3, 9.5).
     fn stand_in(&mut self, failed: usize) {
-        for (_, claim) in self.fires.iter_mut() {
-            if let Some(c) = claim.as_mut().filter(|c| c.clip == Some(failed)) {
+        for f in self.fires.iter_mut() {
+            if let Some(c) = f.claim.as_mut().filter(|c| c.clip == Some(failed)) {
                 c.clip = None;
             }
         }
@@ -1370,7 +1460,7 @@ impl Engine {
             return;
         }
         let choice = self.choose_clip(ended);
-        let spent = self.fires.iter().any(|(_, c)| c.is_none());
+        let spent = self.fires.iter().any(|f| f.claim.is_none());
         self.spend_where(|c| c.is_some());
         if spent && self.consider(Boundary::End, false) {
             return;
