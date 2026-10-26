@@ -76,7 +76,8 @@ fn a_move_that_fails_on_screen_skips_to_its_target() {
     assert_eq!(shown(&c), ["to-work"]);
     let c = e.clip_failed("to-work", 2050);
     assert!(c.contains(&Command::Error {
-        code: "clip_failed".into()
+        code: "clip_failed".into(),
+        detail: Some("to-work".into())
     }));
     assert!(c.contains(&Command::PoseEntered {
         pose: "working".into()
@@ -143,7 +144,8 @@ fn a_missing_end_report_is_covered_by_the_safety_net() {
     assert_eq!(e.next_wake(), Some(3000));
     let c = e.advance(3000);
     assert!(c.contains(&Command::Error {
-        code: "missing_end".into()
+        code: "missing_end".into(),
+        detail: Some("idle-loop".into())
     }));
     assert_eq!(shown(&c), ["idle-loop"]);
 }
@@ -184,7 +186,8 @@ fn a_late_call_runs_what_was_due_first() {
     // set at 3500.
     let c = e.set("working", Value::Bool(true), 3500);
     assert!(c.contains(&Command::Error {
-        code: "missing_end".into()
+        code: "missing_end".into(),
+        detail: Some("idle-loop".into())
     }));
     assert_eq!(e.clock(), 3500);
 }
@@ -218,7 +221,8 @@ fn a_clip_never_shown_counts_as_failed_after_10_seconds() {
     e.clip_ended("idle-loop", 2000);
     let c = e.advance(12_000);
     assert!(c.contains(&Command::Error {
-        code: "clip_timeout".into()
+        code: "clip_timeout".into(),
+        detail: Some("to-work".into())
     }));
     assert_eq!(e.state().pose.as_deref(), Some("working"));
 }
@@ -295,7 +299,8 @@ fn a_named_clip_that_fails_on_screen_spends_its_fire_after_its_stand_in() {
     e.fire("wave", 4200);
     let c = e.clip_ended("idle-loop", 6100);
     assert!(c.contains(&Command::Error {
-        code: "clip_failed".into()
+        code: "clip_failed".into(),
+        detail: Some("idle-wave".into())
     }));
     assert_eq!(shown(&c), ["idle-loop"]);
     let c = e.clip_ended("idle-loop", 8100);
@@ -320,7 +325,8 @@ fn set_refuses_numbers_that_are_not_finite() {
         assert_eq!(
             c,
             [Command::Error {
-                code: "bad_value".into()
+                code: "bad_value".into(),
+                detail: Some("pace".into())
             }]
         );
         assert_eq!(e.value("pace"), Value::Number(1.0));
@@ -328,7 +334,8 @@ fn set_refuses_numbers_that_are_not_finite() {
         assert_eq!(
             c,
             [Command::Error {
-                code: "bad_value".into()
+                code: "bad_value".into(),
+                detail: Some("working".into())
             }]
         );
         assert_eq!(e.value("working"), Value::Bool(false));

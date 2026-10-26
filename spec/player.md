@@ -72,7 +72,9 @@ runs everything that was due first.
   11.4); the next `showClip` or `showStill` replaces it at once.
 - **`spent { name, used }`**: tell the app a fire is done (`reactionDone`
   event, with `used`).
-- **`error { code }`**: tell the app (`error` event).
+- **`error { code, detail? }`**: tell the app (`error` event). The detail
+  says what it is about: the edge of a clip error, the name of a refused
+  value, the pose of a pose error.
 
 ## The file and the size
 

@@ -129,7 +129,7 @@ impl Player {
                 } else {
                     format!("spent:{name}:unused")
                 }),
-                Command::Error { code } => self.events.push(format!("error:{code}")),
+                Command::Error { code, .. } => self.events.push(format!("error:{code}")),
                 Command::PlaySound { .. } | Command::StopSounds { .. } => {}
             }
         }

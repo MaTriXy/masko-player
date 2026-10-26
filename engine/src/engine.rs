@@ -113,8 +113,14 @@ pub enum Command {
     Interrupted { edge: String },
     /// A fire is used up: by a start, or unused (rules.md 3.3).
     Spent { name: String, used: bool },
-    /// Something went wrong, with a code from rules.md.
-    Error { code: String },
+    /// Something went wrong, with a code from rules.md and what it is about:
+    /// the edge of a clip error, the name of a refused value, the pose of a
+    /// pose error.
+    Error {
+        code: String,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        detail: Option<String>,
+    },
 }
 
 /// When a decided start happens. As JSON: a play time, or `"end"`.
@@ -504,12 +510,14 @@ impl Engine {
         };
         match s.kind {
             ScreenKind::Move => {
-                self.push_error(code);
+                let id = self.g.edges[i].id.clone();
+                self.push_error(code, Some(&id));
                 let target = self.g.edges[i].target.clone();
                 self.enter(&target);
             }
             ScreenKind::Pose => {
-                self.push_error(code);
+                let id = self.g.edges[i].id.clone();
+                self.push_error(code, Some(&id));
                 self.stand_in(i);
                 // A start decided for the end of the failed clip leaves the
                 // still at once (rules.md 5.3).
@@ -686,12 +694,12 @@ impl Engine {
 
     fn set_value(&mut self, name: &str, value: Value) {
         if !value.number().is_finite() {
-            self.push_error("bad_value");
+            self.push_error("bad_value", Some(name));
             return;
         }
         let name = self.resolve(name);
         if name.starts_with("node::") || name == "behavior::rest" {
-            self.push_error("read_only");
+            self.push_error("read_only", Some(&name));
             return;
         }
         if self
@@ -961,7 +969,8 @@ impl Engine {
 
     fn show_move(&mut self, i: usize) {
         if !self.g.edges[i].has_video || self.unplayable.contains(&i) {
-            self.push_error("clip_failed");
+            let id = self.g.edges[i].id.clone();
+            self.push_error("clip_failed", Some(&id));
             let target = self.g.edges[i].target.clone();
             self.enter(&target);
             return;
@@ -1000,7 +1009,7 @@ impl Engine {
         };
         self.arrive(pose);
         let started = if self.cycling() {
-            self.push_error("clipless_cycle");
+            self.push_error("clipless_cycle", Some(pose));
             false
         } else {
             self.consider(Boundary::Entry, false)
@@ -1137,7 +1146,7 @@ impl Engine {
 
     fn show_pose_now(&mut self, pose: &str) {
         if !self.g.nodes.contains(pose) {
-            self.push_error("unknown_pose");
+            self.push_error("unknown_pose", Some(pose));
             return;
         }
         self.cut_move();
@@ -1157,11 +1166,12 @@ impl Engine {
                 && self.screen.is_some_and(|s| s.kind != ScreenKind::Move)
         });
         let Some(i) = ok else {
-            self.push_error("preview_refused");
+            self.push_error("preview_refused", Some(edge));
             return;
         };
         if self.cycling() {
-            self.push_error("clipless_cycle");
+            let pose = self.pose.clone();
+            self.push_error("clipless_cycle", pose.as_deref());
             return;
         }
         let p = self.pose.clone().unwrap_or_default();
@@ -1240,7 +1250,8 @@ impl Engine {
         match choice {
             None => self.show_still(STILL_MS),
             Some(i) if self.unplayable.contains(&i) => {
-                self.push_error("clip_failed");
+                let id = self.g.edges[i].id.clone();
+                self.push_error("clip_failed", Some(&id));
                 self.stand_in(i);
             }
             Some(i) => self.show_pose_clip(i),
@@ -1439,7 +1450,11 @@ impl Engine {
             match due {
                 Due::StillEnd => self.screen_ended(),
                 Due::Safety => {
-                    self.push_error("missing_end");
+                    let id = self
+                        .screen
+                        .and_then(|s| s.edge)
+                        .map(|i| self.g.edges[i].id.clone());
+                    self.push_error("missing_end", id.as_deref());
                     self.screen_ended();
                 }
                 Due::LoadTimeout => {
@@ -1458,9 +1473,10 @@ impl Engine {
         }
     }
 
-    fn push_error(&mut self, code: &str) {
+    fn push_error(&mut self, code: &str, detail: Option<&str>) {
         self.out.push(Command::Error {
             code: code.to_owned(),
+            detail: detail.map(str::to_owned),
         });
     }
 

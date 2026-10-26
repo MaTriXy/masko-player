@@ -56,7 +56,7 @@ Without a build step, one file with the engine inlined,
 script that defines `window.MaskoPlayer`, not a module to import.
 
 ```html
-<script src="https://cdn.jsdelivr.net/npm/@masko/player@0.1.3/dist/masko-player.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@masko/player@0.1.4/dist/masko-player.js"></script>
 <script>
   const mascot = MaskoPlayer.mount(document.getElementById('mascot'), { delivery });
 </script>
@@ -90,7 +90,9 @@ file has one. A clip whose length cannot be read plays nothing and reports
   clip or loop on. Browsers refuse sound before the person's first click or
   key press on the page: the clip then plays muted, and its voice is heard
   from the next clip or loop after that.
-- Events: `pose`, `clip`, `reactionDone`, `movement`, `error`.
+- Events: `pose`, `clip`, `reactionDone`, `movement`, `error` (its `detail`
+  says what it is about: the edge of a clip error, the name of a refused
+  value, the pose of a pose error).
 - Options: `sound` (on by default: a clip's own voice is heard; false mutes
   it; edge sounds play either way), `autoPlay` (defaults to the canvas), `pointer`
   (on by default: clicks, Enter or Space on the focused mascot and the

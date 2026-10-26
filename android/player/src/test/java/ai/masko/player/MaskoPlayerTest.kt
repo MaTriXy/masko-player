@@ -193,7 +193,7 @@ class MaskoPlayerTest {
         rig.player.set("node::loopCount", 1)
         assertEquals(listOf("loop-idle POSE 1.0", "to-work MOVE 2.0"), rig.heard.clips)
         assertEquals(listOf(2.0 to 0.5), rig.heard.timings)
-        assertEquals(listOf(null), rig.heard.details)
+        assertEquals(listOf("node::loopCount"), rig.heard.details)
         assertEquals("error:read_only", rig.heard.events.last())
 
         val napping = Rig().started()

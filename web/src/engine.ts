@@ -16,7 +16,7 @@ export type Command =
   | { type: 'poseEntered'; pose: string }
   | { type: 'interrupted'; edge: string }
   | { type: 'spent'; name: string; used: boolean }
-  | { type: 'error'; code: string };
+  | { type: 'error'; code: string; detail?: string };
 
 /** The engine's view of the screen, for tests and tools. */
 export interface EngineState {

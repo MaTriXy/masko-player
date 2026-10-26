@@ -19,6 +19,8 @@ final class MaskoNativeView: ExpoView {
   var clip: String?
   var autoPlay: Bool?
   var sound = true
+  /// Taps and the pointer reach the player; off, the app sends them itself.
+  var pointer = true
   var refreshes = false
 
   private(set) var player: MaskoPlayer?
@@ -69,6 +71,7 @@ final class MaskoNativeView: ExpoView {
       }
     }
     player?.sound = sound
+    mascot.pointer = pointer
   }
 
   func position() -> [String: Any] {

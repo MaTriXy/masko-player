@@ -83,6 +83,27 @@ class ViewHostTest {
     }
 
     @Test
+    fun withPointerOffTheViewTakesNoTaps() {
+        ActivityScenario.launch(TestActivity::class.java).use { scenario ->
+            lateinit var view: MaskoPlayerView
+            scenario.onActivity { activity ->
+                view = MaskoPlayerView(activity)
+                view.pointer = false
+                activity.root.addView(view, FrameLayout.LayoutParams(SIZE, SIZE))
+                view.load(DELIVERY).addListener(listener)
+            }
+            waitFor("the first clip") { count("clip:loop-red") >= 1 }
+            assertFalse(main { view.isClickable })
+            assertFalse("no click listener runs", main { view.performClick() })
+            main { view.pointer = true }
+            assertTrue(main { view.isClickable })
+            assertTrue("the click reaches the player", main { view.performClick() })
+            main { view.player!!.destroy() }
+        }
+        assertTrue("errors: $heard", heard.none { it.startsWith("error:") })
+    }
+
+    @Test
     fun aViewWithNoHeightSaysSoAndPlaysOnceItHasOne() {
         ActivityScenario.launch(TestActivity::class.java).use { scenario ->
             lateinit var view: MaskoPlayerView

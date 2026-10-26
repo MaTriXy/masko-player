@@ -666,12 +666,12 @@ final class PlayerTests: XCTestCase {
             heard,
             [
                 .pose(pose: "idle"), .clip(clip: "idle-loop", kind: .pose, rate: 1),
-                .error(code: "read_only", detail: nil),
+                .error(code: "read_only", detail: "node::loopCount"),
                 .clip(clip: "to-work", kind: .move, rate: 2),
                 .movement(
                     edge: "to-work", movement: .object(["dx": .number(120), "easing": .string("linear")]),
                     rate: 2, seconds: 0.5),
-                .pose(pose: "working"), .error(code: "clip_failed", detail: nil),
+                .pose(pose: "working"), .error(code: "clip_failed", detail: "work-loop"),
                 .clip(clip: "still:working", kind: .still, rate: 1),
             ])
     }

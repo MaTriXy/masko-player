@@ -46,6 +46,7 @@ export interface NativeProps extends ViewProps {
   clip?: string;
   autoPlay?: boolean;
   sound: boolean;
+  pointer: boolean;
   /** The app passed `getDelivery`: the player asks for fresh links through `onDeliveryRequest`. */
   refreshes: boolean;
   onPose: (event: NativeEvent<MaskoEvents['pose']>) => void;
@@ -72,6 +73,7 @@ function MaskoViewWithRef(props: MaskoViewProps, ref: ForwardedRef<MaskoHandle>)
     getDelivery,
     sound,
     autoPlay,
+    pointer,
     onPose,
     onClip,
     onReactionDone,
@@ -194,6 +196,7 @@ function MaskoViewWithRef(props: MaskoViewProps, ref: ForwardedRef<MaskoHandle>)
     clip: clipFile || undefined,
     autoPlay,
     sound: sound ?? true,
+    pointer: pointer ?? true,
     refreshes
   });
 }

@@ -1130,7 +1130,7 @@ internal enum EngineCommand: Equatable, Hashable {
     )
     case spent(name: String, used: Bool
     )
-    case error(code: String
+    case error(code: String, detail: String?
     )
 
 
@@ -1177,7 +1177,7 @@ internal struct FfiConverterTypeEngineCommand: FfiConverterRustBuffer {
         case 8: return .spent(name: try FfiConverterString.read(from: &buf), used: try FfiConverterBool.read(from: &buf)
         )
         
-        case 9: return .error(code: try FfiConverterString.read(from: &buf)
+        case 9: return .error(code: try FfiConverterString.read(from: &buf), detail: try FfiConverterOptionString.read(from: &buf)
         )
         
         default: throw UniffiInternalError.unexpectedEnumCase
@@ -1231,9 +1231,10 @@ internal struct FfiConverterTypeEngineCommand: FfiConverterRustBuffer {
             FfiConverterBool.write(used, into: &buf)
             
         
-        case let .error(code):
+        case let .error(code,detail):
             writeInt(&buf, Int32(9))
             FfiConverterString.write(code, into: &buf)
+            FfiConverterOptionString.write(detail, into: &buf)
             
         }
     }

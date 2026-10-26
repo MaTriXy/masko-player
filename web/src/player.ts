@@ -33,7 +33,10 @@ export interface MaskoEvents {
   reactionDone: { name: string; used: boolean };
   /** A move with `movement` is now on screen: the app may move the mascot. */
   movement: { edge: string; movement: unknown; rate: number; seconds: number };
-  /** Something went wrong, with a code from rules.md or the player. */
+  /**
+   * Something went wrong, with a code from rules.md or the player and what it is about: the clip
+   * of a clip error, the name of a refused value, the pose of a pose error.
+   */
   error: { code: string; detail?: string };
 }
 
@@ -604,7 +607,7 @@ export class Player {
           this.unplayable.add(this.pending.edge);
           this.dropPending();
         }
-        this.emit('error', { code: c.code });
+        this.emit('error', { code: c.code, detail: c.detail });
         break;
     }
   }

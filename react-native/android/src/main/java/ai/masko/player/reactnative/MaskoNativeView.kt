@@ -30,6 +30,8 @@ class MaskoNativeView(context: Context, appContext: AppContext) : ExpoView(conte
   var clip: String? = null
   var autoPlay: Boolean? = null
   var sound = true
+  /** Taps and the pointer reach the player; off, the app sends them itself. */
+  var pointer = true
   var refreshes = false
 
   var player: MaskoPlayer? = null
@@ -80,6 +82,7 @@ class MaskoNativeView(context: Context, appContext: AppContext) : ExpoView(conte
       if (loaded != json to refreshes) load(json)
     }
     player?.sound = sound
+    mascot.pointer = pointer
   }
 
   fun position(): Map<String, Any?> {

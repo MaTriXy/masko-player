@@ -151,7 +151,7 @@ final class ScenarioTests: XCTestCase {
                     events.append("interrupted:\(edge)")
                 case let .spent(name, used):
                     events.append(used ? "spent:\(name)" : "spent:\(name):unused")
-                case let .error(code):
+                case let .error(code, _):
                     events.append("error:\(code)")
                 case .playSound, .stopSounds:
                     break

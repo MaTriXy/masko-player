@@ -58,6 +58,7 @@ pub enum EngineCommand {
     },
     Error {
         code: String,
+        detail: Option<String>,
     },
 }
 
@@ -94,7 +95,7 @@ fn commands(list: Vec<Command>) -> Vec<EngineCommand> {
             Command::PoseEntered { pose } => EngineCommand::PoseEntered { pose },
             Command::Interrupted { edge } => EngineCommand::Interrupted { edge },
             Command::Spent { name, used } => EngineCommand::Spent { name, used },
-            Command::Error { code } => EngineCommand::Error { code },
+            Command::Error { code, detail } => EngineCommand::Error { code, detail },
         })
         .collect()
 }

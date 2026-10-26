@@ -28,7 +28,9 @@ public final class MaskoPlayer {
         /// `movement` says, over `seconds` (the edge's duration at this
         /// rate). The player never moves itself.
         case movement(edge: String, movement: MaskoJSON, rate: Double, seconds: Double)
-        /// Something went wrong, with a code from the rulebook or the player.
+        /// Something went wrong, with a code from the rulebook or the player
+        /// and what it is about: the clip of a clip error, the name of a
+        /// refused value, the pose of a pose error.
         case error(code: String, detail: String?)
     }
 
@@ -530,7 +532,7 @@ public final class MaskoPlayer {
             break
         case let .spent(name, used):
             emit(.reactionDone(name: name, used: used))
-        case let .error(code):
+        case let .error(code, detail):
             if code == "clip_timeout" {
                 // The clip asked for did not show in time and the engine
                 // counts it unplayable (rules.md 9.3): drop it, and let a
@@ -540,7 +542,7 @@ public final class MaskoPlayer {
                 }
                 dropPending()
             }
-            emit(.error(code: code, detail: nil))
+            emit(.error(code: code, detail: detail))
         }
     }
 

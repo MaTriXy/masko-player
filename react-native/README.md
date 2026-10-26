@@ -63,7 +63,10 @@ whose length cannot be read, reports `clip_failed`.
 - Taps on the mascot reach the canvas as `action::click`, and the pointer
   (iPad, a mouse on Android) as `behavior::pointerHover`. Dragging and
   physics stay in the app, which sets `heldContact`, `heldShake` and
-  `falling` itself.
+  `falling` itself. With `pointer={false}` the mascot takes no touches, and
+  the app sends the person itself with `fire` and `set`.
+- `onError`'s `detail` says what the error is about: the edge of a clip
+  error, the name of a refused value, the pose of a pose error.
 - A new release in `delivery` loads a new player. A delivery of the same
   release with new links keeps the mascot playing and gives the native
   player the new links (its `updateDelivery`). Giving or taking away

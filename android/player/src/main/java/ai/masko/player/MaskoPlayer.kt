@@ -443,7 +443,7 @@ class MaskoPlayer internal constructor(
             is EngineCommand.Error -> {
                 // The clip asked for was not on screen in time: the engine skips it until it loads (rules.md 9.3).
                 if (c.code == "clip_timeout") want?.let { unplayable += it.edge }
-                emit { it.onError(c.code, null) }
+                emit { it.onError(c.code, c.detail) }
             }
         }
     }

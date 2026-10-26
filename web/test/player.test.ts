@@ -548,7 +548,7 @@ test('events: pose, clip, movement, reactionDone, error', async () => {
   player.on('movement', (e) => all.push(e));
   player.on('error', (e) => all.push(e));
   player.set('node::loopCount', 1);
-  assert.deepEqual(all, [{ code: 'read_only' }]);
+  assert.deepEqual(all, [{ code: 'read_only', detail: 'node::loopCount' }]);
 });
 
 test('movement carries the edge data, its rate and how long it lasts', async () => {
