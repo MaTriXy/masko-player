@@ -25,6 +25,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Assert.fail
@@ -82,6 +83,41 @@ class MediaTest {
         assertEquals(expected, read.seconds, 0.001)
         assertEquals(voiced, read.voiced)
         assertNull(clipFile(Uri.fromFile(File(context.cacheDir, "none.mp4")).toString()))
+    }
+
+    @Test
+    fun aLoneClipInsideTheAppIsReadInTheApp() {
+        // A cached download whose folder names the link's origin, colon included:
+        // given its path, the retriever reads it as a link and asks the media
+        // service, which cannot open the app's own files.
+        val dir = File(context.filesDir, "masko-player-test/assets.masko.ai:443")
+        val file = File(dir.apply { mkdirs() }, "red.mp4")
+        context.assets.open("clips/red.mp4").use { input -> file.outputStream().use { input.copyTo(it) } }
+        try {
+            val retriever = MediaMetadataRetriever()
+            val expected = try {
+                file.inputStream().use { retriever.setDataSource(it.fd) }
+                retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)!!.toLong() / 1000.0
+            } finally {
+                retriever.release()
+            }
+            val links = listOf(
+                Uri.fromFile(file).toString(),
+                "file://${file.path}",
+                // Inside the APK, as Media3 plays them.
+                "asset:///clips/red.mp4",
+                "file:///android_asset/clips/red.mp4",
+            )
+            for (link in links) {
+                val read = clipFile(link)
+                assertNotNull(link, read)
+                assertEquals(link, expected, read!!.seconds, 0.001)
+            }
+            assertNull(clipFile("file://${dir.path}/none.mp4"))
+            assertNull(clipFile("asset:///clips/none.mp4"))
+        } finally {
+            File(context.filesDir, "masko-player-test").deleteRecursively()
+        }
     }
 
     /** Counts how often a file is opened. */

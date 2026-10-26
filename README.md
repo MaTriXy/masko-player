@@ -25,7 +25,7 @@ Install:
 - **Android**: not on Maven Central yet. Build it from this repository
   ([android/README.md](android/README.md)): `scripts/build-android.sh`, then
   `./gradlew :player:publishReleasePublicationToLocalRepository` in
-  `android/` writes `ai.masko:player:0.1.4` to `android/player/build/repo`;
+  `android/` writes `ai.masko:player:0.1.5` to `android/player/build/repo`;
   add that folder to your app's Maven repositories.
 
 The React Native package wraps the Swift and Kotlin players; it adds no
@@ -53,7 +53,8 @@ pose (`spec/player.md`, "One clip").
 - `bindings/uniffi/`: the engine for Swift and Kotlin (UniFFI).
 - `examples/`: a small app per platform.
 - `scripts/`: `setup.sh` and `env.sh` (the Rust toolchain, the Android SDK),
-  the engine builds for each platform, and `third-party-notices.mjs`.
+  the engine builds for each platform, the Swift engine's release zip
+  (`release-apple.sh`, `zip-xcframework.sh`), and `third-party-notices.mjs`.
 - `.github/workflows/ci.yml`: the checks below, on GitHub Actions.
 
 ## Set up
@@ -109,6 +110,7 @@ iPhone, iPad and Mac:
 ```bash
 scripts/build-apple.sh
 swift test
+scripts/test-zip-xcframework.sh
 xcodebuild test -scheme MaskoPlayer -destination 'platform=iOS Simulator,name=iPhone 16 Pro'
 ```
 

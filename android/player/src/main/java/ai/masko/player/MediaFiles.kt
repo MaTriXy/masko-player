@@ -29,6 +29,7 @@ import androidx.media3.datasource.cache.SimpleCache
 import androidx.media3.exoplayer.source.MediaSource
 import androidx.media3.exoplayer.source.ProgressiveMediaSource
 import java.io.File
+import java.io.FileInputStream
 import java.io.IOException
 import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicReference
@@ -143,7 +144,7 @@ internal class MediaFiles private constructor(private val context: Context) {
     private fun readClipFile(url: String): ClipFile? {
         val retriever = MediaMetadataRetriever()
         return try {
-            if (isRemote(url)) retriever.setDataSource(url, emptyMap()) else retriever.setDataSource(context, Uri.parse(url))
+            open(retriever, url)
             val ms = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)?.toLongOrNull()
             val voiced = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_HAS_AUDIO) == "yes"
             ms?.takeIf { it > 0 }?.let { ClipFile(it / 1000.0, voiced) }
@@ -155,6 +156,28 @@ internal class MediaFiles private constructor(private val context: Context) {
             } catch (_: Exception) {
                 // Released either way.
             }
+        }
+    }
+
+    /**
+     * Gives [retriever] the file at [url]. Files inside the app are opened in
+     * this process, as Media3 opens them to play: given a path, the retriever
+     * can read it as a link (a cached file's folder may name its origin, colon
+     * included) and ask the media service, which cannot open the app's files.
+     */
+    private fun open(retriever: MediaMetadataRetriever, url: String) {
+        val uri = Uri.parse(url)
+        val path = uri.path
+        val file = uri.scheme.isNullOrEmpty() || uri.scheme == "file"
+        when {
+            isRemote(url) -> retriever.setDataSource(url, emptyMap())
+            path != null && (uri.scheme == "asset" || file && path.startsWith("/android_asset/")) ->
+                context.assets.openFd(path.removePrefix("/android_asset/").removePrefix("/")).use {
+                    retriever.setDataSource(it.fileDescriptor, it.startOffset, it.length)
+                }
+            path != null && file -> FileInputStream(path).use { retriever.setDataSource(it.fd) }
+            // content:// and android.resource:// links: the content resolver opens them here.
+            else -> retriever.setDataSource(context, uri)
         }
     }
 

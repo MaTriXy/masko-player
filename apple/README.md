@@ -162,7 +162,9 @@ xcframework at the top of the zip, as SwiftPM expects), and sets
 `releaseURL`
 (`https://github.com/masko-ai/masko-player/releases/download/<version>/MaskoPlayerFFI.xcframework.zip`)
 and `releaseChecksum` (`swift package compute-checksum`) in `Package.swift`.
-Then:
+Every file in the zip is dated to the commit it builds from, so the same
+commit gives the same zip (`scripts/zip-xcframework.sh`; its check is
+`scripts/test-zip-xcframework.sh`). Then:
 
 1. Commit `Package.swift` with `Sources/MaskoPlayer/Generated/` from the
    same build: the bindings must match the engine in the zip.

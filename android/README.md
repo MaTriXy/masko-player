@@ -14,7 +14,7 @@ default). Once `ai.masko:player` is on Maven Central:
 ```kotlin
 // settings.gradle.kts: repositories { google(); mavenCentral() }
 dependencies {
-    implementation("ai.masko:player:0.1.4")
+    implementation("ai.masko:player:0.1.5")
 }
 ```
 
@@ -66,10 +66,11 @@ player.updateDelivery(freshJson)               // new links for the same release
 player.destroy()                               // when you are done with it
 ```
 
-One animation on its own, from its stacked MP4:
-`view.loadClip(stackedUrl)`. The player reads the file's length and sound
-track and loops it as one pose named `clip`, with its voice when it has one;
-a file it cannot read plays nothing and reports `clip_failed`.
+One animation on its own, from its stacked MP4 (a link, or a file inside the
+app: `file://`, `asset:///`): `view.loadClip(stackedUrl)`. The player reads
+the file's length and sound track and loops it as one pose named `clip`, with
+its voice when it has one; a file it cannot read plays nothing and reports
+`clip_failed`.
 
 `deliveryJson` is the `delivery` object of
 `GET /v1/canvases/{canvasId}/releases/{releaseId}/delivery`. Call everything
@@ -200,7 +201,7 @@ The build needs Java 17; Gradle downloads it when this machine has none (the
 foojay toolchain resolver in `settings.gradle.kts`).
 
 `./gradlew :player:publishReleasePublicationToLocalRepository` writes
-`ai.masko:player:0.1.4` to `player/build/repo` (the React Native package
+`ai.masko:player:0.1.5` to `player/build/repo` (the React Native package
 takes it from there; `../scripts/build-react-native.sh` runs it), with its
 sources and javadoc jars, signed when a signing key is set.
 

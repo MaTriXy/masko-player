@@ -5,11 +5,13 @@
 #   scripts/release-apple.sh 0.1.0
 #
 # It builds the engine (scripts/build-apple.sh), zips
-# apple/MaskoPlayerFFI.xcframework as SwiftPM downloads it, prints where the zip
-# is, and writes into Package.swift the zip's URL on the GitHub release named
-# after the version and its checksum. Then attach the zip to that release and
-# commit Package.swift with the bindings in apple/Sources/MaskoPlayer/Generated/,
-# which this same build wrote: they must match the engine in the zip.
+# apple/MaskoPlayerFFI.xcframework as SwiftPM downloads it
+# (scripts/zip-xcframework.sh, every file dated to the commit it builds from),
+# prints where the zip is, and writes into Package.swift the zip's URL on the
+# GitHub release named after the version and its checksum. Then attach the zip
+# to that release and commit Package.swift with the bindings in
+# apple/Sources/MaskoPlayer/Generated/, which this same build wrote: they must
+# match the engine in the zip.
 set -euo pipefail
 
 VERSION="${1:-}"
@@ -27,17 +29,12 @@ NAME=MaskoPlayerFFI.xcframework
 OUT="$ROOT/target/apple-release/$VERSION"
 ZIP="$OUT/$NAME.zip"
 URL="https://github.com/masko-ai/masko-player/releases/download/$VERSION/$NAME.zip"
+DATED="${SOURCE_DATE_EPOCH:-$(git log -1 --format=%ct)}"
 rm -rf "$OUT"
-mkdir -p "$OUT/stage"
+mkdir -p "$OUT"
 
 echo "==> $ZIP"
-# The xcframework at the top of the zip, which is what SwiftPM looks for. The
-# same build gives the same zip: fixed dates, sorted entries, no extended
-# attributes, symbolic links kept as links.
-cp -R "apple/$NAME" "$OUT/stage/"
-find "$OUT/stage/$NAME" -exec touch -h -t 202001010000 {} +
-(cd "$OUT/stage" && find "$NAME" | LC_ALL=C sort | zip -q -X -y "$ZIP" -@)
-rm -rf "$OUT/stage"
+SOURCE_DATE_EPOCH="$DATED" "$ROOT/scripts/zip-xcframework.sh" "apple/$NAME" "$ZIP"
 
 CHECKSUM="$(swift package --package-path "$ROOT" compute-checksum "$ZIP")"
 
@@ -55,6 +52,7 @@ echo
 echo "Zip:      $ZIP"
 echo "Size:     $(stat -f %z "$ZIP") bytes"
 echo "Checksum: $CHECKSUM"
+echo "Dated:    SOURCE_DATE_EPOCH=$DATED (set it to make this zip again after the release commit)"
 echo "URL:      $URL"
 echo
 echo "Package.swift now downloads it. Attach the zip to the GitHub release $VERSION, and"

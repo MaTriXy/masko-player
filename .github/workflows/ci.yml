@@ -119,6 +119,8 @@ jobs:
           scripts/build-apple.sh
       - name: Test
         run: swift test
+      - name: Release zip
+        run: scripts/test-zip-xcframework.sh
 
   react-native:
     name: React Native
