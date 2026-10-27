@@ -1,0 +1,91 @@
+{
+  "name": "hover-during-a-move-waits-for-its-end",
+  "about": "The pointer over the mascot during a move lets the move finish; at its end, a boundary, the way to the hover pose starts at once, hop after hop.",
+  "rules": ["5.2", "10.2", "6.4"],
+  "canvas": "ko-coffee",
+  "steps": [
+    {
+      "start": true,
+      "expect": {
+        "clock": 0,
+        "pose": "idle",
+        "clip": "loop-idle",
+        "next": null,
+        "events": ["pose:idle", "shown:loop-idle"]
+      }
+    },
+    {
+      "set": ["working", true],
+      "expect": {
+        "clock": 0,
+        "pose": "idle",
+        "clip": "loop-idle",
+        "next": {
+          "clip": "enter-laptop-working",
+          "at": "end"
+        },
+        "events": []
+      }
+    },
+    {
+      "loopEnded": true,
+      "expect": {
+        "clock": 4000,
+        "pose": "idle",
+        "clip": "enter-laptop-working",
+        "next": null,
+        "events": ["shown:enter-laptop-working"]
+      }
+    },
+    {
+      "advance": 1000,
+      "expect": {
+        "clock": 5000,
+        "pose": "idle",
+        "clip": "enter-laptop-working",
+        "next": null,
+        "events": []
+      }
+    },
+    {
+      "hover": true,
+      "expect": {
+        "clock": 5000,
+        "pose": "idle",
+        "clip": "enter-laptop-working",
+        "next": null,
+        "events": []
+      }
+    },
+    {
+      "clipEnded": true,
+      "expect": {
+        "clock": 6286,
+        "pose": "laptop-working",
+        "clip": "return-laptop-working",
+        "next": null,
+        "events": ["pose:laptop-working", "shown:return-laptop-working"]
+      }
+    },
+    {
+      "clipEnded": true,
+      "expect": {
+        "clock": 9045,
+        "pose": "idle",
+        "clip": "enter-hover-perk",
+        "next": null,
+        "events": ["pose:idle", "shown:enter-hover-perk"]
+      }
+    },
+    {
+      "clipEnded": true,
+      "expect": {
+        "clock": 10645,
+        "pose": "hover-perk",
+        "clip": "loop-hover-perk",
+        "next": null,
+        "events": ["pose:hover-perk", "shown:loop-hover-perk"]
+      }
+    }
+  ]
+}

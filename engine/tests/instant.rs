@@ -238,14 +238,14 @@ fn instant_starts_count_toward_the_clipless_cycle_guard() {
 }
 
 #[test]
-fn the_persons_stop_interrupts_a_move_with_a_new_start() {
+fn the_persons_stop_waits_for_a_move_then_starts_at_its_end() {
     let edges = mv("to-work", "idle", "working", WORKING, "")
         + &mv(
-            "to-focus",
-            "idle",
+            "work-to-focus",
+            "working",
             "focus",
             r#"{"input": "behavior::pointerHover", "value": false}, {"input": "behavior::focus"}"#,
-            r#", "priority": 1"#,
+            "",
         );
     let mut e = engine(&["idle", "working", "focus"], "", &edges);
     e.hover(true, 100);
@@ -254,13 +254,32 @@ fn the_persons_stop_interrupts_a_move_with_a_new_start() {
     let c = e.clip_ended("loop-idle", 2000);
     assert_eq!(shown(&c), [("to-work".to_owned(), ClipKind::Move)]);
     e.clip_shown("to-work", 2000);
-    // The pointer leaves mid-move: the way to focus is a new start, so it
-    // interrupts the move at once and plays its own clip.
+    // The pointer leaves mid-move: only an instant start cuts a move, so the
+    // move plays on (rules.md 10).
     let c = e.hover(false, 2400);
+    assert!(!c.iter().any(|c| matches!(c, Command::Interrupted { .. })));
+    assert!(shown(&c).is_empty());
+    // Its end is a boundary: the way to focus starts there at once.
+    let c = e.clip_ended("to-work", 3000);
+    assert_eq!(shown(&c), [("work-to-focus".to_owned(), ClipKind::Move)]);
+}
+
+#[test]
+fn a_persons_start_during_a_move_waits_and_an_instant_one_cuts_it() {
+    let hover = r#"{"input": "behavior::pointerHover"}"#;
+    let edges = mv("to-work", "idle", "working", WORKING, "")
+        + &mv("to-wave", "idle", "wave", hover, r#", "priority": 1"#);
+    let mut e = engine(&["idle", "working", "wave"], "", &edges);
+    e.set("working", Value::Bool(true), SETTLED, 100);
+    e.clip_ended("loop-idle", 2000);
+    e.clip_shown("to-work", 2000);
+    let c = e.hover(true, 2300);
+    assert!(c.is_empty(), "the hover waits for the move's end");
+    let c = e.set("behavior::pointerHover", Value::Bool(true), INSTANT, 2400);
     assert!(c.contains(&Command::Interrupted {
         edge: "to-work".into()
     }));
-    assert_eq!(shown(&c), [("to-focus".to_owned(), ClipKind::Move)]);
+    assert_eq!(shown(&c), [("to-wave".to_owned(), ClipKind::Move)]);
 }
 
 #[test]

@@ -109,7 +109,8 @@ pub enum Command {
     StopSounds { only_looping: bool },
     /// The mascot is on this pose now.
     PoseEntered { pose: String },
-    /// A person's start stopped this move (rules.md 10.1).
+    /// This move was cut: by an instant start (rules.md 10.1), or by
+    /// `reset`, a second `start` or `preview.showPose` (11.4).
     Interrupted { edge: String },
     /// A fire is used up: by a start, or unused (rules.md 3.3).
     Spent { name: String, used: bool },
@@ -966,9 +967,9 @@ impl Engine {
         plan.instant && self.g.edges[plan.edge].source.is_none()
     }
 
-    /// A start that happens at once and interrupts a move: one by the person
-    /// (rules.md 5.2), a new one the person's stop decides (5.2), or an
-    /// instant one (5.8).
+    /// A start that happens at once from a pose clip or a still: one by the
+    /// person (rules.md 5.2), a new one the person's stop decides (5.2), or an
+    /// instant one (5.8). During a move only an instant one does (10.1).
     fn at_once(&self, plan: Plan, boundary: Boundary) -> bool {
         let released = match boundary {
             Boundary::Release(before) => {
@@ -996,10 +997,12 @@ impl Engine {
                 self.decided = None;
                 if matches!(boundary, Boundary::None | Boundary::Release(_)) {
                     if let Some(Decision::Start(plan)) = self.decide() {
-                        // An instant Any State start never goes on with the
-                        // move: it cuts it.
+                        // Only an instant start cuts a move; every other
+                        // start, a person's included, waits for its end
+                        // (rules.md 10). An instant Any State start cuts it
+                        // even toward its own target.
                         let other = self.cuts(plan) || Some(plan.hop) != s.edge;
-                        if other && self.at_once(plan, boundary) {
+                        if plan.instant && other {
                             self.interrupt(plan);
                             return true;
                         }

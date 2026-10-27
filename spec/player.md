@@ -67,7 +67,7 @@ runs everything that was due first.
   looping sound that is still playing (rules 9.6).
 - **`stopSounds { onlyLooping }`**: stop looping sounds, or every sound.
 - **`poseEntered { pose }`**: tell the app (`pose` event).
-- **`interrupted { edge }`**: the move on screen is cut, by a person's move
+- **`interrupted { edge }`**: the move on screen is cut, by an instant start
   (rules 10.1) or by `reset`, a second `start` or `preview.showPose` (rules
   11.4); the next `showClip` or `showStill` replaces it at once.
 - **`spent { name, used }`**: tell the app a fire is done (`reactionDone`

@@ -275,16 +275,18 @@ Each decision starts from scratch.
 A start is started by the person when one of the winner's holding groups has
 a condition on a person input that is on: hovered, clicked, held, shaken or
 falling. It starts at once: the player shows its clip as soon as the clip's
-first frame is decoded, from whatever frame the pose clip is on. A route
-started that way keeps it for every hop.
+first frame is decoded, from whatever frame the pose clip is on, or from a
+still. During a move it waits for that move to end (10.2), and starts at once
+there, since entering the target is a boundary. A route started that way
+keeps it for every hop.
 
 The person stopping counts as the person. When a person input turns off
 (the pointer leaves: `behavior::pointerHover` is set to `false`; the mascot
 is let go: `behavior::heldContact` is set off; `behavior::heldShake` or
 `behavior::falling` is set off), the engine decides (5.1), and a winner with
 conditions that is a new start, not the one already decided before that
-change, starts at once, as a person's start does: mid pose clip, from a
-still, or interrupting a move (10.1). It still plays its moves, its direct
+change, starts at once, as a person's start does: mid pose clip or from a
+still; during a move, at its end (10.2). It still plays its moves, its direct
 clip or its route (6), and a route started that way starts each hop at
 once. Only the decision made at the moment of that change counts: a move
 that only checks a person input is off, decided at any later moment (a
@@ -356,9 +358,9 @@ nothing changes.
 A start is **instant** when one of the winner's holding groups has a
 condition on an instant name that is on. An instant start:
 
-- **happens now**, at any moment, as a start by the person does (5.2): mid
-  pose clip, during a still, and during a move, which it interrupts as in
-  10.1.
+- **happens now**, at any moment: mid pose clip, during a still, as a start
+  by the person does (5.2), and during a move, which it interrupts (10.1);
+  it is the only start that does.
 - **plays its own clip when the winner is a move.** The move starts at once
   and plays as any move (9), as a person's start would.
 - **goes straight into the target pose when the winner is an Any State
@@ -558,21 +560,22 @@ starts, the engine asks the player to preload the target pose's main loop
 
 ## 10. A change during a move
 
-1. **A person's start, or an instant one, interrupts a move.** During a
-   move, the engine decides (4) from the move's source pose, where the
-   mascot still is (9.1). When the winner is started by the person (5.2),
-   the person's stop included, or is an instant move (5.8), and its first
-   clip is not the move in progress, or when the winner is an instant Any
-   State edge (5.8), even toward that move's own target, that move's clip
-   stops and the start begins at once, accepting one visible cut: a person's
-   start or an instant move shows its first clip, an instant Any State start
-   enters its target. The interrupted move never enters its target, and the
-   fires it claimed for that target are no longer claimed, unless the new
-   start leads there too. A winner that only keeps the mascot where it is
-   (an Any State edge to the source pose) does not interrupt.
-2. Every other start waits for the move in progress. `set` and `fire` change
-   values at once, and the engine decides again when the move ends, with the
-   latest values (6.4 and 5.1).
+1. **Only an instant start interrupts a move.** During a move, the engine
+   decides (4) from the move's source pose, where the mascot still is
+   (9.1). When the winner is an instant move (5.8) whose clip is not the
+   move in progress, or an instant Any State edge (5.8), even toward that
+   move's own target, that move's clip stops and the start begins at once,
+   accepting one visible cut: an instant move shows its clip, an instant Any
+   State start enters its target. The interrupted move never enters its
+   target, and the fires it claimed for that target are no longer claimed,
+   unless the new start leads there too. A winner that only keeps the mascot
+   where it is (an Any State edge to the source pose) does not interrupt.
+2. Every other start waits for the move in progress, a start by the person
+   included (5.2): the pointer, a click, a grab without instant, and the
+   person stopping. `set` and `fire` change values at once, and the engine
+   decides again when the move ends, with the latest values (6.4 and 5.1);
+   entering the target is a boundary, so a start that holds there starts at
+   once.
 3. A fire during a move stays pending; the first pose clip that ends after it
    is the target pose's (3.3).
 4. The engine accepts every event in every state, and after every event the

@@ -1,7 +1,7 @@
 {
-  "name": "person-move-interrupts-a-move",
-  "about": "A grab during a move stops that move and starts at once; letting go takes the shortest way home, at once.",
-  "rules": ["10", "5.2", "6.2"],
+  "name": "grab-during-a-move-waits-for-its-end",
+  "about": "A grab during a move lets the move finish; at its end, a boundary, the way to the held pose starts at once, hop after hop. Letting go then starts the way back at once.",
+  "rules": ["10.2", "5.2", "6.4"],
   "canvas": "ko-coffee",
   "steps": [
     {
@@ -52,15 +52,35 @@
       "expect": {
         "clock": 5000,
         "pose": "idle",
-        "clip": "enter-held-contact-squish",
+        "clip": "enter-laptop-working",
         "next": null,
-        "events": ["interrupted:enter-laptop-working", "shown:enter-held-contact-squish"]
+        "events": []
       }
     },
     {
       "clipEnded": true,
       "expect": {
-        "clock": 6333,
+        "clock": 6286,
+        "pose": "laptop-working",
+        "clip": "return-laptop-working",
+        "next": null,
+        "events": ["pose:laptop-working", "shown:return-laptop-working"]
+      }
+    },
+    {
+      "clipEnded": true,
+      "expect": {
+        "clock": 9045,
+        "pose": "idle",
+        "clip": "enter-held-contact-squish",
+        "next": null,
+        "events": ["pose:idle", "shown:enter-held-contact-squish"]
+      }
+    },
+    {
+      "clipEnded": true,
+      "expect": {
+        "clock": 10378,
         "pose": "held-contact-squish",
         "clip": "loop-held-contact-squish",
         "next": null,
@@ -68,13 +88,33 @@
       }
     },
     {
+      "advance": 500,
+      "expect": {
+        "clock": 10878,
+        "pose": "held-contact-squish",
+        "clip": "loop-held-contact-squish",
+        "next": null,
+        "events": []
+      }
+    },
+    {
       "set": ["heldContact", false],
       "expect": {
-        "clock": 6333,
+        "clock": 10878,
         "pose": "held-contact-squish",
         "clip": "return-held-contact-squish",
         "next": null,
         "events": ["shown:return-held-contact-squish"]
+      }
+    },
+    {
+      "clipEnded": true,
+      "expect": {
+        "clock": 12545,
+        "pose": "idle",
+        "clip": "enter-laptop-working",
+        "next": null,
+        "events": ["pose:idle", "shown:enter-laptop-working"]
       }
     }
   ]
