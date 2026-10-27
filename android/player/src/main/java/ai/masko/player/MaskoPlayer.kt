@@ -240,8 +240,9 @@ class MaskoPlayer internal constructor(
 
     /**
      * Holds a value until the next `set` of that name (rules.md 3.2). With
-     * [instant], what it starts happens now and goes straight into its target
-     * pose, skipping every transition clip and route (rules.md 5.8).
+     * [instant], what it starts happens now: an Any State start goes straight
+     * into its target pose, skipping every transition clip and route, and a
+     * move plays its own clip (rules.md 5.8).
      */
     @JvmOverloads
     fun set(name: String, value: Boolean, instant: Boolean = false) =

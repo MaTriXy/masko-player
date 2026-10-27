@@ -1,8 +1,15 @@
 {
   "name": "instant-cuts-the-move-to-its-own-target",
-  "about": "Setting the value a move is playing for again with instant cuts that move and enters its target at once.",
+  "about": "Setting again with instant the value an Any State start is playing its move for cuts that move and enters its target at once.",
   "rules": ["5.8", "3.2", "10.1"],
   "canvas": "ko-coffee",
+  "patch": {
+    "edges": {
+      "any-laptop-working": {
+        "priority": 1
+      }
+    }
+  },
   "steps": [
     {
       "start": true,

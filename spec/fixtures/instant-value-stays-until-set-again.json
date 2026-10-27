@@ -1,8 +1,15 @@
 {
   "name": "instant-value-stays-until-set-again",
-  "about": "A value set with instant stays instant while it holds: the way back to its pose later enters it at once; a later set without instant ends that.",
+  "about": "A value set with instant stays instant while it holds: an Any State start back to its pose later enters it at once; a later set without instant ends that.",
   "rules": ["5.8", "3.2"],
   "canvas": "ko-coffee",
+  "patch": {
+    "edges": {
+      "any-laptop-working": {
+        "priority": 1
+      }
+    }
+  },
   "steps": [
     {
       "start": true,

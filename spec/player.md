@@ -154,8 +154,9 @@ The same names on every platform:
   edge, or `still:<pose>`) and its clip time in seconds, read only. Before
   anything shows, `clip` is null and `time` 0; a still's `time` is 0.
 - `set` and `fire` take an `instant` option, off by default: what that
-  value starts happens now and goes straight into its target pose, skipping
-  every transition clip and route (rules.md 5.8). On the web and in React
+  value starts happens now; an Any State start goes straight into its target
+  pose, skipping every transition clip and route, and a move plays its own
+  clip (rules.md 5.8). On the web and in React
   Native it is `{ instant: true }` after the value or name, in Swift
   `instant: true`, in Kotlin `instant = true`.
 - `autoPlay`: the app's value wins when it gives one, else the graph's

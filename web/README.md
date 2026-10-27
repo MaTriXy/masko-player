@@ -28,7 +28,7 @@ const mascot = mountMascot(document.getElementById('mascot')!, {
 mascot.on('pose', ({ pose }) => console.log(pose));
 mascot.set('working', true);
 mascot.fire('celebrate');
-mascot.set('heldContact', true, { instant: true }); // now, straight into the held pose
+mascot.set('heldContact', true, { instant: true }); // now; an Any State start cuts straight in
 ```
 
 The element sets the mascot's size; one without a height gets a square
@@ -83,8 +83,9 @@ file has one. A clip whose length cannot be read plays nothing and reports
 - `set(name, value)` with a boolean or a number, `fire(name)`. Values set
   before the start choose the first pose, also the first frame shown with
   `autoPlay` false. Both take `{ instant: true }` last: what that value
-  starts then happens now and goes straight into its target pose, skipping
-  every transition clip and route (`spec/rules.md` 5.8).
+  starts then happens now; an Any State start goes straight into its target
+  pose, skipping every transition clip and route, and a move plays its own
+  clip (`spec/rules.md` 5.8).
 - `play()`, `pause()`, `reset()`, `destroy()`, `position()`, and
   `preview.showPose(id)` / `preview.playMove(id)` (editors only).
 - `updateDelivery(delivery)`: fresh links of the release that is playing.

@@ -138,8 +138,8 @@ impl MaskoEngine {
         commands(self.with(|e| e.reset(now)))
     }
 
-    /// `set(name, value)`; with `instant`, what it starts starts now and goes
-    /// straight into its target pose (rules.md 5.8).
+    /// `set(name, value)`; with `instant`, what it starts starts now, and an
+    /// Any State start goes straight into its target pose (rules.md 5.8).
     pub fn set_bool(
         &self,
         name: String,

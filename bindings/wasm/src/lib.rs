@@ -40,7 +40,8 @@ impl MaskoEngine {
     }
 
     /// `set(name, value)` with a boolean or a number; with `instant`, what it
-    /// starts starts now and goes straight into its target pose (rules.md 5.8).
+    /// starts starts now, and an Any State start goes straight into its
+    /// target pose (rules.md 5.8).
     pub fn set(
         &mut self,
         name: &str,
@@ -58,8 +59,7 @@ impl MaskoEngine {
         Ok(json(self.inner.set(name, value, instant, ms(now))))
     }
 
-    /// `fire(name)`; with `instant`, what it starts starts now and goes
-    /// straight into its target pose (rules.md 5.8).
+    /// `fire(name)`, with `instant` as for `set`.
     pub fn fire(&mut self, name: &str, instant: bool, now: f64) -> String {
         json(self.inner.fire(name, instant, ms(now)))
     }

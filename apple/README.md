@@ -43,7 +43,7 @@ let player = MaskoPlayer(delivery: json)   // the release delivery object
 player.onEvent = { event in print(event) } // pose, clip, reactionDone, movement, error
 player.set("working", true)
 player.fire("celebrate")
-player.set("heldContact", true, instant: true) // now, straight into the held pose
+player.set("heldContact", true, instant: true) // now; an Any State start cuts straight in
 
 MaskoView(player: player)                  // SwiftUI
 MaskoPlayerView(player: player)            // UIView on iOS, NSView on macOS

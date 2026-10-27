@@ -606,8 +606,8 @@ internal protocol MaskoEngineProtocol: AnyObject, Sendable {
     func seed(seed: UInt64) 
     
     /**
-     * `set(name, value)`; with `instant`, what it starts starts now and goes
-     * straight into its target pose (rules.md 5.8).
+     * `set(name, value)`; with `instant`, what it starts starts now, and an
+     * Any State start goes straight into its target pose (rules.md 5.8).
      */
     func setBool(name: String, value: Bool, instant: Bool, now: UInt64)  -> [EngineCommand]
     
@@ -850,8 +850,8 @@ internal func seed(seed: UInt64)  {try! rustCall() {
 }
     
     /**
-     * `set(name, value)`; with `instant`, what it starts starts now and goes
-     * straight into its target pose (rules.md 5.8).
+     * `set(name, value)`; with `instant`, what it starts starts now, and an
+     * Any State start goes straight into its target pose (rules.md 5.8).
      */
 internal func setBool(name: String, value: Bool, instant: Bool, now: UInt64) -> [EngineCommand]  {
     return try!  FfiConverterSequenceTypeEngineCommand.lift(try! rustCall() {
@@ -1608,7 +1608,7 @@ private let initializationResult: InitializationResult = {
     if (uniffi_masko_player_ffi_checksum_method_maskoengine_seed() != 2341) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_masko_player_ffi_checksum_method_maskoengine_set_bool() != 39566) {
+    if (uniffi_masko_player_ffi_checksum_method_maskoengine_set_bool() != 14726) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_masko_player_ffi_checksum_method_maskoengine_set_number() != 12924) {

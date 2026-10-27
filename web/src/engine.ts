@@ -163,7 +163,7 @@ export class Engine {
     return commands(this.inner.reset(now));
   }
 
-  /** `instant`: what it starts starts now, straight into its target pose (rules.md 5.8). */
+  /** `instant`: what it starts starts now; an Any State start cuts straight in (rules.md 5.8). */
   set(name: string, value: Value, instant: boolean, now: number): Command[] {
     return commands(this.inner.set(name, value, instant, now));
   }

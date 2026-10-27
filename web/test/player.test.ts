@@ -1128,8 +1128,24 @@ test("sound is on by default; a voice the browser refused is heard after the per
   assert.equal(a.muted, false, 'the next loop is heard');
 });
 
-test('instant: set with instant enters the pose at once, with no move clip, movement or move sound', async () => {
-  const { host, player, events, b } = await started();
+/** The test delivery with an Any State edge to working on `input`, ranked above the moves. */
+function withAnyWork(input: string) {
+  const d = delivery();
+  (d.runtimeGraph.edges as unknown as Record<string, unknown>[]).push({
+    id: 'go-work',
+    source: '*',
+    target: 'working',
+    isLoop: false,
+    duration: 0,
+    priority: 1,
+    conditions: [{ input }],
+    videos: {}
+  });
+  return d;
+}
+
+test('instant: an Any State start enters its pose at once, with no move clip, movement or move sound', async () => {
+  const { host, player, events, b } = await started({ delivery: withAnyWork('behavior::working') });
   await host.advance(500);
   player.set('working', true, { instant: true });
   await settle();
@@ -1148,16 +1164,34 @@ test('instant: set with instant enters the pose at once, with no move clip, move
   );
 });
 
+test('instant: a move set with instant plays its own clip at once, with its movement and sound', async () => {
+  const { host, player, events, b } = await started();
+  await host.advance(500);
+  player.set('working', true, { instant: true });
+  await settle();
+  assert.ok(b.loads.at(-1)!.includes('to-work'));
+  b.frame();
+  await settle();
+  assert.ok(events.includes('clip:to-work') && events.includes('movement:to-work'), 'mid-loop, not at its end');
+  assert.ok(!events.includes('pose:working'));
+  assert.deepEqual(
+    host.sounds.played.map((s) => [s.url, s.state]),
+    [
+      [url('hum', 'mp3'), 'stopped'],
+      [url('whoosh', 'mp3'), 'playing']
+    ]
+  );
+});
+
 test('instant: a fire kept while paused becomes instant when it is fired again with instant', async () => {
-  const { player, events, b } = await started();
+  const { player, events, b } = await started({ delivery: withAnyWork('action::beam') });
   player.pause();
-  player.fire('click');
-  player.fire('click', { instant: true });
+  player.fire('beam');
+  player.fire('beam', { instant: true });
   player.play();
   await settle();
-  // Straight into working with no clip on the way; there the way back holds at once, as on any
-  // arrival, and the claimed fire is spent as the mascot leaves.
-  assert.ok(events.includes('pose:working'));
-  assert.ok(!events.includes('clip:poke'), 'the move did not play');
-  assert.ok(b.loads[0].includes('to-idle'));
+  // Straight into working with no clip on the way: its loop is the next clip.
+  assert.equal(events.at(-1), 'pose:working');
+  assert.ok(!events.includes('clip:to-work'), 'the route did not play');
+  assert.ok(b.loads.at(-1)!.includes('work-loop'));
 });

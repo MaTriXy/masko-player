@@ -34,7 +34,7 @@ interface MountCommon {
 
 /** What `mountMascot` returns: the same calls on every platform. */
 export interface MaskoHandle {
-  /** `{ instant: true }`: what it starts happens now, straight into its target pose. */
+  /** `{ instant: true }`: what it starts happens now; an Any State start cuts straight in. */
   set(name: string, value: Value, options?: ValueOptions): void;
   fire(name: string, options?: ValueOptions): void;
   reset(): void;

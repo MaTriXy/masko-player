@@ -43,8 +43,9 @@ export interface MaskoEvents {
 /** Options of `set` and `fire`. */
 export interface ValueOptions {
   /**
-   * What this value starts happens now and goes straight into its target pose, skipping every
-   * transition clip and route (rules.md 5.8). Off by default.
+   * What this value starts happens now: an Any State start goes straight into its target pose,
+   * skipping every transition clip and route, and a move plays its own clip (rules.md 5.8). Off
+   * by default.
    */
   instant?: boolean;
 }

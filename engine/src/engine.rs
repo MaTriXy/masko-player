@@ -183,7 +183,8 @@ struct Plan {
     edge: usize,
     hop: usize,
     route: bool,
-    /// An instant start: now, and straight into its target (rules.md 5.8).
+    /// An instant start: now, and for an Any State edge straight into its
+    /// target (rules.md 5.8).
     instant: bool,
 }
 
@@ -447,15 +448,15 @@ impl Engine {
     }
 
     /// `set(name, value)` (rules.md 3.2); with `instant`, what it starts
-    /// starts now and goes straight into its target pose (5.8).
+    /// starts now, and an Any State start goes straight into its target pose
+    /// (5.8).
     pub fn set(&mut self, name: &str, value: Value, instant: bool, now: u64) -> Vec<Command> {
         self.run_until(now, true);
         self.set_value(name, value, instant);
         self.take()
     }
 
-    /// `fire(name)` (rules.md 3.3); with `instant`, what it starts starts
-    /// now and goes straight into its target pose (5.8).
+    /// `fire(name)` (rules.md 3.3), with `instant` as for `set` (5.8).
     pub fn fire(&mut self, name: &str, instant: bool, now: u64) -> Vec<Command> {
         self.run_until(now, true);
         self.fire_name(name, instant);
@@ -959,6 +960,12 @@ impl Engine {
             .any(|g| g.iter().any(|c| self.is_instant(&c.input)))
     }
 
+    /// An instant Any State start goes straight into its target; an instant
+    /// move plays its own clip (rules.md 5.8).
+    fn cuts(&self, plan: Plan) -> bool {
+        plan.instant && self.g.edges[plan.edge].source.is_none()
+    }
+
     /// A start that happens at once and interrupts a move: one by the person
     /// (rules.md 5.2), a new one the person's stop decides (5.2), or an
     /// instant one (5.8).
@@ -989,9 +996,9 @@ impl Engine {
                 self.decided = None;
                 if matches!(boundary, Boundary::None | Boundary::Release(_)) {
                     if let Some(Decision::Start(plan)) = self.decide() {
-                        // An instant start never goes on with the move: it
-                        // cuts it.
-                        let other = plan.instant || Some(plan.hop) != s.edge;
+                        // An instant Any State start never goes on with the
+                        // move: it cuts it.
+                        let other = self.cuts(plan) || Some(plan.hop) != s.edge;
                         if other && self.at_once(plan, boundary) {
                             self.interrupt(plan);
                             return true;
@@ -1046,7 +1053,7 @@ impl Engine {
         if spend_unclaimed_first {
             self.spend_where(|c| c.is_some());
         }
-        if plan.instant {
+        if self.cuts(plan) {
             // Straight into the target, with no clip on the way (rules.md 5.8).
             let target = plan.target(&self.g).to_owned();
             self.enter(&target);

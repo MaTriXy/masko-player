@@ -127,28 +127,27 @@ class MaskoPlayerTest {
     // ------------------------------------------------------------------ instant (rules.md 5.8)
 
     @Test
-    fun anInstantSetEntersThePoseWithNoMoveClipMovementOrMoveSound() {
+    fun anInstantMovePlaysItsOwnClipAtOnce() {
         val rig = Rig().started()
         rig.advance(500)
         rig.player.set("working", true, instant = true)
-        assertEquals("the pose is entered mid-loop", "pose:working", rig.heard.events.last())
-        assertEquals(listOf("https://cdn.test/m/loop-work.mp4?sig=1"), rig.slot1.loads)
+        assertEquals(listOf("https://cdn.test/m/to-work.mp4?sig=1"), rig.slot1.loads)
         rig.slot1.firstFrame()
-        assertEquals("clip:loop-work", rig.heard.events.last())
-        assertFalse(rig.heard.events.contains("clip:to-work"))
-        assertFalse(rig.heard.events.any { it.startsWith("movement:") })
-        assertFalse("no move sound", rig.log.any { it.startsWith("sound whoosh.mp3") })
-        assertTrue("entering stops the looping sound", rig.log.contains("sounds stop looping"))
+        // Mid-loop, not at its end: the move shows with its movement and its sound.
+        assertTrue(rig.heard.events.contains("clip:to-work"))
+        assertTrue(rig.heard.events.any { it.startsWith("movement:to-work") })
+        assertFalse(rig.heard.events.contains("pose:working"))
+        assertTrue(rig.log.any { it.startsWith("sound whoosh.mp3") })
     }
 
     @Test
-    fun anInstantFireEntersItsPoseAtOnce() {
+    fun anInstantFirePlaysItsMoveAtOnce() {
         val rig = Rig().started()
         rig.player.set("pace", 2, instant = true)
         rig.player.set("pace", 1.5, instant = true)
-        rig.player.fire("napping", instant = true)
-        assertTrue(rig.heard.events.contains("pose:napping"))
-        assertFalse("the move did not play", rig.heard.events.contains("clip:to-nap"))
+        rig.player.fire("working", instant = true)
+        rig.slot1.firstFrame()
+        assertTrue(rig.heard.events.contains("clip:to-work"))
     }
 
     @Test

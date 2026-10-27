@@ -22,8 +22,9 @@ export type Value = boolean | number;
 /** Options of `set` and `fire`. */
 export interface ValueOptions {
   /**
-   * What this value starts happens now and goes straight into its target pose, skipping every
-   * transition clip and route (rules.md 5.8). Off by default.
+   * What this value starts happens now: an Any State start goes straight into its target pose,
+   * skipping every transition clip and route, and a move plays its own clip (rules.md 5.8). Off
+   * by default.
    */
   instant?: boolean;
 }
@@ -53,7 +54,7 @@ export interface Position {
 
 /** What the ref gives: the same calls on every platform. */
 export interface MaskoHandle {
-  /** `{ instant: true }`: what it starts happens now, straight into its target pose. */
+  /** `{ instant: true }`: what it starts happens now; an Any State start cuts straight in. */
   set(name: string, value: Value, options?: ValueOptions): void;
   fire(name: string, options?: ValueOptions): void;
   reset(): void;

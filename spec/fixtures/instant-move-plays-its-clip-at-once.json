@@ -1,7 +1,7 @@
 {
-  "name": "instant-move-skips-its-clip",
-  "about": "A move whose condition was set with instant enters its target at once, without its clip.",
-  "rules": ["5.8"],
+  "name": "instant-move-plays-its-clip-at-once",
+  "about": "A move whose condition was set with instant starts at once, mid-loop, and plays its own clip, as a person's start does.",
+  "rules": ["5.8", "5.2"],
   "canvas": "ko-coffee",
   "steps": [
     {
@@ -29,20 +29,20 @@
       "instant": true,
       "expect": {
         "clock": 1500,
+        "pose": "idle",
+        "clip": "enter-laptop-working",
+        "next": null,
+        "events": ["shown:enter-laptop-working"]
+      }
+    },
+    {
+      "clipEnded": true,
+      "expect": {
+        "clock": 3786,
         "pose": "laptop-working",
         "clip": "loop-laptop-working",
         "next": null,
         "events": ["pose:laptop-working", "shown:loop-laptop-working"]
-      }
-    },
-    {
-      "loopEnded": true,
-      "expect": {
-        "clock": 5500,
-        "pose": "laptop-working",
-        "clip": "loop-laptop-working",
-        "next": null,
-        "events": ["shown:loop-laptop-working"]
       }
     }
   ]

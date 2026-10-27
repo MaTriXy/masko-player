@@ -291,8 +291,9 @@ public final class MaskoPlayer {
     // MARK: - What the app calls
 
     /// Holds a boolean until the next `set` of that name (rules.md 3.2).
-    /// With `instant`, what it starts happens now and goes straight into
-    /// its target pose, skipping every transition clip and route (5.8).
+    /// With `instant`, what it starts happens now: an Any State start goes
+    /// straight into its target pose, skipping every transition clip and
+    /// route, and a move plays its own clip (5.8).
     public func set(_ name: String, _ value: Bool, instant: Bool = false) {
         call { $0.setBool(name: name, value: value, instant: instant, now: $1) }
     }

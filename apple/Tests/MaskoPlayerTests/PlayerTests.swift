@@ -603,8 +603,13 @@ final class PlayerTests: XCTestCase {
 
     // MARK: - Instant (rules.md 5.8)
 
-    func testAnInstantSetEntersThePoseWithNoMoveClipMovementOrMoveSound() {
-        let player = started()
+    func testAnInstantAnyStateStartEntersThePoseWithNoMoveClipMovementOrMoveSound() {
+        // go-work, the Any State edge to working, on working and ranked above the move.
+        let text = PlayerTests.deliveryText.replacingOccurrences(
+            of: #""conditions": [{"input": "behavior::focus"}], "videos": {}"#,
+            with: #""priority": 1, "conditions": [{"input": "behavior::working"}], "videos": {}"#)
+        XCTAssertNotEqual(text, PlayerTests.deliveryText)
+        let player = started(try! JSON(data: Data(text.utf8)))
         host.advance(0.5)
         player.set("working", true, instant: true)
         XCTAssertEqual(events, ["pose:working"], "the pose is entered mid-loop")
@@ -615,15 +620,25 @@ final class PlayerTests: XCTestCase {
             sounds.log, ["play hum 0.5 loop", "stop looping"], "no move sound; entering stops the looping one")
     }
 
-    func testAnInstantFireEntersItsPoseAtOnce() {
+    func testAnInstantMovePlaysItsOwnClipAtOnce() {
+        let player = started()
+        host.advance(0.5)
+        player.set("working", true, instant: true)
+        XCTAssertEqual(player.engine!.state().clip, "to-work", "mid-loop, not at its end")
+        XCTAssertEqual(b.clip, "to-work")
+        b.decodeFirstFrame()
+        XCTAssertEqual(events, ["clip:to-work", "movement:to-work"])
+        XCTAssertEqual(sounds.log, ["play hum 0.5 loop", "stop all", "play whoosh 1.0"])
+    }
+
+    func testAnInstantFirePlaysItsMoveAtOnce() {
         let player = started()
         player.set("score", 2, instant: true)
         player.set("pace", 1.5, instant: true)
         XCTAssertEqual(events, [])
         player.fire("nap", instant: true)
-        XCTAssertEqual(events.first, "pose:napping")
-        XCTAssertFalse(events.contains("clip:to-nap"), "the move did not play")
-        XCTAssertEqual(player.engine!.state().pose, "napping")
+        XCTAssertEqual(player.engine!.state().clip, "to-nap")
+        XCTAssertEqual(player.engine!.state().pose, "idle")
     }
 
     func testASoundStoppedBeforeItsFileArrivesNeverPlays() {

@@ -62,7 +62,7 @@ player.addListener(object : MaskoPlayer.Listener {
 })
 player.set("working", true)
 player.fire("celebrate")
-player.set("heldContact", true, instant = true) // now, straight into the held pose
+player.set("heldContact", true, instant = true) // now; an Any State start cuts straight in
 player.sound = false                           // mutes clips' own voices; on by default
 player.pause(); player.play(); player.reset()
 player.position()                              // clip on screen and its clip time
@@ -71,8 +71,9 @@ player.destroy()                               // when you are done with it
 ```
 
 `set` and `fire` take `instant = true` last: what that value starts then
-happens now and goes straight into its target pose, skipping every
-transition clip and route (`spec/rules.md` 5.8).
+happens now. An Any State start goes straight into its target pose, skipping
+every transition clip and route; a move plays its own clip
+(`spec/rules.md` 5.8).
 
 One animation on its own, from its stacked MP4 (a link, or a file inside the
 app: `file://`, `asset:///`): `view.loadClip(stackedUrl)`. The player reads

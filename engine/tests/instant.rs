@@ -76,15 +76,21 @@ fn entered(commands: &[Command]) -> usize {
 
 const WORKING: &str = r#"{"input": "behavior::working"}"#;
 
+/// An Any State edge to `target`.
+fn any(id: &str, target: &str, conditions: &str, extra: &str) -> String {
+    format!(
+        r#", {{"id": "{id}", "source": "*", "target": "{target}", "isLoop": false,
+             "duration": 0, "videos": {{}}, "conditions": [{conditions}]{extra}}}"#
+    )
+}
+
+const WHOOSH: &str = r#", "sound": {"url": "whoosh.mp3"}"#;
+const FIRST: &str = r#", "priority": 1"#;
+
 #[test]
-fn an_instant_move_shows_no_move_and_plays_no_move_sound() {
-    let edges = mv(
-        "to-work",
-        "idle",
-        "working",
-        WORKING,
-        r#", "sound": {"url": "whoosh.mp3"}"#,
-    );
+fn an_instant_any_state_start_shows_no_move_and_plays_no_move_sound() {
+    let edges = mv("to-work", "idle", "working", WORKING, WHOOSH)
+        + &any("any-work", "working", WORKING, FIRST);
     let mut e = engine(&["idle", "working"], "", &edges);
     let c = e.set("working", Value::Bool(true), INSTANT, 700);
     assert_eq!(shown(&c), [("loop-working".to_owned(), ClipKind::Pose)]);
@@ -104,11 +110,31 @@ fn an_instant_move_shows_no_move_and_plays_no_move_sound() {
 }
 
 #[test]
-fn an_instant_move_needs_no_clip() {
-    let edges = r#", {"id": "to-work", "source": "idle", "target": "working", "isLoop": false,
-        "duration": 1, "videos": {}, "conditions": [{"input": "behavior::working"}]}"#;
-    let mut e = engine(&["idle", "working"], "", edges);
+fn an_instant_move_plays_its_own_clip_at_once() {
+    let edges = mv("to-work", "idle", "working", WORKING, WHOOSH);
+    let mut e = engine(&["idle", "working"], "", &edges);
+    // Mid-loop: the move starts now, as a person's start does, with its clip
+    // and its sound.
     let c = e.set("working", Value::Bool(true), INSTANT, 700);
+    assert_eq!(shown(&c), [("to-work".to_owned(), ClipKind::Move)]);
+    assert!(c.contains(&Command::StopSounds {
+        only_looping: false
+    }));
+    assert!(c.contains(&Command::PlaySound {
+        edge: "to-work".into()
+    }));
+    assert_eq!(e.state().pose.as_deref(), Some("idle"));
+}
+
+#[test]
+fn an_instant_any_state_start_reaches_a_pose_no_route_reaches() {
+    let edges = any("any-work", "working", WORKING, "");
+    let mut e = engine(&["idle", "working"], "", &edges);
+    // No move leads to working: without instant the edge is skipped (rules.md 6.3).
+    let c = e.set("working", Value::Bool(true), SETTLED, 300);
+    assert!(shown(&c).is_empty());
+    assert!(e.state().next.is_none());
+    let c = e.set("working", Value::Bool(true), INSTANT, 400);
     assert!(!c.iter().any(|c| matches!(c, Command::Error { .. })));
     assert_eq!(shown(&c), [("loop-working".to_owned(), ClipKind::Pose)]);
 }
@@ -116,6 +142,7 @@ fn an_instant_move_needs_no_clip() {
 #[test]
 fn a_value_set_off_is_never_instant() {
     let edges = mv("to-work", "idle", "working", WORKING, "")
+        + &any("any-work", "working", WORKING, FIRST)
         + &mv(
             "to-idle",
             "working",
@@ -142,8 +169,12 @@ fn firing_a_pending_name_again_with_instant_makes_it_instant() {
         "working",
         r#"{"input": "action::wave"}"#,
         "",
-    ) + r#", {"id": "any-work", "source": "*", "target": "working", "isLoop": false,
-        "duration": 0, "videos": {}, "conditions": [{"input": "action::wave"}], "priority": 5}"#;
+    ) + &any(
+        "any-work",
+        "working",
+        r#"{"input": "action::wave"}"#,
+        r#", "priority": 5"#,
+    );
     let mut e = engine(&["idle", "working"], "", &edges);
     e.fire("wave", SETTLED, 100);
     let next = e.state().next.unwrap();
@@ -165,20 +196,22 @@ fn a_trigger_set_with_instant_fires_with_instant() {
         "",
     );
     let mut e = engine(&["idle", "working"], inputs, &edges);
+    // An app's fire waits for the end of the loop; with instant it starts now.
     let c = e.set("wave", Value::Bool(true), INSTANT, 300);
-    assert_eq!(shown(&c), [("loop-working".to_owned(), ClipKind::Pose)]);
+    assert_eq!(shown(&c), [("to-work".to_owned(), ClipKind::Move)]);
     assert_eq!(e.pending_fires(), ["action::wave"]);
 }
 
 #[test]
 fn reset_ends_instant() {
-    let edges = mv("to-work", "idle", "working", WORKING, "");
+    let edges =
+        mv("to-work", "idle", "working", WORKING, "") + &any("any-work", "working", WORKING, FIRST);
     let mut e = engine(&["idle", "working"], "", &edges);
     e.set("working", Value::Bool(true), INSTANT, 100);
     assert_eq!(e.state().pose.as_deref(), Some("working"));
     e.reset(200);
     e.clip_shown("loop-idle", 200);
-    // Without instant again, the move waits for the end of the loop.
+    // Without instant again, the route waits for the end of the loop.
     let c = e.set("working", Value::Bool(true), SETTLED, 300);
     assert!(shown(&c).is_empty());
     let next = e.state().next.unwrap();
@@ -187,13 +220,11 @@ fn reset_ends_instant() {
 
 #[test]
 fn instant_starts_count_toward_the_clipless_cycle_guard() {
-    let edges = mv(
-        "there",
-        "idle",
-        "away",
-        r#"{"input": "behavior::spin"}"#,
-        "",
-    ) + &mv("back", "away", "idle", r#"{"input": "behavior::spin"}"#, "");
+    // An instant cut to away, and a way back that has no clip.
+    let spin = r#"{"input": "behavior::spin"}"#;
+    let edges = any("any-away", "away", spin, "")
+        + r#", {"id": "back", "source": "away", "target": "idle", "isLoop": false,
+        "duration": 1, "videos": {}, "conditions": [{"input": "behavior::spin"}], "priority": 1}"#;
     let mut e = engine(&["idle", "away"], "", &edges);
     let c = e.set("behavior::spin", Value::Bool(true), INSTANT, 100);
     // With idle entered at the start, the 33rd pose within the second stops
