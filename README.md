@@ -40,6 +40,20 @@ A player also plays one animation on its own, from its file links (`webm`
 and `hevc` on the web, `hevc` on Apple, `stacked` on Android), looped as one
 pose (`spec/player.md`, "One clip").
 
+## File size
+
+Apps that send `formats` (from 0.1.6, 0.1.7 in React Native) get each
+clip's stacked AV1 file: colour above, transparency below, made at a
+lighter setting that keeps the look at mascot size. One 5-second animation
+at 720 px is about 0.24 MB in AV1, against 2.2 MB in HEVC on iPhone and
+2.4 MB in the stacked MP4 on Android. It plays on iPhone, iPad, Mac and
+Android 10 and later; on Apple the player carries dav1d (about 0.7 MB) for
+devices without an AV1 chip. Animations made from October 27, 2026 have
+it. Browsers keep WebM or HEVC.
+
+Every format's size, and a calculator for your own mascot:
+[masko.ai/docs/generate/file-sizes](https://masko.ai/docs/generate/file-sizes).
+
 ## What is here
 
 - `spec/rules.md`: the rulebook every player follows.
