@@ -357,6 +357,8 @@ final class AV1Decoder: @unchecked Sendable {
     private var next = 0
     private var wanted = -1
     private var generation = 0
+    /// The generation the backend was last flushed for; only the queue uses it.
+    private var flushed = 0
     private var hasFailed = false
 
     /// The device's AV1 decoder when it has one (iPhone 15 Pro, M3 Macs and
@@ -409,13 +411,19 @@ final class AV1Decoder: @unchecked Sendable {
         next = 0
         wanted = -1
         lock.unlock()
-        queue.async { self.backend.flush() }
     }
 
     private func pump() {
         lock.lock()
         let run = generation
         lock.unlock()
+        // A request queued before a reset can run after it. Flushing here, on
+        // the queue, before the run's first frame, keeps a flush from landing
+        // after frames of the new run were already decoded.
+        if flushed != run {
+            backend.flush()
+            flushed = run
+        }
         while true {
             lock.lock()
             guard run == generation, !hasFailed, next <= wanted else {

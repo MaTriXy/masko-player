@@ -216,6 +216,30 @@ final class RealVideoTests: XCTestCase {
         XCTAssertEqual(Int(centre[0]), 0x02, accuracy: 12)
     }
 
+    func testAnAV1LoopRestartsWhileFramesAreStillAskedFor() async throws {
+        let clip = try await AV1Clip.read(clips.appendingPathComponent("loop-av1.mp4"))
+        let renderer = try XCTUnwrap(StackedRenderer.shared)
+        let decoder = try XCTUnwrap(AV1Decoder(clip: clip, device: renderer.device))
+        let last = clip.frames.count - 1
+        for loop in 0..<30 {
+            // A playing clip asks for frames on every tick, so some requests
+            // are still waiting when it loops; the new loop starts a few
+            // frames ahead, then asks for the rest as it plays.
+            for index in 0...last { decoder.want(upTo: index) }
+            decoder.reset()
+            decoder.want(upTo: 3)
+            var shown = -1
+            for _ in 0..<1000 where shown < last && !decoder.failed {
+                if let (index, _) = decoder.take(upTo: last, after: shown) { shown = index }
+                decoder.want(upTo: min(shown + 4, last))
+                try await Task.sleep(nanoseconds: 1_000_000)
+            }
+            XCTAssertFalse(decoder.failed, "loop \(loop) decoded every frame")
+            XCTAssertEqual(shown, last, "loop \(loop) reached its last frame")
+            if decoder.failed { break }
+        }
+    }
+
     func testRealAV1ClipsSwapOnADrawnFrameAndEndOnTheirLength() throws {
         let stage = SpyStage()
         let player = MaskoPlayer(
