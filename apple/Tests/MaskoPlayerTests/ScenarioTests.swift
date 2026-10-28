@@ -36,7 +36,7 @@ final class ScenarioTests: XCTestCase {
             }
         }
         print("\(paths.count - bad) of \(paths.count) scenarios pass")
-        XCTAssertEqual(paths.count, 92, "the number of scenarios changed")
+        XCTAssertEqual(paths.count, 88, "the number of scenarios changed")
         XCTAssertEqual(bad, 0, "\(bad) scenarios failed")
     }
 
@@ -248,10 +248,6 @@ final class ScenarioTests: XCTestCase {
             }
         } else if let name = step["fire"]?.string {
             commands = e.fire(name: name, instant: instant, now: now)
-        } else if step["click"] != nil {
-            commands = e.click(now: now)
-        } else if let on = step["hover"]?.bool {
-            commands = e.hover(on: on, now: now)
         } else if let ms = step["advance"]?.number {
             try p.advance(to: now + UInt64(ms))
         } else if step["loopEnded"] != nil {

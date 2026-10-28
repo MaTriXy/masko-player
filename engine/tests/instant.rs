@@ -140,7 +140,7 @@ fn an_instant_any_state_start_reaches_a_pose_no_route_reaches() {
 }
 
 #[test]
-fn a_value_set_off_is_never_instant() {
+fn a_value_set_off_with_instant_starts_its_way_back_now() {
     let edges = mv("to-work", "idle", "working", WORKING, "")
         + &any("any-work", "working", WORKING, FIRST)
         + &mv(
@@ -153,12 +153,14 @@ fn a_value_set_off_is_never_instant() {
     let mut e = engine(&["idle", "working"], "", &edges);
     e.set("working", Value::Bool(true), INSTANT, 100);
     e.clip_shown("loop-working", 100);
-    // The way back holds because working is off: off is never instant, so it
-    // waits for the end of the loop and plays its clip.
-    let c = e.set("working", Value::Bool(false), INSTANT, 600);
+    // Off without instant: the way back waits for the end of the loop.
+    let c = e.set("working", Value::Bool(false), SETTLED, 600);
     assert!(shown(&c).is_empty());
     let next = e.state().next.unwrap();
     assert_eq!((next.clip.as_str(), next.at), ("to-idle", At::End));
+    // Off with instant: it starts now and plays its own clip (rules.md 5.8).
+    let c = e.set("working", Value::Bool(false), INSTANT, 700);
+    assert_eq!(shown(&c), [("to-idle".to_owned(), ClipKind::Move)]);
 }
 
 #[test]
@@ -238,7 +240,7 @@ fn instant_starts_count_toward_the_clipless_cycle_guard() {
 }
 
 #[test]
-fn the_persons_stop_waits_for_a_move_then_starts_at_its_end() {
+fn a_value_turned_off_mid_move_waits_for_its_end() {
     let edges = mv("to-work", "idle", "working", WORKING, "")
         + &mv(
             "work-to-focus",
@@ -248,7 +250,7 @@ fn the_persons_stop_waits_for_a_move_then_starts_at_its_end() {
             "",
         );
     let mut e = engine(&["idle", "working", "focus"], "", &edges);
-    e.hover(true, 100);
+    e.set("behavior::pointerHover", Value::Bool(true), SETTLED, 100);
     e.set("focus", Value::Bool(true), SETTLED, 200);
     e.set("working", Value::Bool(true), SETTLED, 300);
     let c = e.clip_ended("loop-idle", 2000);
@@ -256,7 +258,7 @@ fn the_persons_stop_waits_for_a_move_then_starts_at_its_end() {
     e.clip_shown("to-work", 2000);
     // The pointer leaves mid-move: only an instant start cuts a move, so the
     // move plays on (rules.md 10).
-    let c = e.hover(false, 2400);
+    let c = e.set("behavior::pointerHover", Value::Bool(false), SETTLED, 2400);
     assert!(!c.iter().any(|c| matches!(c, Command::Interrupted { .. })));
     assert!(shown(&c).is_empty());
     // Its end is a boundary: the way to focus starts there at once.
@@ -265,7 +267,7 @@ fn the_persons_stop_waits_for_a_move_then_starts_at_its_end() {
 }
 
 #[test]
-fn a_persons_start_during_a_move_waits_and_an_instant_one_cuts_it() {
+fn a_start_during_a_move_waits_and_an_instant_one_cuts_it() {
     let hover = r#"{"input": "behavior::pointerHover"}"#;
     let edges = mv("to-work", "idle", "working", WORKING, "")
         + &mv("to-wave", "idle", "wave", hover, r#", "priority": 1"#);
@@ -273,7 +275,7 @@ fn a_persons_start_during_a_move_waits_and_an_instant_one_cuts_it() {
     e.set("working", Value::Bool(true), SETTLED, 100);
     e.clip_ended("loop-idle", 2000);
     e.clip_shown("to-work", 2000);
-    let c = e.hover(true, 2300);
+    let c = e.set("behavior::pointerHover", Value::Bool(true), SETTLED, 2300);
     assert!(c.is_empty(), "the hover waits for the move's end");
     let c = e.set("behavior::pointerHover", Value::Bool(true), INSTANT, 2400);
     assert!(c.contains(&Command::Interrupted {
@@ -283,13 +285,14 @@ fn a_persons_start_during_a_move_waits_and_an_instant_one_cuts_it() {
 }
 
 #[test]
-fn the_persons_stop_keeps_the_moment_of_a_start_already_decided() {
+fn turning_off_with_instant_leaves_an_unrelated_start_its_moment() {
     let edges = mv("to-work", "idle", "working", WORKING, "");
     let mut e = engine(&["idle", "working"], "", &edges);
     e.set("working", Value::Bool(true), SETTLED, 100);
-    e.hover(true, 200);
-    let c = e.hover(false, 300);
-    assert!(shown(&c).is_empty(), "a passing pointer does not hurry it");
+    // The pointer was never on: turning it off with instant changes nothing,
+    // so the start already decided keeps the end of the loop (rules.md 5.8).
+    let c = e.set("behavior::pointerHover", Value::Bool(false), INSTANT, 200);
+    assert!(shown(&c).is_empty());
     let next = e.state().next.unwrap();
     assert_eq!((next.clip.as_str(), next.at), ("to-work", At::End));
 }

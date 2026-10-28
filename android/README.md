@@ -14,7 +14,7 @@ default). Once `ai.masko:player` is on Maven Central:
 ```kotlin
 // settings.gradle.kts: repositories { google(); mavenCentral() }
 dependencies {
-    implementation("ai.masko:player:0.1.8")
+    implementation("ai.masko:player:0.1.9")
 }
 ```
 
@@ -107,10 +107,11 @@ right after `load` hear the first pose.
 - **Position**: `position()` gives `Position(clip, time)`: the edge on
   screen or `still:<pose>` (null before anything shows) and its clip time in
   seconds.
-- **Taps and the pointer** on the view reach the canvas as `action::click`
-  and `behavior::pointerHover`. With `view.pointer = false` the view takes
-  no touches, so an app that handles the person itself calls `set` and
-  `fire` with those names.
+- **The person**: the view does not watch taps or the pointer. The app
+  sends them with its own listeners, as it does for dragging and physics:
+  `player.set("behavior::pointerHover", on)`, `player.fire("action::click")`,
+  and `heldContact`, `heldShake` and `falling`. Each waits for the end of
+  the loop on screen unless the app passes `instant = true`.
 - **Errors**: `onError`'s `detail` says what it is about: the edge of a clip
   error, the name of a refused value, the pose of a pose error.
 - **Sound**: edge sounds play either way; a clip's own voice (`hasAudio`) is
@@ -210,7 +211,7 @@ The build needs Java 17; Gradle downloads it when this machine has none (the
 foojay toolchain resolver in `settings.gradle.kts`).
 
 `./gradlew :player:publishReleasePublicationToLocalRepository` writes
-`ai.masko:player:0.1.8` to `player/build/repo` (the React Native package
+`ai.masko:player:0.1.9` to `player/build/repo` (the React Native package
 takes it from there; `../scripts/build-react-native.sh` runs it), with its
 sources and javadoc jars, signed when a signing key is set.
 

@@ -1,6 +1,6 @@
 {
-  "name": "fire-unused-spent-at-loop-end",
-  "about": "A fire nothing uses is spent at the next loop end and reported unused.",
+  "name": "fire-unwanted-is-dropped-at-once",
+  "about": "A fire that no start and no named clip wants is dropped at once, reported unused; it never waits for a later moment.",
   "rules": ["3.3"],
   "canvas": "otto",
   "steps": [
@@ -31,8 +31,8 @@
         "pose": "idle",
         "clip": "loop-idle",
         "next": null,
-        "events": [],
-        "fired": ["action::wave"]
+        "events": ["spent:action::wave:unused"],
+        "fired": []
       }
     },
     {
@@ -42,7 +42,7 @@
         "pose": "idle",
         "clip": "loop-idle",
         "next": null,
-        "events": ["spent:action::wave:unused", "shown:loop-idle"],
+        "events": ["shown:loop-idle"],
         "fired": []
       }
     }

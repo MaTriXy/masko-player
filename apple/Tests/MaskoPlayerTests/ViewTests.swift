@@ -8,7 +8,7 @@ import UIKit
 import AppKit
 #endif
 
-/// The view hosts the real stage and turns the person's input into values
+/// The view hosts the real stage and leaves the person to the app
 /// (rules.md 3.5).
 @MainActor
 final class ViewTests: XCTestCase {
@@ -128,123 +128,40 @@ final class ViewTests: XCTestCase {
     }
 
     #if canImport(AppKit) && !canImport(UIKit)
-    func event(_ type: NSEvent.EventType, x: CGFloat, y: CGFloat) -> NSEvent {
-        NSEvent.mouseEvent(
-            with: type, location: NSPoint(x: x, y: y), modifierFlags: [], timestamp: 0, windowNumber: 0,
-            context: nil, eventNumber: 0, clickCount: 1, pressure: 1)!
-    }
-
-    func testClicksKeysAndThePointerBecomeValues() {
+    func testTheViewDoesNotWatchThePerson() {
         let stage = FakeStage()
         let player = makePlayer(stage: stage)
         player.boot()
         stage.fakeSlots[0].decodeFirstFrame()
         let view = MaskoPlayerView(player: player)
         show(view, size: 100)
-        let engine = player.engine!
-
-        view.mouseEntered(with: event(.mouseMoved, x: 50, y: 50))
-        XCTAssertEqual(engine.value(name: "pointerHover"), .bool(value: true))
-        view.mouseExited(with: event(.mouseMoved, x: 150, y: 50))
-        XCTAssertEqual(engine.value(name: "pointerHover"), .bool(value: false))
-
-        view.mouseDown(with: event(.leftMouseDown, x: 50, y: 50))
-        view.mouseUp(with: event(.leftMouseUp, x: 51, y: 50))
-        XCTAssertEqual(engine.pendingFires(), ["action::click"])
-
-        // A press that moves is a drag, not a click.
-        player.reset()
-        view.mouseDown(with: event(.leftMouseDown, x: 50, y: 50))
-        view.mouseUp(with: event(.leftMouseUp, x: 70, y: 50))
-        XCTAssertEqual(engine.pendingFires(), [])
-
-        let space = NSEvent.keyEvent(
-            with: .keyDown, location: .zero, modifierFlags: [], timestamp: 0, windowNumber: 0, context: nil,
-            characters: " ", charactersIgnoringModifiers: " ", isARepeat: false, keyCode: 49)!
-        view.keyDown(with: space)
-        XCTAssertEqual(engine.pendingFires(), ["action::click"])
-    }
-
-    func testWithPointerOffTheViewTakesNoMouseAndTheAppSendsIt() {
-        let stage = FakeStage()
-        let player = makePlayer(stage: stage)
-        player.boot()
-        stage.fakeSlots[0].decodeFirstFrame()
-        let view = MaskoPlayerView(player: player, pointer: false)
-        show(view, size: 100)
-        let engine = player.engine!
-
         XCTAssertTrue(view.trackingAreas.isEmpty)
-        XCTAssertNil(view.hitTest(NSPoint(x: 50, y: 50)))
         XCTAssertFalse(view.acceptsFirstResponder)
-        view.mouseEntered(with: event(.mouseMoved, x: 50, y: 50))
-        view.mouseDown(with: event(.leftMouseDown, x: 50, y: 50))
-        view.mouseUp(with: event(.leftMouseUp, x: 50, y: 50))
-        XCTAssertFalse(view.accessibilityPerformPress())
-        XCTAssertEqual(engine.value(name: "pointerHover"), .bool(value: false))
-        XCTAssertEqual(engine.pendingFires(), [])
-
-        // The app sends the person itself, with the same names.
-        player.set("behavior::pointerHover", true)
-        player.fire("action::click")
-        XCTAssertEqual(engine.value(name: "pointerHover"), .bool(value: true))
-        XCTAssertEqual(engine.pendingFires(), ["action::click"])
-
-        view.pointer = true
-        XCTAssertFalse(view.trackingAreas.isEmpty)
-        XCTAssertTrue(view.acceptsFirstResponder)
-    }
-
-    func testTurningThePointerOffEndsItsHover() {
-        let stage = FakeStage()
-        let player = makePlayer(stage: stage)
-        player.boot()
-        stage.fakeSlots[0].decodeFirstFrame()
-        let view = MaskoPlayerView(player: player)
-        show(view, size: 100)
-        view.mouseEntered(with: event(.mouseMoved, x: 50, y: 50))
-        XCTAssertEqual(player.engine!.value(name: "pointerHover"), .bool(value: true))
-        view.pointer = false
         XCTAssertEqual(player.engine!.value(name: "pointerHover"), .bool(value: false))
-    }
-
-    func testThePointerLeavesWithAViewThatLeavesItsWindow() {
-        let stage = FakeStage()
-        let player = makePlayer(stage: stage)
-        player.boot()
-        stage.fakeSlots[0].decodeFirstFrame()
-        let view = MaskoPlayerView(player: player)
-        show(view, size: 100)
-        view.mouseEntered(with: event(.mouseMoved, x: 50, y: 50))
-        XCTAssertEqual(player.engine!.value(name: "pointerHover"), .bool(value: true))
-        // Out of the window, no mouseExited ever comes.
-        view.removeFromSuperview()
-        XCTAssertEqual(player.engine!.value(name: "pointerHover"), .bool(value: false))
+        XCTAssertEqual(player.engine!.pendingFires(), [])
     }
     #endif
 
     #if canImport(UIKit)
-    func testWithPointerOffTheViewTakesNoTouches() {
-        let player = MaskoPlayer(
-            delivery: delivery(), autoPlay: nil, stage: FakeStage(), loader: FakeLoader(), sounds: FakeSounds(),
-            host: FakeHost().host)
-        player.boot()
-        let view = MaskoPlayerView(player: player, pointer: false)
-        XCTAssertFalse(view.isUserInteractionEnabled)
-        XCTAssertFalse(view.accessibilityActivate())
-        XCTAssertEqual(player.engine!.pendingFires(), [])
-        view.pointer = true
-        XCTAssertTrue(view.isUserInteractionEnabled)
-    }
-
-    func testActivatingTheViewClicks() {
+    func testTheViewDoesNotWatchThePerson() {
         let player = MaskoPlayer(
             delivery: delivery(), autoPlay: nil, stage: FakeStage(), loader: FakeLoader(), sounds: FakeSounds(),
             host: FakeHost().host)
         player.boot()
         let view = MaskoPlayerView(player: player)
-        XCTAssertTrue(view.accessibilityActivate())
-        XCTAssertEqual(player.engine!.pendingFires(), ["action::click"])
+        XCTAssertTrue(view.gestureRecognizers?.isEmpty ?? true)
+        XCTAssertFalse(view.accessibilityActivate())
+        XCTAssertEqual(player.engine!.pendingFires(), [])
     }
     #endif
+
+    func testTheAppSendsThePersonWithItsFullNames() {
+        let stage = FakeStage()
+        let player = makePlayer(stage: stage)
+        player.boot()
+        stage.fakeSlots[0].decodeFirstFrame()
+        player.set("behavior::pointerHover", true)
+        XCTAssertEqual(player.engine!.value(name: "pointerHover"), .bool(value: true))
+        XCTAssertEqual(player.engine!.state().nextClip, "wave", "it waits for the end of the loop")
+    }
 }

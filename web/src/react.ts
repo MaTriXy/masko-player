@@ -73,8 +73,7 @@ function MaskoPlayerView(props: MaskoPlayerProps, ref: ForwardedRef<MaskoHandle>
     const common = {
       getDelivery: hasRefresh ? () => latest.current.getDelivery!() : undefined,
       sound: p.sound,
-      autoPlay: p.autoPlay,
-      pointer: p.pointer
+      autoPlay: p.autoPlay
     };
     const created = createPlayer(
       element,
@@ -95,8 +94,8 @@ function MaskoPlayerView(props: MaskoPlayerProps, ref: ForwardedRef<MaskoHandle>
       player.current = null;
       for (const s of subscriptions.current) s.off = null;
     };
-    // A new player only for a new release or new pointer wiring.
-  }, [key, props.pointer, hasRefresh]);
+    // A new player only for a new release.
+  }, [key, hasRefresh]);
 
   // New links for the same release: swap URLs, keep playing.
   useEffect(() => {

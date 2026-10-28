@@ -165,14 +165,6 @@ impl MaskoEngine {
         commands(self.with(|e| e.fire(&name, instant, now)))
     }
 
-    pub fn click(&self, now: u64) -> Vec<EngineCommand> {
-        commands(self.with(|e| e.click(now)))
-    }
-
-    pub fn hover(&self, on: bool, now: u64) -> Vec<EngineCommand> {
-        commands(self.with(|e| e.hover(on, now)))
-    }
-
     pub fn advance(&self, now: u64) -> Vec<EngineCommand> {
         commands(self.with(|e| e.advance(now)))
     }

@@ -1,7 +1,7 @@
 {
   "name": "grab-during-a-move-waits-for-its-end",
-  "about": "A grab during a move lets the move finish; at its end, a boundary, the way to the held pose starts at once, hop after hop. Letting go then starts the way back at once.",
-  "rules": ["10.2", "5.2", "6.4"],
+  "about": "A grab during a move lets the move finish; at its end, a boundary, the way to the held pose starts at once, hop after hop. Letting go then waits for the end of the held loop.",
+  "rules": ["10.2", "5.3", "6.4"],
   "canvas": "ko-coffee",
   "steps": [
     {
@@ -102,6 +102,19 @@
       "expect": {
         "clock": 10878,
         "pose": "held-contact-squish",
+        "clip": "loop-held-contact-squish",
+        "next": {
+          "clip": "return-held-contact-squish",
+          "at": "end"
+        },
+        "events": []
+      }
+    },
+    {
+      "loopEnded": true,
+      "expect": {
+        "clock": 11734,
+        "pose": "held-contact-squish",
         "clip": "return-held-contact-squish",
         "next": null,
         "events": ["shown:return-held-contact-squish"]
@@ -110,7 +123,7 @@
     {
       "clipEnded": true,
       "expect": {
-        "clock": 12545,
+        "clock": 13401,
         "pose": "idle",
         "clip": "enter-laptop-working",
         "next": null,

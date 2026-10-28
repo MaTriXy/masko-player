@@ -513,8 +513,8 @@ fn play_times_at_the_end_of_the_clock_do_not_overflow() {
     e.clip_shown("idle-loop", end - 10);
     e.set("working", Value::Bool(true), false, end - 5);
     e.fire("dance", false, end - 5);
-    e.click(end - 4);
-    e.hover(true, end - 3);
+    e.fire("action::click", false, end - 4);
+    e.set("behavior::pointerHover", Value::Bool(true), false, end - 3);
     e.clip_ended("idle-loop", end - 2);
     let clip = e.state().clip.unwrap();
     e.clip_shown(&clip, end - 1);

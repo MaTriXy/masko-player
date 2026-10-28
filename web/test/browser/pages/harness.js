@@ -14,7 +14,7 @@ export const PALETTE = {
 
 /**
  * The test canvas: idle and working, a move each way on `behavior::working`,
- * and a poke on click. `query` adds a query string per clip (`?delay=600`),
+ * and a poke on `action::click`. `query` adds a query string per clip (`?delay=600`),
  * `broken` lists clips whose WebM fails (their `hevc` is a WebM that plays),
  * `dead` clips whose files all fail, `version` a query string on every clip
  * (new links for the same release), `name` the canvas name (another name is
@@ -22,7 +22,6 @@ export const PALETTE = {
  * working loop a one-shot sound.
  */
 export function testDelivery({
-  ripple = false,
   autoPlay = true,
   query = {},
   broken = [],
@@ -61,7 +60,6 @@ export function testDelivery({
       name,
       initialNode: 'idle',
       autoPlay,
-      ...(ripple ? { clickEffect: 'ripple' } : {}),
       nodes: [
         { id: 'idle', name: 'Idle', transparentThumbnailUrl: `${location.origin}/clips/idle.png` },
         { id: 'working', name: 'Working' }

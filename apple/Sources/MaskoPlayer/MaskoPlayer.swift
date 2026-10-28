@@ -314,16 +314,6 @@ public final class MaskoPlayer {
         call { $0.fire(name: name, instant: instant, now: $1) }
     }
 
-    /// The person clicked or tapped the mascot (rules.md 3.5).
-    func click() {
-        call { $0.click(now: $1) }
-    }
-
-    /// The pointer entered or left the mascot (rules.md 3.5).
-    func hover(_ on: Bool) {
-        call { $0.hover(on: on, now: $1) }
-    }
-
     /// Values back to their defaults, and the mascot starts again
     /// (rules.md 11.3).
     public func reset() {

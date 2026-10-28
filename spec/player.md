@@ -24,8 +24,6 @@ rule itself.
 | The mascot starts (`autoPlay`, or `play()`)  | `start(0)`                            |
 | The app calls `set(name, value)`             | `set(name, value, instant, now)`      |
 | The app calls `fire(name)`                   | `fire(name, instant, now)`            |
-| The person clicks the mascot                 | `click(now)` (always `action::click`) |
-| The pointer enters or leaves the mascot      | `hover(true/false, now)` (always `behavior::pointerHover`) |
 | The engine's `nextWake()` time arrives       | `advance(now)`; then read `nextWake()` again |
 | A clip's first frame is on screen            | `clipShown(edge, now)`                |
 | The clip on screen plays its last frame      | `clipEnded(edge, now)`                |

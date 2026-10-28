@@ -574,8 +574,6 @@ internal protocol MaskoEngineProtocol: AnyObject, Sendable {
     
     func advance(now: UInt64)  -> [EngineCommand]
     
-    func click(now: UInt64)  -> [EngineCommand]
-    
     func clipEnded(edge: String, now: UInt64)  -> [EngineCommand]
     
     func clipFailed(edge: String, now: UInt64)  -> [EngineCommand]
@@ -586,8 +584,6 @@ internal protocol MaskoEngineProtocol: AnyObject, Sendable {
      * `fire(name)`; with `instant`, as `set_bool`.
      */
     func fire(name: String, instant: Bool, now: UInt64)  -> [EngineCommand]
-    
-    func hover(on: Bool, now: UInt64)  -> [EngineCommand]
     
     func markPlayable(edge: String) 
     
@@ -703,16 +699,6 @@ internal func advance(now: UInt64) -> [EngineCommand]  {
 })
 }
     
-internal func click(now: UInt64) -> [EngineCommand]  {
-    return try!  FfiConverterSequenceTypeEngineCommand.lift(try! rustCall() {
-        uniffiCallStatus in
-    uniffi_masko_player_ffi_fn_method_maskoengine_click(
-            self.uniffiCloneHandle(),
-        FfiConverterUInt64.lower(now),uniffiCallStatus
-    )
-})
-}
-    
 internal func clipEnded(edge: String, now: UInt64) -> [EngineCommand]  {
     return try!  FfiConverterSequenceTypeEngineCommand.lift(try! rustCall() {
         uniffiCallStatus in
@@ -756,17 +742,6 @@ internal func fire(name: String, instant: Bool, now: UInt64) -> [EngineCommand] 
             self.uniffiCloneHandle(),
         FfiConverterString.lower(name),
         FfiConverterBool.lower(instant),
-        FfiConverterUInt64.lower(now),uniffiCallStatus
-    )
-})
-}
-    
-internal func hover(on: Bool, now: UInt64) -> [EngineCommand]  {
-    return try!  FfiConverterSequenceTypeEngineCommand.lift(try! rustCall() {
-        uniffiCallStatus in
-    uniffi_masko_player_ffi_fn_method_maskoengine_hover(
-            self.uniffiCloneHandle(),
-        FfiConverterBool.lower(on),
         FfiConverterUInt64.lower(now),uniffiCallStatus
     )
 })
@@ -1566,9 +1541,6 @@ private let initializationResult: InitializationResult = {
     if (uniffi_masko_player_ffi_checksum_method_maskoengine_advance() != 30358) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_masko_player_ffi_checksum_method_maskoengine_click() != 32559) {
-        return InitializationResult.apiChecksumMismatch
-    }
     if (uniffi_masko_player_ffi_checksum_method_maskoengine_clip_ended() != 64814) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -1579,9 +1551,6 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_masko_player_ffi_checksum_method_maskoengine_fire() != 41787) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_masko_player_ffi_checksum_method_maskoengine_hover() != 56183) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_masko_player_ffi_checksum_method_maskoengine_mark_playable() != 63809) {

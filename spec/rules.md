@@ -19,10 +19,11 @@ and the engine in one pull request.
 - **Candidate**: a move from the current pose, or an Any State edge.
 - **Instant**: a value the app set or fired with instant. What it starts
   happens now; when an Any State edge wins, the mascot goes straight into
-  its target pose, skipping every transition clip and route (5.8).
+  its target pose, skipping every transition clip and route (5.8). Nothing
+  else cuts a loop.
 - **Person inputs**: `behavior::pointerHover`, `action::click`,
   `behavior::heldContact`, `behavior::heldShake`, `behavior::falling`. They
-  are the canvas editor's "You" triggers.
+  are the canvas editor's "You" triggers, and the app gives them (3.5).
 - **Canvas order**: an edge's position in `runtimeGraph.edges`.
 - **Clip time**: seconds into a clip's file, whatever its speed. At speed 2 a
   clip reaches clip time 2.0 after 1 s.
@@ -184,29 +185,34 @@ clears a held value by itself.
 
 `fire(name)` makes the name read `true` while the fire is pending, whatever
 its held value. Firing a name that is already pending changes nothing but
-whether it is instant (5.8); fires are not counted. `fire` says nothing
-about the person: a visitor's click on a page button is an ordinary app
-reaction and waits for the end of the pose clip (5.3), unless the app fires
-it with instant.
+whether it is instant (5.8); fires are not counted. Like every value, what a
+fire starts waits for the end of the pose clip (5.3) unless it is instant.
 
-A pending fire is spent at exactly one of these moments:
+A fire is used or dropped, never kept for later:
 
-1. **Claimed.** When a start (5) is decided and one of the winner's holding
-   condition groups has a condition on the fired name, the fire is claimed by
-   that start, unless an earlier start already claimed it. A claimed fire
-   stays pending until the first pose clip of the pose the start leads to
-   ends: the move's target, the Any State edge's target at the end of its
-   route (6.4) or at once for an instant one (5.8), or, for a named pose
-   clip (7.1), that clip itself, or what plays in its place when it fails
-   (9.5). If the mascot leaves that pose before its first pose clip ends,
-   the fire is spent when it leaves. If the route ends before reaching its
-   target, the fire is no longer claimed.
-2. **Unclaimed.** A fire that no start claimed is spent at the end of the
-   first pose clip that ends after it was fired, once that end has been fully
-   handled (5.5).
+1. **Wanted.** Every time the engine decides (5.1), outside a move, a fire
+   stays pending while the decided start reads it in one of its holding
+   groups, or a named pose clip of the current pose (7.1) reads it in a
+   group that holds. Every other fire that no start has claimed is dropped
+   at once. A fire made during a move waits for the move's end, where the
+   engine decides again (10.3).
+2. **Claimed.** When a start happens, it claims the pending fires its winner
+   reads in a holding group, unless an earlier start already claimed them,
+   and drops the unclaimed fires it does not claim; a named pose clip claims
+   the fires it reads when the pose chooses it (7.2). A claimed fire stays
+   pending until the first pose clip of the pose the start leads to ends:
+   the move's target, the Any State edge's target at the end of its route
+   (6.4) or at once for an instant one (5.8), or, for a named pose clip, that
+   clip itself, or what plays in its place when it fails (9.5). If the
+   mascot leaves that pose before its first pose clip ends, the fire is
+   spent when it leaves.
+3. **Overtaken.** A fire whose start is cut by an instant one (10.1), or
+   whose route ends before reaching its target (6.4), is dropped there. It
+   never wins later, whatever its priority.
 
 When a fire is spent, the player reports `reactionDone` with the name and
-whether it was claimed (1), by a start or a named pose clip.
+whether it was used: claimed by a start or a named pose clip. A dropped fire
+reports `used: false`.
 
 The claim lasts through the target's first pose clip because a move that
 holds when its pose is entered starts at once (5.3): a reaction pose whose
@@ -221,18 +227,17 @@ change it.
 
 ### 3.5 The person
 
-The player turns what the person does on the mascot itself into values:
+The player does not watch the person. The app tells it what the person does
+to the mascot, with the person inputs' full names (0):
 
-- the pointer enters the mascot: `behavior::pointerHover` is set to `true`;
-  it leaves: it is set to `false`;
-- a click, a tap, or Enter or Space while the mascot has focus:
-  `action::click` is fired.
+- the pointer over the mascot: `set('behavior::pointerHover', true)`, and
+  `false` when it leaves;
+- a click or a tap: `fire('action::click')`;
+- a grab, a shake or a fall: `behavior::heldContact`, `behavior::heldShake`
+  and `behavior::falling`, set on and off.
 
-These are always the full names, never resolved as bare names (3.1): a
-canvas input named `click` or `pointerHover` never catches the person.
-
-The app sets `heldContact`, `heldShake` and `falling` itself, since it owns
-dragging and physics.
+The app decides what counts as being on the mascot, since it owns the page or
+the window, dragging and physics.
 
 ## 4. What plays next
 
@@ -270,36 +275,17 @@ The engine decides (4) again after every event that can change the answer:
 a `set`, a `fire`, a boundary, a node timer crossing (8.3), and `reset`.
 Each decision starts from scratch.
 
-### 5.2 Started by the person: at once
+### 5.2 The person: no moment of its own
 
-A start is started by the person when one of the winner's holding groups has
-a condition on a person input that is on: hovered, clicked, held, shaken or
-falling. It starts at once: the player shows its clip as soon as the clip's
-first frame is decoded, from whatever frame the pose clip is on, or from a
-still. During a move it waits for that move to end (10.2), and starts at once
-there, since entering the target is a boundary. A route started that way
-keeps it for every hop.
+What the person does reaches the engine as values the app gives (3.5), and
+its starts follow 5.3 to 5.8 like any other: a pointer over the mascot, a
+grab or a let go waits for the end of the pose clip unless the app gives it
+with instant. The player never cuts a loop on its own.
 
-The person stopping counts as the person. When a person input turns off
-(the pointer leaves: `behavior::pointerHover` is set to `false`; the mascot
-is let go: `behavior::heldContact` is set off; `behavior::heldShake` or
-`behavior::falling` is set off), the engine decides (5.1), and a winner with
-conditions that is a new start, not the one already decided before that
-change, starts at once, as a person's start does: mid pose clip or from a
-still; during a move, at its end (10.2). It still plays its moves, its direct
-clip or its route (6), and a route started that way starts each hop at
-once. Only the decision made at the moment of that change counts: a move
-that only checks a person input is off, decided at any later moment (a
-boundary, a node timer, another `set` or `fire`), waits as 5.3 says, so a
-move on `behavior::pointerHover == false` never starts mid-loop by itself.
-A start already decided before the change keeps its moment (5.6), so a
-pointer passing over the mascot does not hurry what the app asked for.
+### 5.3 The end of the pose clip
 
-### 5.3 Everything else: the end of the pose clip
-
-Any other winner with conditions, neither started by the person nor instant
-(5.8), starts at the end of the pose clip on screen, so the next clip starts
-from the pose's own frame. At a boundary that moment is now. A pose shown as
+A winner with conditions that is not instant (5.8) starts at the end of the
+pose clip on screen, so the next clip starts from the pose's own frame. At a boundary that moment is now. A pose shown as
 a still (7.4, 9.5) is the pose's own picture, so a winner starts from it at
 once, including a start decided for the end of a pose clip that failed on
 screen and gave way to the still.
@@ -332,8 +318,8 @@ and no winner cancels it.
 
 ### 5.7 No play-once rule
 
-A pose can be left as soon as a candidate wins, at the moment 5.2 to 5.4
-and 5.8 give. Nothing waits for a pose's first loop except a move without
+A pose can be left as soon as a candidate wins, at the moment 5.3, 5.4 and
+5.8 give. Nothing waits for a pose's first loop except a move without
 conditions (5.4). A designer who wants a pose to show first uses "After it
 plays once" (`node::loopCount >= 1`).
 
@@ -350,6 +336,12 @@ nothing changes.
 - A value set with instant stays instant while it holds that value. A later
   `set` of the name without instant, or setting it off (`false` or 0), ends
   it. Setting the value a name already holds with instant makes it instant.
+- Setting a value off with instant (a let go, the pointer leaving) makes the
+  start that change decides instant, once: the winner of that decision is
+  instant when it reads the name, directly or, for a `behavior::` name,
+  through `behavior::rest`, or when it is not the start decided before the
+  change. A start already decided that does not read the name keeps its
+  moment, and the value does not stay instant.
 - A fire with instant stays instant until it is spent (3.3). Firing a
   pending name again with instant makes it instant; firing it again without
   instant leaves it instant.
@@ -358,11 +350,10 @@ nothing changes.
 A start is **instant** when one of the winner's holding groups has a
 condition on an instant name that is on. An instant start:
 
-- **happens now**, at any moment: mid pose clip, during a still, as a start
-  by the person does (5.2), and during a move, which it interrupts (10.1);
-  it is the only start that does.
-- **plays its own clip when the winner is a move.** The move starts at once
-  and plays as any move (9), as a person's start would.
+- **happens now**, at any moment: mid pose clip, during a still, and during a
+  move, which it interrupts (10.1); it is the only start that does.
+- **plays its own clip when the winner is a move.** The move starts at once,
+  from whatever frame the pose clip is on, and plays as any move (9).
 - **goes straight into the target pose when the winner is an Any State
   edge.** Instead of showing any clip on the way, the mascot enters the
   target: the player reports `poseEntered`, then the target shows the pose
@@ -567,17 +558,15 @@ starts, the engine asks the player to preload the target pose's main loop
    move's own target, that move's clip stops and the start begins at once,
    accepting one visible cut: an instant move shows its clip, an instant Any
    State start enters its target. The interrupted move never enters its
-   target, and the fires it claimed for that target are no longer claimed,
+   target, and the fires it claimed for that target are dropped (3.3),
    unless the new start leads there too. A winner that only keeps the mascot
    where it is (an Any State edge to the source pose) does not interrupt.
-2. Every other start waits for the move in progress, a start by the person
-   included (5.2): the pointer, a click, a grab without instant, and the
-   person stopping. `set` and `fire` change values at once, and the engine
-   decides again when the move ends, with the latest values (6.4 and 5.1);
-   entering the target is a boundary, so a start that holds there starts at
-   once.
-3. A fire during a move stays pending; the first pose clip that ends after it
-   is the target pose's (3.3).
+2. Every other start waits for the move in progress. `set` and `fire` change
+   values at once, and the engine decides again when the move ends, with
+   the latest values (6.4 and 5.1); entering the target is a boundary, so a
+   start that holds there starts at once.
+3. A fire during a move stays pending until the move ends. There the target
+   pose's decision takes it or drops it (3.3).
 4. The engine accepts every event in every state, and after every event the
    mascot either plays a clip or waits for one to end. Nothing leaves it
    frozen.
@@ -633,9 +622,9 @@ a pose by setting values (11.1) and plays moves through the canvas.
   in progress (11.4): pending fires (dropped without `reactionDone`), the
   route and any decided start are dropped, the pose is entered with its
   timers at 0, and its main loop (7.1) is shown, or its still. The rules
-  then take over as after any event (5.1): a winner started by the person
-  starts at once, any other at the end of the loop. An unknown pose reports
-  `error` `unknown_pose`.
+  then take over as after any event (5.1): an instant winner starts at once,
+  any other at the end of the loop. An unknown pose reports `error`
+  `unknown_pose`.
 - **`preview.playMove(edgeId)`** plays one move whose source is the current
   pose, at once, from whatever frame the pose clip is on. Any decided start
   is dropped and the pose's claimed fires are spent, as when the mascot
@@ -651,5 +640,3 @@ Behaviour of `@masko/player` on the web that no rule governs:
 - **Tap to play.** When the browser blocks autoplay (for example iPhone Low
   Power Mode), the player shows the first frame with a tap-to-play overlay
   and starts on the first tap.
-- **Click ripple.** The canvas's `clickEffect` ripple is drawn only when the
-  canvas asks for it (`clickEffect: "ripple"`).

@@ -204,8 +204,6 @@ function act(p: IdealPlayer, step: Obj): void {
     const [name, value] = step.set as [string, Value];
     commands = e.set(name, value, instant, now);
   } else if ('fire' in step) commands = e.fire(step.fire as string, instant, now);
-  else if ('click' in step) commands = e.click(now);
-  else if ('hover' in step) commands = e.hover(step.hover as boolean, now);
   else if ('advance' in step) p.advanceTo(now + (step.advance as number));
   else if ('loopEnded' in step) p.runToEnd(false);
   else if ('clipEnded' in step) p.runToEnd(true);

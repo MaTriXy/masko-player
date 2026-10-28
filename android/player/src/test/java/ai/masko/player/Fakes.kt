@@ -346,13 +346,11 @@ internal class FaultyEngine(private val real: MaskoEngine) : MaskoEngine(NoHandl
     }
 
     override fun advance(now: ULong): List<EngineCommand> = maybe("advance") { real.advance(now) }
-    override fun click(now: ULong): List<EngineCommand> = maybe("click") { real.click(now) }
     override fun clipEnded(edge: String, now: ULong): List<EngineCommand> = maybe("clipEnded") { real.clipEnded(edge, now) }
     override fun clipFailed(edge: String, now: ULong): List<EngineCommand> = maybe("clipFailed") { real.clipFailed(edge, now) }
     override fun clipShown(edge: String, now: ULong): List<EngineCommand> = maybe("clipShown") { real.clipShown(edge, now) }
     override fun fire(name: String, instant: Boolean, now: ULong): List<EngineCommand> =
         maybe("fire") { real.fire(name, instant, now) }
-    override fun hover(on: Boolean, now: ULong): List<EngineCommand> = maybe("hover") { real.hover(on, now) }
     override fun markPlayable(edge: String) = maybe("markPlayable") { real.markPlayable(edge) }
     override fun markUnplayable(edge: String) = maybe("markUnplayable") { real.markUnplayable(edge) }
     override fun nextWake(): ULong? = maybe("nextWake") { real.nextWake() }

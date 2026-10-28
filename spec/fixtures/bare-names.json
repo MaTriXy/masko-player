@@ -106,8 +106,8 @@
         "pose": "a",
         "clip": "loop-a",
         "next": null,
-        "events": [],
-        "fired": ["action::wave"]
+        "events": ["spent:action::wave:unused"],
+        "fired": []
       }
     },
     {

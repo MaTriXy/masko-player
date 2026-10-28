@@ -91,8 +91,8 @@ export interface MaskoViewOptions {
   /** Starts at once. Defaults to the canvas's `autoPlay`, else true. Read when a release loads. */
   autoPlay?: boolean;
   /**
-   * Taps and the pointer reach the canvas as `action::click` and `behavior::pointerHover`. False:
-   * the mascot takes no touches, and the app handles the person itself with `fire` and `set`.
+   * @deprecated Ignored: the player no longer watches the person. The app sets
+   * `behavior::pointerHover` and fires `action::click` itself.
    */
   pointer?: boolean;
   onPose?: (event: MaskoEvents['pose']) => void;

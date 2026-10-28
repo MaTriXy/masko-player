@@ -5,7 +5,6 @@ import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
 import android.util.AttributeSet
-import android.view.MotionEvent
 import android.view.View
 import android.widget.FrameLayout
 import android.widget.ImageView
@@ -14,8 +13,9 @@ import androidx.media3.common.util.UnstableApi
 
 /**
  * Shows a Masko mascot. Load a release delivery with [load], or one
- * animation's file with [loadClip]; taps and the pointer reach the canvas as
- * `action::click` and `behavior::pointerHover` unless [pointer] is off.
+ * animation's file with [loadClip]. The view does not watch the person: the
+ * app sets `behavior::pointerHover` and fires `action::click` itself, with its
+ * own listeners on this view or another (rules.md 3.5).
  *
  * The mascot is drawn transparent and fitted inside the view, centred. While
  * the view is off screen (detached, GONE or INVISIBLE, itself or a parent, or
@@ -45,21 +45,9 @@ class MaskoPlayerView @JvmOverloads constructor(
     internal var stage: ViewStage? = null
         private set
 
-    /**
-     * Taps and the pointer reach the canvas as `action::click` and
-     * `behavior::pointerHover`. Off, the view takes no touches (they go to
-     * the view behind it), so an app that handles the person itself calls
-     * `fire` and `set` (the web player's `pointer: false`).
-     */
+    /** Ignored: the view no longer watches the pointer (rules.md 3.5). */
+    @Deprecated("The view no longer watches the pointer: the app sets behavior::pointerHover and fires action::click itself.")
     var pointer: Boolean = true
-        set(on) {
-            if (field == on) return
-            field = on
-            applyPointer()
-        }
-
-    /** The pointer is over the mascot and the player was told. */
-    private var hovering = false
 
     /** Whether this view and every parent are visible (onVisibilityAggregated). */
     private var shown = false
@@ -73,20 +61,6 @@ class MaskoPlayerView @JvmOverloads constructor(
             addView(video, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
         }
         addView(still, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
-        applyPointer()
-    }
-
-    private fun applyPointer() {
-        if (pointer) {
-            setOnClickListener { player?.click() }
-        } else {
-            setOnClickListener(null)
-            if (hovering) {
-                hovering = false
-                player?.hover(false)
-            }
-        }
-        isClickable = pointer
     }
 
     /**
@@ -113,7 +87,6 @@ class MaskoPlayerView @JvmOverloads constructor(
             "MaskoPlayerView.$method must be called on the main thread, not on thread \"${Thread.currentThread().name}\""
         }
         player?.destroy()
-        hovering = false
         val media = MediaFiles.get(context)
         val stage = ViewStage(this, media).also { this.stage = it }
         val next = MaskoPlayer(
@@ -130,21 +103,6 @@ class MaskoPlayerView @JvmOverloads constructor(
         next.setHostAttached(isAttachedToWindow)
         hostChanged()
         return next
-    }
-
-    override fun onHoverEvent(event: MotionEvent): Boolean {
-        if (!pointer) return super.onHoverEvent(event)
-        when (event.actionMasked) {
-            MotionEvent.ACTION_HOVER_ENTER -> {
-                hovering = true
-                player?.hover(true)
-            }
-            MotionEvent.ACTION_HOVER_EXIT -> {
-                hovering = false
-                player?.hover(false)
-            }
-        }
-        return super.onHoverEvent(event)
     }
 
     override fun onAttachedToWindow() {

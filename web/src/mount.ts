@@ -1,5 +1,6 @@
-// mountMascot: the player in a page element, with the click and pointer
-// wiring, the tap-to-play overlay and the click ripple (rules.md 14).
+// mountMascot: the player in a page element, with the tap-to-play overlay
+// (rules.md 14). The player does not watch the person: the app sets
+// `behavior::pointerHover` and fires `action::click` itself (rules.md 3.5).
 
 import { preferredFormats, type ClipFiles, type DeliveryInput } from './delivery.ts';
 import { DomSlot, DomSounds, DomStill, FetchLoader, clipLength, onGesture } from './dom.ts';
@@ -28,7 +29,10 @@ interface MountCommon {
   sound?: boolean;
   /** Starts at once. Defaults to the canvas's `autoPlay`, else true. */
   autoPlay?: boolean;
-  /** Clicks and pointer enter/leave on the mascot reach the canvas. On by default. */
+  /**
+   * @deprecated Ignored: the player no longer watches the pointer. The app
+   * sets `behavior::pointerHover` and fires `action::click` itself.
+   */
   pointer?: boolean;
 }
 
@@ -63,9 +67,6 @@ const CSS = `
 .masko-player>.masko-tap{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;margin:0;padding:0;border:0;background:transparent;cursor:pointer}
 .masko-player>.masko-tap[hidden]{display:none}
 .masko-player>.masko-tap>span{display:flex;align-items:center;justify-content:center;width:48px;height:48px;border-radius:50%;background:rgba(0,0,0,.55);box-shadow:0 2px 8px rgba(0,0,0,.25)}
-.masko-player>.masko-ripple{position:absolute;width:12px;height:12px;margin:-6px 0 0 -6px;border-radius:50%;border:2px solid rgba(249,93,2,.8);pointer-events:none;animation:masko-ripple .5s ease-out forwards}
-@keyframes masko-ripple{from{transform:scale(1);opacity:1}to{transform:scale(6);opacity:0}}
-@media (prefers-reduced-motion:reduce){.masko-player>.masko-ripple{animation-duration:.01s}}
 `;
 
 function ensureStyle(doc: Document): void {
@@ -179,7 +180,6 @@ export function createPlayer(element: HTMLElement, options: MountOptions): { pla
   };
   const player = new Player(host, playerOptions);
 
-  const ripple = player.clickEffect() === 'ripple';
   const listen = (target: EventTarget, type: string, fn: (e: Event) => void) => {
     target.addEventListener(type, fn);
     cleanups.push(() => target.removeEventListener(type, fn));
@@ -188,42 +188,6 @@ export function createPlayer(element: HTMLElement, options: MountOptions): { pla
     e.stopPropagation();
     player.play();
   });
-  if (options.pointer !== false) {
-    /** The person clicks the mascot at (x, y) in it. */
-    const poke = (x: number, y: number) => {
-      player.click();
-      if (!ripple) return;
-      const dot = doc.createElement('span');
-      dot.className = 'masko-ripple';
-      dot.style.left = `${x}px`;
-      dot.style.top = `${y}px`;
-      dot.addEventListener('animationend', () => dot.remove());
-      root.appendChild(dot);
-    };
-    listen(root, 'click', (e) => {
-      if (!tap.hidden) return;
-      const r = root.getBoundingClientRect();
-      const m = e as MouseEvent;
-      poke(m.clientX - r.left, m.clientY - r.top);
-    });
-    // Enter or Space while the mascot has focus is a click (rules.md 3.5).
-    root.tabIndex = 0;
-    root.setAttribute('role', 'button');
-    root.setAttribute('aria-label', player.name() ?? 'Mascot');
-    listen(root, 'keydown', (e) => {
-      const k = e as KeyboardEvent;
-      if (k.target !== root || (k.key !== 'Enter' && k.key !== ' ') || k.repeat || k.altKey || k.ctrlKey || k.metaKey) return;
-      k.preventDefault();
-      if (!tap.hidden) {
-        player.play();
-        return;
-      }
-      const r = root.getBoundingClientRect();
-      poke(r.width / 2, r.height / 2);
-    });
-    listen(root, 'pointerenter', () => player.hover(true));
-    listen(root, 'pointerleave', () => player.hover(false));
-  }
   listen(doc, 'visibilitychange', () => player.setHidden(doc.visibilityState === 'hidden'));
   // Timers may have slept with the device: check the signed links again.
   listen(win, 'online', () => player.checkLinks());

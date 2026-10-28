@@ -144,17 +144,17 @@ final class RealVideoTests: XCTestCase {
         XCTAssertEqual(alpha(first, x: 2, y: 2), 0, "transparent where the clip is transparent")
         XCTAssertEqual(alpha(first, x: 48, y: 48), 255, "opaque where the clip is opaque")
 
-        // A person's move swaps to the other slot after its first frame.
-        player.hover(true)
+        // An instant move swaps to the other slot after its first frame.
+        player.set("behavior::pointerHover", true, instant: true)
         wait(for: "clip:wave-loop")
         XCTAssertEqual(stage.swaps.map(\.slot), [0, 1, 0])
         XCTAssertEqual(
             log.map(\.event).filter { !$0.hasPrefix("clip:idle-loop") },
             ["pose:idle", "clip:to-wave", "movement:to-wave", "pose:wave", "clip:wave-loop"])
 
-        // The pointer leaving starts the way back at once (rules.md 5.2),
-        // and it swaps in on a decoded frame too.
-        player.hover(false)
+        // The pointer leaving with instant starts the way back at once
+        // (rules.md 5.8), and it swaps in on a decoded frame too.
+        player.set("behavior::pointerHover", false, instant: true)
         XCTAssertEqual(player.engine?.state().clip, "wave-back")
         wait(for: "clip:idle-loop", count: 3)
         XCTAssertEqual(stage.swaps.map(\.slot), [0, 1, 0, 1, 0])
@@ -279,13 +279,13 @@ final class RealVideoTests: XCTestCase {
         XCTAssertLessThan(loop, 1.2, "the clip's end, not the safety net, ended it")
         XCTAssertEqual(stage.av1Swaps.map(\.slot), [0], "a loop restarts in its slot")
 
-        // A person's move swaps to the other slot after its first frame, and back.
-        player.hover(true)
+        // An instant move swaps to the other slot after its first frame, and back.
+        player.set("behavior::pointerHover", true, instant: true)
         wait(for: "clip:wave-loop")
         XCTAssertEqual(
             log.map(\.event).filter { !$0.hasPrefix("clip:idle-loop") },
             ["pose:idle", "clip:to-wave", "movement:to-wave", "pose:wave", "clip:wave-loop"])
-        player.hover(false)
+        player.set("behavior::pointerHover", false, instant: true)
         wait(for: "clip:idle-loop", count: 3)
         XCTAssertEqual(stage.av1Swaps.map(\.slot), [0, 1, 0, 1, 0])
         XCTAssertTrue(stage.av1Swaps.allSatisfy(\.drawn), "every swap had its first frame drawn")

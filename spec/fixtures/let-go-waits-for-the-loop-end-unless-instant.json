@@ -1,7 +1,7 @@
 {
-  "name": "let-go-starts-the-way-back-at-once",
-  "about": "Letting go mid held loop starts the way back at once, and it plays its move.",
-  "rules": ["5.2"],
+  "name": "let-go-waits-for-the-loop-end-unless-instant",
+  "about": "Letting go is a value like any other: the way back waits for the end of the held loop, and starts at once, playing its move, when the app lets go with instant.",
+  "rules": ["5.3", "5.8"],
   "canvas": "ko-coffee",
   "steps": [
     {
@@ -19,6 +19,19 @@
       "expect": {
         "clock": 0,
         "pose": "idle",
+        "clip": "loop-idle",
+        "next": {
+          "clip": "enter-held-contact-squish",
+          "at": "end"
+        },
+        "events": []
+      }
+    },
+    {
+      "loopEnded": true,
+      "expect": {
+        "clock": 4000,
+        "pose": "idle",
         "clip": "enter-held-contact-squish",
         "next": null,
         "events": ["shown:enter-held-contact-squish"]
@@ -27,7 +40,7 @@
     {
       "clipEnded": true,
       "expect": {
-        "clock": 1333,
+        "clock": 5333,
         "pose": "held-contact-squish",
         "clip": "loop-held-contact-squish",
         "next": null,
@@ -37,7 +50,7 @@
     {
       "advance": 500,
       "expect": {
-        "clock": 1833,
+        "clock": 5833,
         "pose": "held-contact-squish",
         "clip": "loop-held-contact-squish",
         "next": null,
@@ -47,7 +60,21 @@
     {
       "set": ["heldContact", false],
       "expect": {
-        "clock": 1833,
+        "clock": 5833,
+        "pose": "held-contact-squish",
+        "clip": "loop-held-contact-squish",
+        "next": {
+          "clip": "return-held-contact-squish",
+          "at": "end"
+        },
+        "events": []
+      }
+    },
+    {
+      "set": ["heldContact", false],
+      "instant": true,
+      "expect": {
+        "clock": 5833,
         "pose": "held-contact-squish",
         "clip": "return-held-contact-squish",
         "next": null,
@@ -57,7 +84,7 @@
     {
       "clipEnded": true,
       "expect": {
-        "clock": 3500,
+        "clock": 7500,
         "pose": "idle",
         "clip": "loop-idle",
         "next": null,

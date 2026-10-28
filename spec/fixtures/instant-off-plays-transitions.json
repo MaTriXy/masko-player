@@ -1,7 +1,7 @@
 {
   "name": "instant-off-plays-transitions",
-  "about": "Without instant, the same grab plays every transition, as before: the way out of the working pose at once, then the move into the held pose.",
-  "rules": ["5.8", "5.2", "6.2", "6.4"],
+  "about": "Without instant, the same grab waits for the end of the working loop, then plays every transition: the way out of the working pose, then the move into the held pose.",
+  "rules": ["5.8", "5.3", "6.2", "6.4"],
   "canvas": "ko-coffee",
   "patch": {
     "delivery": {
@@ -40,6 +40,19 @@
       "expect": {
         "clock": 1500,
         "pose": "laptop-working",
+        "clip": "loop-laptop-working",
+        "next": {
+          "clip": "return-laptop-working",
+          "at": "end"
+        },
+        "events": []
+      }
+    },
+    {
+      "loopEnded": true,
+      "expect": {
+        "clock": 4000,
+        "pose": "laptop-working",
         "clip": "return-laptop-working",
         "next": null,
         "events": ["shown:return-laptop-working"]
@@ -48,7 +61,7 @@
     {
       "clipEnded": true,
       "expect": {
-        "clock": 4259,
+        "clock": 6759,
         "pose": "idle",
         "clip": "enter-held-contact-squish",
         "next": null,
@@ -58,7 +71,7 @@
     {
       "clipEnded": true,
       "expect": {
-        "clock": 5592,
+        "clock": 8092,
         "pose": "held-contact-squish",
         "clip": "loop-held-contact-squish",
         "next": null,

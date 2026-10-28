@@ -57,7 +57,7 @@ Without a build step, one file with the engine inlined,
 script that defines `window.MaskoPlayer`, not a module to import.
 
 ```html
-<script src="https://cdn.jsdelivr.net/npm/@masko/player@0.1.8/dist/masko-player.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@masko/player@0.1.9/dist/masko-player.js"></script>
 <script>
   const mascot = MaskoPlayer.mount(document.getElementById('mascot'), { delivery });
 </script>
@@ -98,9 +98,16 @@ file has one. A clip whose length cannot be read plays nothing and reports
   says what it is about: the edge of a clip error, the name of a refused
   value, the pose of a pose error).
 - Options: `sound` (on by default: a clip's own voice is heard; false mutes
-  it; edge sounds play either way), `autoPlay` (defaults to the canvas), `pointer`
-  (on by default: clicks, Enter or Space on the focused mascot and the
-  pointer reach the canvas as `click` and `pointerHover`).
+  it; edge sounds play either way) and `autoPlay` (defaults to the canvas).
+- The person: the player does not watch the pointer, clicks or keys. The app
+  sends what the person does to the mascot, like any other value, and adds
+  `{ instant: true }` when it should cut the loop:
+
+  ```js
+  el.addEventListener('pointerenter', () => mascot.set('behavior::pointerHover', true));
+  el.addEventListener('pointerleave', () => mascot.set('behavior::pointerHover', false));
+  el.addEventListener('click', () => mascot.fire('action::click'));
+  ```
 
 Calls made inside an event handler run once the player has finished what
 told the handler. While the mascot is paused or the page is hidden, calls
@@ -119,10 +126,7 @@ more when it is fired with `instant`) are kept, at most 1000 calls.
   page is hidden. When the browser blocks sound until the person interacts,
   a one-shot sound is skipped and a looping one starts on their first click
   or key press.
-- Shows a tap-to-play button when the browser blocks autoplay, and the
-  canvas's click effect (a small ripple) where the person clicks.
-- Makes the mascot a focusable button named after the canvas (with
-  `pointer` on).
+- Shows a tap-to-play button when the browser blocks autoplay.
 - Asks `getDelivery` for fresh signed links before they expire and swaps the
   links only; the mascot keeps playing. It checks again when the page shows
   after the device slept and when it comes back online, and never asks more

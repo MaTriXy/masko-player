@@ -224,20 +224,6 @@ export class Player {
     this.appCall((e, now) => e.fire(name, instant, now), instant ? `fire:${name}:instant` : `fire:${name}`);
   }
 
-  /** The person clicked the mascot. Ignored while the mascot is not playing. */
-  click(): void {
-    if (!this.running()) return;
-    // A click lets the browser play sound: a refused voice may be heard from the next loop.
-    const screen = this.screen;
-    if (screen.type === 'clip') screen.showing.voiceRefused = false;
-    this.appCall((e, now) => e.click(now));
-  }
-
-  /** The pointer entered or left the mascot. */
-  hover(on: boolean): void {
-    this.appCall((e, now) => e.hover(on, now), 'set:pointerHover');
-  }
-
   reset(): void {
     this.appCall((e, now) => e.reset(now));
   }
@@ -365,17 +351,6 @@ export class Player {
     this.voiceGesture?.();
     this.voiceGesture = null;
     this.host.dispose();
-  }
-
-  /** The canvas's click effect (rules.md 14). */
-  clickEffect(): string | undefined {
-    return this.delivery?.runtimeGraph?.clickEffect;
-  }
-
-  /** The canvas's name, for the mascot's accessible label. */
-  name(): string | undefined {
-    const name = this.delivery?.runtimeGraph?.name;
-    return typeof name === 'string' && name.trim() !== '' ? name : undefined;
   }
 
   // ------------------------------------------------------------- engine

@@ -528,7 +528,7 @@ final class PlayerTests: XCTestCase {
         XCTAssertEqual(a.log.last, "play 1.0")
         XCTAssertEqual(sounds.log.last, "resume")
         XCTAssertEqual(player.engine!.value(name: "working"), .bool(value: true))
-        XCTAssertEqual(player.engine!.pendingFires(), ["action::hello"])
+        XCTAssertTrue(events.contains("done:action::hello:unused"), "the held fire reached the engine")
         XCTAssertEqual(now(player), 500, "play time resumes where it stopped")
         host.advance(1.5)
         a.end()
@@ -552,7 +552,7 @@ final class PlayerTests: XCTestCase {
         XCTAssertEqual(a.log.last, "pause")
         player.play()
         XCTAssertEqual(a.log.last, "play 1.0")
-        XCTAssertEqual(player.engine!.pendingFires(), ["action::hello"])
+        XCTAssertTrue(events.contains("done:action::hello:unused"), "the held fire reached the engine")
         XCTAssertEqual(player.now, 500, "play time resumes where it stopped")
     }
 
@@ -645,7 +645,7 @@ final class PlayerTests: XCTestCase {
         let player = started()
         loader.holding = true
         player.reset()  // idle again: its looping sound is asked for
-        player.hover(true)  // a person's move stops every sound at once
+        player.set("behavior::pointerHover", true, instant: true)  // a move now stops every sound
         loader.release()
         XCTAssertEqual(sounds.log, ["play hum 0.5 loop", "stop looping", "stop all"])
         XCTAssertEqual(b.clip, "wave")
@@ -682,8 +682,8 @@ final class PlayerTests: XCTestCase {
         end(a, after: 2)
         XCTAssertEqual(events, ["error:read_only", "done:action::hello:unused", "clip:idle-loop"])
         events = []
-        player.hover(true)
-        XCTAssertEqual(player.engine!.state().clip, "wave", "a person's move starts at once")
+        player.set("behavior::pointerHover", true, instant: true)
+        XCTAssertEqual(player.engine!.state().clip, "wave", "an instant move starts at once")
         b.decodeFirstFrame()
         XCTAssertEqual(events, ["clip:wave"], "no movement event for a move without movement")
     }

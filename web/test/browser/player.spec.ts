@@ -239,18 +239,30 @@ test('React: <MaskoPlayer> with a ref and event props, one player under StrictMo
   expect(requests).toContain('/clips/work-loop.webm?v=2');
 });
 
-test('click reaches the canvas; the ripple only when the canvas asks for it', async ({ page }) => {
-  for (const ripple of [true, false]) {
-    await start(page, { ripple });
-    await waitClip(page, 'idle-loop');
-    await page.mouse.move(400, 400);
-    await page.locator('#m').hover();
-    await page.locator('#m').click();
-    expect(await page.locator('.masko-ripple').count()).toBe(ripple ? 1 : 0);
-    await waitClip(page, 'poke');
-    const { events } = await result(page);
-    expect(events.filter((e) => e.event === 'error')).toEqual([]);
-  }
+test('the player does not watch the person: the app fires the click', async ({ page }) => {
+  await start(page);
+  await waitClip(page, 'idle-loop');
+  const root = page.locator('.masko-player');
+  expect(await root.getAttribute('role')).toBeNull();
+  expect(await root.getAttribute('tabindex')).toBeNull();
+  await page.locator('#m').hover();
+  await page.locator('#m').click();
+  await page.keyboard.press('Enter');
+  // Two loops later, only the idle loop has played (rules 3.5).
+  await waitClip(page, 'idle-loop', 3);
+  const poked = await page.evaluate(() =>
+    (window as unknown as Win).events.some((e) => e.event === 'clip' && e.clip === 'poke')
+  );
+  expect(poked).toBe(false);
+  await page.evaluate(() =>
+    (window as unknown as { handle: { fire(n: string, o: { instant: boolean }): void } }).handle.fire(
+      'action::click',
+      { instant: true }
+    )
+  );
+  await waitClip(page, 'poke');
+  const { events } = await result(page);
+  expect(events.filter((e) => e.event === 'error')).toEqual([]);
 });
 
 test('autoplay blocked: the first frame under a tap-to-play overlay; a tap starts it', async ({ page }) => {
@@ -472,28 +484,6 @@ test('mounted in a hidden element: measured once it shows, not a square for good
     return { sized: h(sized), auto: h(auto) };
   });
   expect(heights).toEqual({ sized: 120, auto: 200 });
-});
-
-test('keyboard: the mascot is a focusable button, Enter and Space click it', async ({ page }) => {
-  await start(page, { ripple: true });
-  await waitClip(page, 'idle-loop');
-  const root = page.locator('.masko-player');
-  expect(await root.getAttribute('role')).toBe('button');
-  expect(await root.getAttribute('tabindex')).toBe('0');
-  expect(await root.getAttribute('aria-label')).toBe('Test bot');
-  await page.keyboard.press('Tab');
-  await expect(root).toBeFocused();
-  await page.keyboard.press('Enter');
-  await waitClip(page, 'poke');
-  expect(await page.locator('.masko-ripple').count()).toBe(1);
-  // Back to idle, then Space; the page does not scroll.
-  await page.evaluate(() => (window as unknown as Win).handle.set('working', false));
-  await waitClip(page, 'idle-loop', 2, 15_000);
-  await page.keyboard.press(' ');
-  await waitClip(page, 'poke', 2);
-  expect(await page.evaluate(() => scrollY)).toBe(0);
-  const { events } = await result(page);
-  expect(events.filter((e) => e.event === 'error')).toEqual([]);
 });
 
 test('page CSS cannot turn the swap into a crossfade', async ({ page }) => {

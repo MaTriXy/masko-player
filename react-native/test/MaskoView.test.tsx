@@ -98,7 +98,6 @@ describe('props', () => {
     expect(fake.requested).toEqual(['MaskoPlayer']);
     expect(JSON.parse(props().delivery)).toEqual(delivery);
     expect(props().sound).toBe(true);
-    expect(props().pointer).toBe(true);
     expect(props().autoPlay).toBeUndefined();
     expect(props().refreshes).toBe(false);
     expect(props().style).toEqual({ width: 200, height: 200 });
@@ -166,11 +165,9 @@ describe('props', () => {
     expect(props().refreshes).toBe(true);
   });
 
-  it('passes pointer, so the app can handle the person itself', () => {
-    const view = render(<MaskoView delivery={delivery} pointer={false} />);
-    expect(props().pointer).toBe(false);
-    view.rerender(<MaskoView delivery={delivery} />);
-    expect(props().pointer).toBe(true);
+  it('drops the deprecated pointer prop: the app handles the person itself', () => {
+    render(<MaskoView delivery={delivery} pointer={false} />);
+    expect('pointer' in props()).toBe(false);
   });
 });
 

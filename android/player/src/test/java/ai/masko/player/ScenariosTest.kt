@@ -218,8 +218,6 @@ private fun act(p: IdealPlayer, step: JSONObject) {
             }
         }
         step.has("fire") -> e.fire(step.getString("fire"), instant, now)
-        step.has("click") -> e.click(now)
-        step.has("hover") -> e.hover(step.getBoolean("hover"), now)
         step.has("advance") -> {
             p.advanceTo(now.toLong() + step.getLong("advance"))
             emptyList()

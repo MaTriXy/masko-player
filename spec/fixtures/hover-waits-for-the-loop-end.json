@@ -1,7 +1,7 @@
 {
-  "name": "pointer-leaves-starts-the-way-back-at-once",
-  "about": "The pointer leaving mid hover loop starts the way back at once, and it plays its move.",
-  "rules": ["5.2", "3.5"],
+  "name": "hover-waits-for-the-loop-end",
+  "about": "The pointer over the mascot is a value like any other: its move waits for the end of the loop on screen, and so does the way back when it leaves.",
+  "rules": ["3.5", "5.3"],
   "canvas": "ko-coffee",
   "steps": [
     {
@@ -15,9 +15,32 @@
       }
     },
     {
-      "hover": true,
+      "advance": 1500,
       "expect": {
-        "clock": 0,
+        "clock": 1500,
+        "pose": "idle",
+        "clip": "loop-idle",
+        "next": null,
+        "events": []
+      }
+    },
+    {
+      "set": ["behavior::pointerHover", true],
+      "expect": {
+        "clock": 1500,
+        "pose": "idle",
+        "clip": "loop-idle",
+        "next": {
+          "clip": "enter-hover-perk",
+          "at": "end"
+        },
+        "events": []
+      }
+    },
+    {
+      "loopEnded": true,
+      "expect": {
+        "clock": 4000,
         "pose": "idle",
         "clip": "enter-hover-perk",
         "next": null,
@@ -27,7 +50,7 @@
     {
       "clipEnded": true,
       "expect": {
-        "clock": 1600,
+        "clock": 5600,
         "pose": "hover-perk",
         "clip": "loop-hover-perk",
         "next": null,
@@ -37,17 +60,28 @@
     {
       "advance": 1000,
       "expect": {
-        "clock": 2600,
-        "pose": "hover-perk",
+        "clock": 6600,
         "clip": "loop-hover-perk",
-        "next": null,
         "events": []
       }
     },
     {
-      "hover": false,
+      "set": ["behavior::pointerHover", false],
       "expect": {
-        "clock": 2600,
+        "clock": 6600,
+        "pose": "hover-perk",
+        "clip": "loop-hover-perk",
+        "next": {
+          "clip": "return-hover-perk",
+          "at": "end"
+        },
+        "events": []
+      }
+    },
+    {
+      "loopEnded": true,
+      "expect": {
+        "clock": 9600,
         "pose": "hover-perk",
         "clip": "return-hover-perk",
         "next": null,
@@ -57,7 +91,7 @@
     {
       "clipEnded": true,
       "expect": {
-        "clock": 4418,
+        "clock": 11418,
         "pose": "idle",
         "clip": "loop-idle",
         "next": null,

@@ -336,14 +336,6 @@ class MaskoPlayer internal constructor(
         listeners.clear()
     }
 
-    // ------------------------------------------------------------------ input from the view
-
-    /** The person tapped the mascot (rules.md 3.5). */
-    internal fun click() = appCall("click") { engine.click(it) }
-
-    /** The pointer entered or left the mascot (rules.md 3.5). */
-    internal fun hover(on: Boolean) = appCall("hover") { engine.hover(on, it) }
-
     /** The view is on screen or not: off screen, the player pauses itself. */
     internal fun setHostActive(active: Boolean) {
         if (destroyed) return

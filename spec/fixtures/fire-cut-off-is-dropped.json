@@ -1,0 +1,88 @@
+{
+  "name": "fire-cut-off-is-dropped",
+  "about": "A newer reaction cuts the move of an older one: the older fire is dropped there and never wins later, even with a higher Any State priority.",
+  "rules": ["3.3", "10.1"],
+  "canvas": "ko-coffee",
+  "patch": {
+    "edges": {
+      "enter-startled-stumble": {
+        "priority": 100
+      },
+      "enter-victory-clap": {
+        "priority": 101
+      }
+    }
+  },
+  "steps": [
+    {
+      "start": true,
+      "expect": {
+        "clock": 0,
+        "pose": "idle",
+        "clip": "loop-idle",
+        "next": null,
+        "events": ["pose:idle", "shown:loop-idle"]
+      }
+    },
+    {
+      "fire": "error",
+      "expect": {
+        "clock": 0,
+        "pose": "idle",
+        "clip": "loop-idle",
+        "next": {
+          "clip": "enter-startled-stumble",
+          "at": "end"
+        },
+        "events": [],
+        "fired": ["behavior::error"]
+      }
+    },
+    {
+      "loopEnded": true,
+      "expect": {
+        "clock": 4000,
+        "pose": "idle",
+        "clip": "enter-startled-stumble",
+        "next": null,
+        "events": ["shown:enter-startled-stumble"],
+        "fired": ["behavior::error"]
+      }
+    },
+    {
+      "advance": 500,
+      "expect": {
+        "clock": 4500,
+        "clip": "enter-startled-stumble",
+        "events": []
+      }
+    },
+    {
+      "fire": "celebrate",
+      "instant": true,
+      "expect": {
+        "clock": 4500,
+        "pose": "idle",
+        "clip": "enter-victory-clap",
+        "next": null,
+        "events": [
+          "interrupted:enter-startled-stumble",
+          "spent:behavior::error:unused",
+          "shown:enter-victory-clap"
+        ],
+        "fired": ["behavior::celebrate"]
+      }
+    },
+    {
+      "clipEnded": true,
+      "expect": {
+        "clock": 6500,
+        "pose": "victory-clap",
+        "clip": "loop-victory-clap",
+        "next": null,
+        "events": ["pose:victory-clap", "shown:loop-victory-clap"],
+        "fired": ["behavior::celebrate"]
+      }
+    }
+  ]
+}

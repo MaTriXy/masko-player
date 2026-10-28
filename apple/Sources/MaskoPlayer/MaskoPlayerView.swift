@@ -79,11 +79,10 @@ extension MaskoPlayer {
 #if canImport(UIKit)
 import UIKit
 
-/// Shows a `MaskoPlayer` and turns the person's taps and pointer into its
-/// values (rules.md 3.5): a tap, or Return or Space while focused, fires
-/// `click`; an iPad pointer over the mascot sets `pointerHover`. With
-/// `pointer` off it takes no touches and the app sends them itself. Out of
-/// its window or with the app in the background, the player pauses itself.
+/// Shows a `MaskoPlayer`. The view does not watch the person: the app sets
+/// `behavior::pointerHover` and fires `action::click` itself (rules.md 3.5),
+/// with its own gestures, on this view or any other. Out of its window or
+/// with the app in the background, the player pauses itself.
 ///
 /// A player shows in one view at a time: the newest view given it that is
 /// in a window. A player the view lets go of pauses unless another view
@@ -92,35 +91,28 @@ public final class MaskoPlayerView: UIView, StageHost {
     public var player: MaskoPlayer? {
         didSet {
             guard player !== oldValue else { return }
-            if hovering { oldValue?.hover(false) }
-            hovering = false
             oldValue?.removeHost(self)
             player?.addHost(self)
             setNeedsLayout()
         }
     }
 
-    /// Taps, keys and the pointer reach the player as `click` and
-    /// `pointerHover`. Off, the view takes no touches, so an app that
-    /// handles the person itself calls `fire` and `set` (the web player's
-    /// `pointer: false`).
-    public var pointer = true {
-        didSet {
-            guard pointer != oldValue else { return }
-            applyPointer()
-        }
-    }
+    /// Ignored: the view no longer watches the pointer (rules.md 3.5).
+    @available(*, deprecated, message: "The view no longer watches the pointer: the app sets behavior::pointerHover and fires action::click itself.")
+    public var pointer = true
 
-    private var hovering = false
     private var backgrounded = false
 
-    public init(player: MaskoPlayer? = nil, pointer: Bool = true) {
+    public init(player: MaskoPlayer? = nil) {
         super.init(frame: .zero)
         setUp()
-        self.pointer = pointer
-        applyPointer()
         self.player = player
         player?.addHost(self)
+    }
+
+    @available(*, deprecated, message: "The view no longer watches the pointer: use init(player:).")
+    public convenience init(player: MaskoPlayer? = nil, pointer: Bool) {
+        self.init(player: player)
     }
 
     public required init?(coder: NSCoder) {
@@ -132,8 +124,6 @@ public final class MaskoPlayerView: UIView, StageHost {
         backgroundColor = .clear
         isAccessibilityElement = true
         accessibilityTraits = .image
-        addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(tapped)))
-        addGestureRecognizer(UIHoverGestureRecognizer(target: self, action: #selector(hovered(_:))))
         let center = NotificationCenter.default
         center.addObserver(
             self, selector: #selector(wentToBackground), name: UIApplication.didEnterBackgroundNotification,
@@ -141,14 +131,6 @@ public final class MaskoPlayerView: UIView, StageHost {
         center.addObserver(
             self, selector: #selector(cameToForeground), name: UIApplication.willEnterForegroundNotification,
             object: nil)
-    }
-
-    private func applyPointer() {
-        isUserInteractionEnabled = pointer
-        if !pointer, hovering {
-            hovering = false
-            player?.hover(false)
-        }
     }
 
     var stageSuperlayer: CALayer? { layer }
@@ -160,15 +142,6 @@ public final class MaskoPlayerView: UIView, StageHost {
         #else
         window?.screen.scale ?? UIScreen.main.scale
         #endif
-    }
-
-    public override func willMove(toWindow newWindow: UIWindow?) {
-        super.willMove(toWindow: newWindow)
-        // The pointer cannot stay over a view that leaves its window.
-        if hovering {
-            hovering = false
-            player?.hover(false)
-        }
     }
 
     public override func didMoveToWindow() {
@@ -190,52 +163,15 @@ public final class MaskoPlayerView: UIView, StageHost {
         super.layoutSubviews()
         player?.updateHost()
     }
-
-    @objc private func tapped() {
-        player?.click()
-    }
-
-    @objc private func hovered(_ recognizer: UIHoverGestureRecognizer) {
-        switch recognizer.state {
-        case .began, .changed:
-            if !hovering {
-                hovering = true
-                player?.hover(true)
-            }
-        default:
-            if hovering {
-                hovering = false
-                player?.hover(false)
-            }
-        }
-    }
-
-    public override var canBecomeFocused: Bool { pointer }
-
-    public override func pressesBegan(_ presses: Set<UIPress>, with event: UIPressesEvent?) {
-        let keys = presses.compactMap { $0.key?.keyCode }
-        if pointer, keys.contains(.keyboardReturnOrEnter) || keys.contains(.keyboardSpacebar) {
-            player?.click()
-        } else {
-            super.pressesBegan(presses, with: event)
-        }
-    }
-
-    public override func accessibilityActivate() -> Bool {
-        guard pointer else { return false }
-        player?.click()
-        return true
-    }
 }
 
 #elseif canImport(AppKit)
 import AppKit
 
-/// Shows a `MaskoPlayer` and turns the person's clicks and pointer into its
-/// values (rules.md 3.5): a click, or Return or Space while focused, fires
-/// `click`; the pointer over the mascot sets `pointerHover`. With `pointer`
-/// off it takes no mouse events and the app sends them itself. Out of its
-/// window, the player pauses itself.
+/// Shows a `MaskoPlayer`. The view does not watch the person: the app sets
+/// `behavior::pointerHover` and fires `action::click` itself (rules.md 3.5),
+/// with its own tracking and gestures. Out of its window, the player pauses
+/// itself.
 ///
 /// A player shows in one view at a time: the newest view given it that is
 /// in a window. A player the view lets go of pauses unless another view
@@ -244,38 +180,26 @@ public final class MaskoPlayerView: NSView, StageHost {
     public var player: MaskoPlayer? {
         didSet {
             guard player !== oldValue else { return }
-            if hovering { oldValue?.hover(false) }
-            hovering = false
             oldValue?.removeHost(self)
             player?.addHost(self)
             needsLayout = true
         }
     }
 
-    /// Clicks, keys and the pointer reach the player as `click` and
-    /// `pointerHover`. Off, the view takes no mouse events (they go to the
-    /// view or window behind it), so an app that handles the person itself
-    /// calls `fire` and `set` (the web player's `pointer: false`).
-    public var pointer = true {
-        didSet {
-            guard pointer != oldValue else { return }
-            applyPointer()
-        }
-    }
+    /// Ignored: the view no longer watches the pointer (rules.md 3.5).
+    @available(*, deprecated, message: "The view no longer watches the pointer: the app sets behavior::pointerHover and fires action::click itself.")
+    public var pointer = true
 
-    private var hovering = false
-    private var tracking: NSTrackingArea?
-    private var downAt: NSPoint?
-    /// A press that moves further than this is a drag, not a click.
-    private let clickSlop: CGFloat = 4
-
-    public init(player: MaskoPlayer? = nil, pointer: Bool = true) {
+    public init(player: MaskoPlayer? = nil) {
         super.init(frame: .zero)
         setUp()
-        self.pointer = pointer
-        applyPointer()
         self.player = player
         player?.addHost(self)
+    }
+
+    @available(*, deprecated, message: "The view no longer watches the pointer: use init(player:).")
+    public convenience init(player: MaskoPlayer? = nil, pointer: Bool) {
+        self.init(player: player)
     }
 
     public required init?(coder: NSCoder) {
@@ -290,31 +214,10 @@ public final class MaskoPlayerView: NSView, StageHost {
         setAccessibilityRole(.image)
     }
 
-    private func applyPointer() {
-        if !pointer {
-            downAt = nil
-            if hovering {
-                hovering = false
-                player?.hover(false)
-            }
-        }
-        updateTrackingAreas()
-    }
-
     var stageSuperlayer: CALayer? { layer }
     var isShowing: Bool { window != nil }
     var stageBounds: CGRect { bounds }
     var stageScale: CGFloat { window?.backingScaleFactor ?? NSScreen.main?.backingScaleFactor ?? 2 }
-
-    public override func viewWillMove(toWindow newWindow: NSWindow?) {
-        super.viewWillMove(toWindow: newWindow)
-        // A view that leaves its window gets no mouseExited: the pointer is
-        // no longer over it.
-        if hovering {
-            hovering = false
-            player?.hover(false)
-        }
-    }
 
     public override func viewDidMoveToWindow() {
         super.viewDidMoveToWindow()
@@ -331,72 +234,6 @@ public final class MaskoPlayerView: NSView, StageHost {
     public override func viewDidChangeBackingProperties() {
         super.viewDidChangeBackingProperties()
         needsLayout = true
-    }
-
-    public override func updateTrackingAreas() {
-        super.updateTrackingAreas()
-        if let tracking {
-            removeTrackingArea(tracking)
-            self.tracking = nil
-        }
-        guard pointer else { return }
-        let area = NSTrackingArea(
-            rect: .zero, options: [.mouseEnteredAndExited, .activeAlways, .inVisibleRect], owner: self)
-        addTrackingArea(area)
-        tracking = area
-    }
-
-    public override func mouseEntered(with event: NSEvent) {
-        if pointer, !hovering {
-            hovering = true
-            player?.hover(true)
-        }
-    }
-
-    public override func mouseExited(with event: NSEvent) {
-        if hovering {
-            hovering = false
-            player?.hover(false)
-        }
-    }
-
-    public override func hitTest(_ point: NSPoint) -> NSView? {
-        pointer ? super.hitTest(point) : nil
-    }
-
-    public override func acceptsFirstMouse(for event: NSEvent?) -> Bool { pointer }
-
-    public override func mouseDown(with event: NSEvent) {
-        guard pointer else { return super.mouseDown(with: event) }
-        downAt = event.locationInWindow
-    }
-
-    public override func mouseUp(with event: NSEvent) {
-        guard pointer else { return super.mouseUp(with: event) }
-        defer { downAt = nil }
-        guard let downAt else { return }
-        let up = event.locationInWindow
-        let inside = bounds.contains(convert(up, from: nil))
-        if inside, hypot(up.x - downAt.x, up.y - downAt.y) <= clickSlop {
-            player?.click()
-        }
-    }
-
-    public override var acceptsFirstResponder: Bool { pointer }
-
-    public override func keyDown(with event: NSEvent) {
-        // Return, keypad Enter, Space.
-        if pointer, [36, 76, 49].contains(event.keyCode) {
-            player?.click()
-        } else {
-            super.keyDown(with: event)
-        }
-    }
-
-    public override func accessibilityPerformPress() -> Bool {
-        guard pointer else { return false }
-        player?.click()
-        return true
     }
 }
 #endif

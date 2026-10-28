@@ -22,7 +22,6 @@ class MaskoPlayerModule : Module() {
       Prop("clip") { view: MaskoNativeView, url: String? -> view.clip = url }
       Prop("autoPlay") { view: MaskoNativeView, on: Boolean? -> view.autoPlay = on }
       Prop("sound") { view: MaskoNativeView, on: Boolean? -> view.sound = on ?: true }
-      Prop("pointer") { view: MaskoNativeView, on: Boolean? -> view.pointer = on ?: true }
       Prop("refreshes") { view: MaskoNativeView, on: Boolean? -> view.refreshes = on ?: false }
 
       OnViewDidUpdateProps { view: MaskoNativeView -> view.propsChanged() }

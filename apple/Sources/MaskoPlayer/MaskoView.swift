@@ -1,39 +1,40 @@
 import SwiftUI
 
-/// A `MaskoPlayer` in SwiftUI: `MaskoView(player: player)`. With `pointer`
-/// off the view takes no clicks, taps or pointer, and the app sends them
-/// itself (`MaskoPlayerView.pointer`).
+/// A `MaskoPlayer` in SwiftUI: `MaskoView(player: player)`. The view does not
+/// watch the person: the app sets `behavior::pointerHover` and fires
+/// `action::click` itself, with SwiftUI's own gestures (rules.md 3.5).
 public struct MaskoView {
     public let player: MaskoPlayer
-    public let pointer: Bool
 
-    public init(player: MaskoPlayer, pointer: Bool = true) {
+    public init(player: MaskoPlayer) {
         self.player = player
-        self.pointer = pointer
+    }
+
+    @available(*, deprecated, message: "The view no longer watches the pointer: use init(player:).")
+    public init(player: MaskoPlayer, pointer: Bool) {
+        self.player = player
     }
 }
 
 #if canImport(UIKit)
 extension MaskoView: UIViewRepresentable {
     public func makeUIView(context: Context) -> MaskoPlayerView {
-        MaskoPlayerView(player: player, pointer: pointer)
+        MaskoPlayerView(player: player)
     }
 
     public func updateUIView(_ view: MaskoPlayerView, context: Context) {
         view.player = player
-        view.pointer = pointer
     }
 }
 
 #elseif canImport(AppKit)
 extension MaskoView: NSViewRepresentable {
     public func makeNSView(context: Context) -> MaskoPlayerView {
-        MaskoPlayerView(player: player, pointer: pointer)
+        MaskoPlayerView(player: player)
     }
 
     public func updateNSView(_ view: MaskoPlayerView, context: Context) {
         view.player = player
-        view.pointer = pointer
     }
 }
 #endif

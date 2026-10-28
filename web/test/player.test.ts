@@ -257,7 +257,7 @@ test('clipShown: at the swap, with the play time of the first frame, and at once
 test('clipShown is never reported for a showing a later command overtook', async (t) => {
   const reports = shownReports(t);
   const { host, player, b } = await started();
-  player.click();
+  player.fire('action::click', { instant: true });
   await settle();
   assert.deepEqual(b.loads, [blob('poke')]);
   await host.advance(300);
@@ -679,15 +679,16 @@ test('values set before play are read by the start, at play time 0', async () =>
   assert.deepEqual(a.loads.at(-1), blob('to-work'), 'the move starts on entry (rules 11.1, 5.1)');
 });
 
-test('click and hover reach the engine as person inputs', async () => {
+test('a click the app fires waits for the end of the loop unless instant', async () => {
   const { player, events, b } = await started();
-  player.click();
+  player.fire('action::click');
   await settle();
-  assert.deepEqual(b.loads, [blob('poke')], 'a person start begins at once (rules 5.2)');
+  assert.deepEqual(b.loads, [], 'it waits for the end of the loop (rules 5.2, 5.3)');
+  player.fire('action::click', { instant: true });
+  await settle();
+  assert.deepEqual(b.loads, [blob('poke')], 'instant starts it now (rules 5.8)');
   b.frame();
   assert.ok(events.includes('clip:poke'));
-  player.hover(true);
-  await settle();
   assert.ok(!events.some((e) => e.startsWith('error:')));
 });
 
@@ -791,9 +792,9 @@ test('an app call made in an event handler runs after the batch that told it, ne
     videos: files('drop')
   });
   const { host, player, events, a, b } = await started({ delivery: d });
-  // A person input set as the pose is entered starts its move at once (rules 5.2).
+  // An instant value set as the pose is entered starts its move at once (rules 5.8).
   player.on('pose', ({ pose }) => {
-    if (pose === 'working') player.set('heldContact', true);
+    if (pose === 'working') player.set('heldContact', true, { instant: true });
   });
   player.set('working', true);
   await host.advance(2000);

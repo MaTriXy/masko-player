@@ -39,15 +39,6 @@ const FAMILIES: &[&str] = &[
     "rhythm",
 ];
 
-/// Inputs set by the person, whose starts happen at once (rules.md 5.2).
-const PERSON: &[&str] = &[
-    "behavior::pointerHover",
-    "action::click",
-    "behavior::heldContact",
-    "behavior::heldShake",
-    "behavior::falling",
-];
-
 /// A value the app sets or a condition reads.
 #[derive(Debug, Clone, Copy, PartialEq, Serialize)]
 #[serde(untagged)]
@@ -240,9 +231,6 @@ enum Boundary {
     None,
     Entry,
     End,
-    /// Not a boundary: a person input turned off (rules.md 5.2). It holds
-    /// the start decided before, which keeps its moment.
-    Release(Option<usize>),
 }
 
 /// Where the extra-clip rolls come from (rules.md 7.3): the fixed numbers
@@ -375,6 +363,9 @@ pub struct Engine {
     held: HashMap<String, Value>,
     /// The held values set with instant (rules.md 5.8).
     held_instant: HashSet<String>,
+    /// The name being turned off with instant, and the start decided before,
+    /// while its change is decided (rules.md 5.8).
+    off_now: Option<(String, Option<usize>)>,
     fires: Vec<Fire>,
     pose: Option<String>,
     screen: Option<Screen>,
@@ -402,6 +393,7 @@ impl Engine {
             chain: (0, 0),
             held: HashMap::new(),
             held_instant: HashSet::new(),
+            off_now: None,
             fires: Vec::new(),
             pose: None,
             screen: None,
@@ -462,18 +454,6 @@ impl Engine {
         self.run_until(now, true);
         self.fire_name(name, instant);
         self.take()
-    }
-
-    /// The person clicked the mascot: always `action::click`, whatever the
-    /// canvas declares (rules.md 3.5).
-    pub fn click(&mut self, now: u64) -> Vec<Command> {
-        self.fire("action::click", false, now)
-    }
-
-    /// The pointer entered or left the mascot: always
-    /// `behavior::pointerHover` (rules.md 3.5).
-    pub fn hover(&mut self, on: bool, now: u64) -> Vec<Command> {
-        self.set("behavior::pointerHover", Value::Bool(on), false, now)
     }
 
     /// Play time moved on: runs every timer and safety net due.
@@ -545,7 +525,7 @@ impl Engine {
                 // A start decided for the end of the failed clip leaves the
                 // still at once (rules.md 5.3).
                 if self.screen.is_some_and(|s| s.kind == ScreenKind::Still) {
-                    self.consider(Boundary::None, false);
+                    self.consider(Boundary::None);
                 }
             }
             ScreenKind::Still => {}
@@ -736,14 +716,19 @@ impl Engine {
                 self.fire_name(&name, instant);
             } else if let Some(i) = self.fire_index(&name) {
                 self.fires.remove(i);
-                self.consider(Boundary::None, false);
+                self.consider(Boundary::None);
             }
             return;
         }
         // Only a value that is on stays instant; a set without instant ends
-        // it (rules.md 5.8).
+        // it. Turned off with instant, it makes the start this change
+        // decides happen now (rules.md 5.8).
+        let off_now = instant && value.number() == 0.0;
         let instant = instant && value.number() != 0.0;
-        if self.held.get(&name) == Some(&value) && self.held_instant.contains(&name) == instant {
+        if self.held.get(&name) == Some(&value)
+            && self.held_instant.contains(&name) == instant
+            && !off_now
+        {
             return;
         }
         if instant {
@@ -751,17 +736,12 @@ impl Engine {
         } else {
             self.held_instant.remove(&name);
         }
-        // The person stopping counts as the person (rules.md 5.2).
-        let released = PERSON.contains(&name.as_str())
-            && self.held.get(&name).is_some_and(|v| v.number() != 0.0)
-            && value.number() == 0.0;
+        if off_now {
+            self.off_now = Some((name.clone(), self.decided.map(|d| d.plan.edge)));
+        }
         self.held.insert(name, value);
-        let boundary = if released {
-            Boundary::Release(self.decided.map(|d| d.plan.edge))
-        } else {
-            Boundary::None
-        };
-        self.consider(boundary, false);
+        self.consider(Boundary::None);
+        self.off_now = None;
     }
 
     fn fire_name(&mut self, name: &str, instant: bool) {
@@ -770,7 +750,7 @@ impl Engine {
             // A pending fire fired again with instant is instant (rules.md 5.8).
             if instant && !self.fires[i].instant {
                 self.fires[i].instant = true;
-                self.consider(Boundary::None, false);
+                self.consider(Boundary::None);
             }
             return;
         }
@@ -779,7 +759,7 @@ impl Engine {
             claim: None,
             instant,
         });
-        self.consider(Boundary::None, false);
+        self.consider(Boundary::None);
     }
 
     fn spend(&mut self, name: &str) {
@@ -809,6 +789,33 @@ impl Engine {
             if f.claim.as_ref().is_some_and(&which) {
                 f.claim = None;
             }
+        }
+    }
+
+    /// Drops every unclaimed fire that neither the decided start nor a
+    /// named clip of this pose wants: a fire is used or dropped, never kept
+    /// for later (rules.md 3.3).
+    fn drop_unwanted(&mut self) {
+        let mut wanted = self
+            .decided
+            .map(|d| self.holding_names(d.plan.edge))
+            .unwrap_or_default();
+        if let Some(p) = self.pose.as_deref() {
+            for i in self.g.pose_clips(p) {
+                let e = &self.g.edges[i];
+                if e.has_video && !e.groups.is_empty() {
+                    wanted.extend(self.holding_names(i));
+                }
+            }
+        }
+        let unwanted: Vec<String> = self
+            .fires
+            .iter()
+            .filter(|f| f.claim.is_none() && !wanted.contains(&f.name))
+            .map(|f| f.name.clone())
+            .collect();
+        for n in unwanted {
+            self.spend(&n);
         }
     }
 
@@ -931,9 +938,9 @@ impl Engine {
                 }
             }
             Boundary::End => return At::Time(self.now),
-            Boundary::None | Boundary::Release(_) => {}
+            Boundary::None => {}
         }
-        if self.at_once(plan, boundary) {
+        if plan.instant {
             return At::Time(self.now);
         }
         if no_conditions {
@@ -946,17 +953,21 @@ impl Engine {
         At::End
     }
 
-    /// A person input that is on, in one of the winner's holding groups.
-    fn by_person(&self, plan: Plan) -> bool {
-        self.holding_groups(plan.edge).iter().any(|g| {
-            g.iter()
-                .any(|c| PERSON.contains(&c.input.as_str()) && self.read(&c.input).number() != 0.0)
-        })
-    }
-
     /// An instant name (rules.md 5.8) in one of the edge's holding groups.
+    /// While a name is turned off with instant, also an edge with conditions
+    /// that reads it, directly or for a behavior through `behavior::rest`, or
+    /// that was not the start decided before that change.
     fn instant(&self, edge: usize) -> bool {
-        self.holding_groups(edge)
+        let groups = self.holding_groups(edge);
+        if let (Some((n, before)), false) = (&self.off_now, groups.is_empty()) {
+            let reads = |input: &str| {
+                input == n || (input == "behavior::rest" && n.starts_with("behavior::"))
+            };
+            if *before != Some(edge) || groups.iter().any(|g| g.iter().any(|c| reads(&c.input))) {
+                return true;
+            }
+        }
+        groups
             .iter()
             .any(|g| g.iter().any(|c| self.is_instant(&c.input)))
     }
@@ -967,22 +978,9 @@ impl Engine {
         plan.instant && self.g.edges[plan.edge].source.is_none()
     }
 
-    /// A start that happens at once from a pose clip or a still: one by the
-    /// person (rules.md 5.2), a new one the person's stop decides (5.2), or an
-    /// instant one (5.8). During a move only an instant one does (10.1).
-    fn at_once(&self, plan: Plan, boundary: Boundary) -> bool {
-        let released = match boundary {
-            Boundary::Release(before) => {
-                before != Some(plan.edge) && !self.g.edges[plan.edge].groups.is_empty()
-            }
-            _ => false,
-        };
-        plan.instant || released || self.by_person(plan)
-    }
-
     /// Decides (4) and starts now when the moment is now. True when a start
     /// happened.
-    fn consider(&mut self, boundary: Boundary, spend_unclaimed_first: bool) -> bool {
+    fn consider(&mut self, boundary: Boundary) -> bool {
         if self.pose.is_none() {
             return false;
         }
@@ -995,12 +993,11 @@ impl Engine {
         if let Some(s) = self.screen {
             if s.kind == ScreenKind::Move {
                 self.decided = None;
-                if matches!(boundary, Boundary::None | Boundary::Release(_)) {
+                if boundary == Boundary::None {
                     if let Some(Decision::Start(plan)) = self.decide() {
                         // Only an instant start cuts a move; every other
-                        // start, a person's included, waits for its end
-                        // (rules.md 10). An instant Any State start cuts it
-                        // even toward its own target.
+                        // start waits for its end (rules.md 10). An instant
+                        // Any State start cuts it even toward its own target.
                         let other = self.cuts(plan) || Some(plan.hop) != s.edge;
                         if plan.instant && other {
                             self.interrupt(plan);
@@ -1015,15 +1012,17 @@ impl Engine {
             Some(Decision::Start(plan)) => plan,
             _ => {
                 self.decided = None;
+                self.drop_unwanted();
                 return false;
             }
         };
         let at = self.moment(plan, boundary);
         if at == At::Time(self.now) {
-            self.start_plan(plan, spend_unclaimed_first);
+            self.start_plan(plan);
             return true;
         }
         self.decided = Some(Decided { plan, at });
+        self.drop_unwanted();
         false
     }
 
@@ -1035,10 +1034,10 @@ impl Engine {
         }
         let target = plan.target(&self.g).to_owned();
         self.unclaim_where(|c| c.pose != target);
-        self.start_plan(plan, false);
+        self.start_plan(plan);
     }
 
-    fn start_plan(&mut self, plan: Plan, spend_unclaimed_first: bool) {
+    fn start_plan(&mut self, plan: Plan) {
         let p = self.pose.clone().unwrap_or_default();
         let target = plan.target(&self.g).to_owned();
         self.spend_where(|c| c.as_ref().is_none_or(|c| c.pose != p));
@@ -1053,9 +1052,9 @@ impl Engine {
             },
         );
         self.decided = None;
-        if spend_unclaimed_first {
-            self.spend_where(|c| c.is_some());
-        }
+        // A fire this start does not take is dropped, among them those of a
+        // start it replaces or cuts (rules.md 3.3).
+        self.spend_where(|c| c.is_some());
         if self.cuts(plan) {
             // Straight into the target, with no clip on the way (rules.md 5.8).
             let target = plan.target(&self.g).to_owned();
@@ -1112,12 +1111,14 @@ impl Engine {
             self.push_error("clipless_cycle", Some(pose));
             false
         } else {
-            self.consider(Boundary::Entry, false)
+            self.consider(Boundary::Entry)
         };
         if !started {
-            // A route that did not continue here ends (rules.md 6.4).
+            // A route that did not continue here ends, and the fires it took
+            // are dropped (rules.md 3.3, 6.4).
             let here = pose.to_owned();
             self.unclaim_where(|c| c.route && c.pose != here);
+            self.drop_unwanted();
             let choice = self.choose_clip(None);
             self.show_pose(choice);
         }
@@ -1254,7 +1255,7 @@ impl Engine {
         self.arrive(pose);
         let main = self.main_clip(pose);
         self.show_pose(main);
-        self.consider(Boundary::None, false);
+        self.consider(Boundary::None);
     }
 
     fn play_move_now(&mut self, edge: &str) {
@@ -1458,7 +1459,7 @@ impl Engine {
         if ended.is_some() {
             self.last_ended = ended;
         }
-        if self.consider(Boundary::End, true) {
+        if self.consider(Boundary::End) {
             return;
         }
         let here = p.clone();
@@ -1466,13 +1467,13 @@ impl Engine {
             !c.as_ref()
                 .is_some_and(|c| c.pose == here && (c.clip.is_none() || c.clip == ended))
         });
-        if self.consider(Boundary::End, true) {
+        if self.consider(Boundary::End) {
             return;
         }
         let choice = self.choose_clip(ended);
         let spent = self.fires.iter().any(|f| f.claim.is_none());
         self.spend_where(|c| c.is_some());
-        if spent && self.consider(Boundary::End, false) {
+        if spent && self.consider(Boundary::End) {
             return;
         }
         self.show_pose(choice);
@@ -1564,7 +1565,7 @@ impl Engine {
                     }
                 }
                 Due::Wake => {
-                    self.consider(Boundary::None, false);
+                    self.consider(Boundary::None);
                 }
             }
         }

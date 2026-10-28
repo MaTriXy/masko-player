@@ -83,21 +83,20 @@ class ViewHostTest {
     }
 
     @Test
-    fun withPointerOffTheViewTakesNoTaps() {
+    fun theViewDoesNotWatchThePerson() {
         ActivityScenario.launch(TestActivity::class.java).use { scenario ->
             lateinit var view: MaskoPlayerView
             scenario.onActivity { activity ->
                 view = MaskoPlayerView(activity)
-                view.pointer = false
                 activity.root.addView(view, FrameLayout.LayoutParams(SIZE, SIZE))
                 view.load(DELIVERY).addListener(listener)
             }
             waitFor("the first clip") { count("clip:loop-red") >= 1 }
+            // Taps go to the view behind; the app listens itself (rules.md 3.5).
             assertFalse(main { view.isClickable })
             assertFalse("no click listener runs", main { view.performClick() })
-            main { view.pointer = true }
-            assertTrue(main { view.isClickable })
-            assertTrue("the click reaches the player", main { view.performClick() })
+            main { view.setOnClickListener { view.player!!.fire("action::click") } }
+            assertTrue("the app's own listener runs", main { view.performClick() })
             main { view.player!!.destroy() }
         }
         assertTrue("errors: $heard", heard.none { it.startsWith("error:") })

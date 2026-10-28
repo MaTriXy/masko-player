@@ -65,11 +65,12 @@ whose length cannot be read, reports `clip_failed`.
 - `autoPlay` is read when a release loads. With `false` the mascot shows its
   first frame and waits for `play()`. The prop wins over the graph's
   `autoPlay`; left out, the graph decides.
-- Taps on the mascot reach the canvas as `action::click`, and the pointer
-  (iPad, a mouse on Android) as `behavior::pointerHover`. Dragging and
-  physics stay in the app, which sets `heldContact`, `heldShake` and
-  `falling` itself. With `pointer={false}` the mascot takes no touches, and
-  the app sends the person itself with `fire` and `set`.
+- The mascot does not watch touches or the pointer. The app sends them
+  itself, from a `Pressable` around the mascot for example, as it does for
+  dragging and physics: `ref.current?.fire('action::click')`,
+  `set('behavior::pointerHover', on)`, and `heldContact`, `heldShake` and
+  `falling`. Each waits for the end of the loop on screen unless the app
+  passes `{ instant: true }`.
 - `onError`'s `detail` says what the error is about: the edge of a clip
   error, the name of a refused value, the pose of a pose error.
 - A new release in `delivery` loads a new player. A delivery of the same

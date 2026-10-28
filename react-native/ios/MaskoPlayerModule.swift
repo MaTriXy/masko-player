@@ -25,9 +25,6 @@ public final class MaskoPlayerModule: Module {
       Prop("sound") { (view: MaskoNativeView, on: Bool?) in
         MainActor.assumeIsolated { view.sound = on ?? true }
       }
-      Prop("pointer") { (view: MaskoNativeView, on: Bool?) in
-        MainActor.assumeIsolated { view.pointer = on ?? true }
-      }
       Prop("refreshes") { (view: MaskoNativeView, on: Bool?) in
         MainActor.assumeIsolated { view.refreshes = on ?? false }
       }

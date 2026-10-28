@@ -172,14 +172,6 @@ export class Engine {
     return commands(this.inner.fire(name, instant, now));
   }
 
-  click(now: number): Command[] {
-    return commands(this.inner.click(now));
-  }
-
-  hover(on: boolean, now: number): Command[] {
-    return commands(this.inner.hover(on, now));
-  }
-
   advance(now: number): Command[] {
     return commands(this.inner.advance(now));
   }

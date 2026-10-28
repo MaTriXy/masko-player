@@ -75,13 +75,12 @@ nothing and reports `clip_failed`.
   is not JSON).
 - `sound` is on by default: a clip's own voice is heard; `false` mutes it.
   Edge sounds play either way. The app chooses its `AVAudioSession` category.
-- The view turns taps, clicks, Return and Space into `click`, and the
-  pointer (Mac, iPad) into `pointerHover`. Dragging and physics stay in the
-  app, which sets `heldContact`, `heldShake` and `falling` itself. With
-  `MaskoPlayerView(player:pointer: false)` (or `MaskoView(player:pointer:)`)
-  the view takes no clicks, keys, touches or pointer, so an app that handles
-  the person itself calls `player.set("behavior::pointerHover", on)` and
-  `player.fire("action::click")`.
+- The view does not watch the person. The app sends taps, clicks and the
+  pointer itself, with its own gestures, as it already does for dragging and
+  physics: `player.set("behavior::pointerHover", on)`,
+  `player.fire("action::click")`, and `heldContact`, `heldShake` and
+  `falling`. Each waits for the end of the loop on screen unless the app
+  passes `instant: true`.
 - An `error` event's `detail` says what it is about: the edge of a clip
   error, the name of a refused value, the pose of a pose error.
 - A player shows in one view at a time: the newest view given it that is in

@@ -246,10 +246,6 @@ fn act(p: &mut Player, step: &Value) {
             .set(s[0].as_str().unwrap(), value(&s[1]), instant, now)
     } else if let Some(f) = step.get("fire") {
         p.engine.fire(f.as_str().unwrap(), instant, now)
-    } else if step.get("click").is_some() {
-        p.engine.click(now)
-    } else if let Some(h) = step.get("hover") {
-        p.engine.hover(h.as_bool().unwrap(), now)
     } else if let Some(ms) = step.get("advance") {
         p.advance_to(now + ms.as_u64().unwrap());
         Vec::new()

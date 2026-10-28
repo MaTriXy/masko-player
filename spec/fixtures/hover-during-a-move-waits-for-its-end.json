@@ -1,7 +1,7 @@
 {
   "name": "hover-during-a-move-waits-for-its-end",
-  "about": "The pointer over the mascot during a move lets the move finish; at its end, a boundary, the way to the hover pose starts at once, hop after hop.",
-  "rules": ["5.2", "10.2", "6.4"],
+  "about": "The app sets the pointer over the mascot during a move: the move finishes; at its end, a boundary, the way to the hover pose starts at once, hop after hop.",
+  "rules": ["10.2", "6.4"],
   "canvas": "ko-coffee",
   "steps": [
     {
@@ -48,7 +48,7 @@
       }
     },
     {
-      "hover": true,
+      "set": ["behavior::pointerHover", true],
       "expect": {
         "clock": 5000,
         "pose": "idle",

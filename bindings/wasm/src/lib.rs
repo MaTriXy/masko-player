@@ -64,14 +64,6 @@ impl MaskoEngine {
         json(self.inner.fire(name, instant, ms(now)))
     }
 
-    pub fn click(&mut self, now: f64) -> String {
-        json(self.inner.click(ms(now)))
-    }
-
-    pub fn hover(&mut self, on: bool, now: f64) -> String {
-        json(self.inner.hover(on, ms(now)))
-    }
-
     pub fn advance(&mut self, now: f64) -> String {
         json(self.inner.advance(ms(now)))
     }
