@@ -4,7 +4,7 @@
   "description": "Plays Masko mascots in React Native and Expo apps, with the Masko player for iOS and Android.",
   "license": "MIT",
   "author": "Masko",
-  "homepage": "https://github.com/masko-ai/masko-player/tree/main/react-native#readme",
+  "homepage": "https://masko.ai/docs/player",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/masko-ai/masko-player.git",
