@@ -1,0 +1,19 @@
+name: masko_player_example
+description: Plays the example release with the calls an app makes, and runs the masko_player device tests.
+publish_to: 'none'
+
+environment:
+  sdk: ^3.5.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+  masko_player:
+    path: ../../flutter
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  integration_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0

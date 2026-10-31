@@ -1,0 +1,14 @@
+.dart_tool/
+.flutter-plugins-dependencies
+/build/
+/pubspec.lock
+*.iml
+.idea/
+.DS_Store
+
+# Copied from the repository by scripts/build-flutter.sh, and published with
+# the package (.pubignore keeps them).
+/ios/masko_player/vendor/
+/android/player/
+/LICENSE
+/THIRD_PARTY_NOTICES.md

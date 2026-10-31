@@ -1,0 +1,9 @@
+# pub reads this in place of .gitignore: the same list, without the files
+# scripts/build-flutter.sh copies in, which the package needs.
+.dart_tool/
+.flutter-plugins-dependencies
+/build/
+/pubspec.lock
+*.iml
+.idea/
+.DS_Store

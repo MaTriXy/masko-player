@@ -1,0 +1,32 @@
+name: masko_player
+description: Plays Masko mascots in Flutter apps on iPhone, iPad and Android, with the Masko player for iOS and Android. Apps call set and fire.
+version: 0.1.10
+homepage: https://masko.ai/docs/player
+repository: https://github.com/masko-ai/masko-player/tree/main/flutter
+issue_tracker: https://github.com/masko-ai/masko-player/issues
+topics:
+  - animation
+  - mascot
+  - video
+
+environment:
+  sdk: ^3.5.0
+  flutter: '>=3.24.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  plugin:
+    platforms:
+      android:
+        package: ai.masko.player.flutter
+        pluginClass: MaskoPlayerPlugin
+      ios:
+        pluginClass: MaskoPlayerPlugin

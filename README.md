@@ -12,6 +12,7 @@ call `set` and `fire`, and the canvas decides which clip plays.
 | iPhone, iPad and Mac  | `MaskoPlayer` Swift package  | `apple/`        |
 | Android               | `ai.masko:player`            | `android/`      |
 | React Native and Expo | `@masko/player-react-native` | `react-native/` |
+| Flutter               | `masko_player`               | `flutter/`      |
 
 Install:
 
@@ -22,14 +23,18 @@ Install:
 - **React Native and Expo**: `npm install @masko/player-react-native`
   ([react-native/README.md](react-native/README.md)); it carries the iOS and
   Android players.
+- **Flutter**: `masko_player` in `pubspec.yaml`
+  ([flutter/README.md](flutter/README.md)); not on pub.dev yet, so depend
+  on this repository's `flutter/` folder by path after
+  `scripts/build-flutter.sh`. It carries the iOS and Android players.
 - **Android**: not on Maven Central yet. Build it from this repository
   ([android/README.md](android/README.md)): `scripts/build-android.sh`, then
   `./gradlew :player:publishReleasePublicationToLocalRepository` in
   `android/` writes `ai.masko:player:0.1.10` to `android/player/build/repo`;
   add that folder to your app's Maven repositories.
 
-The React Native package wraps the Swift and Kotlin players; it adds no
-rules of its own.
+The React Native and Flutter packages wrap the Swift and Kotlin players;
+they add no rules of their own.
 
 Every player reads a release delivery: the `delivery` object of the Masko
 API's `GET /v1/canvases/{canvasId}/releases/{releaseId}/delivery`, with
@@ -67,7 +72,9 @@ Every format's size, and a calculator for your own mascot:
 - `bindings/uniffi/`: the engine for Swift and Kotlin (UniFFI).
 - `examples/`: a small app per platform.
 - `scripts/`: `setup.sh` and `env.sh` (the Rust toolchain, the Android SDK),
-  the engine builds for each platform, the Swift engine's release zip
+  the engine builds for each platform, the copies the React Native and
+  Flutter packages take (`build-react-native.sh`, `build-flutter.sh`), the
+  Swift engine's release zip
   (`release-apple.sh`, `zip-xcframework.sh`), and `third-party-notices.mjs`.
 - `.github/workflows/ci.yml`: the checks below, on GitHub Actions.
 
@@ -83,6 +90,7 @@ You need, for the platforms you build:
 - Java 17, and the Android SDK with NDK 27.1.12297006 at `ANDROID_HOME`
   (Android Studio's folder by default): Android, and React Native on
   Android.
+- Flutter 3.24 or later: Flutter (CI and the device tests use 3.47.9).
 
 Then install Rust into `.toolchain/`, inside this repository:
 
@@ -142,12 +150,20 @@ React Native (these checks need no native build; the example app needs
 (cd react-native && npm install && npm run typecheck && npm run lint && npm test)
 ```
 
+Flutter (these checks need no native build; the example app and its device
+tests need `scripts/build-flutter.sh` first):
+
+```bash
+(cd flutter && flutter pub get && flutter analyze && flutter test)
+```
+
 Each platform's README has its own details and device checks.
 
 ## Releases
 
 1. Set the version in `web/package.json`, `react-native/package.json`,
-   `android/player/build.gradle.kts` and `react-native/android/build.gradle`.
+   `android/player/build.gradle.kts`, `react-native/android/build.gradle`,
+   `flutter/pubspec.yaml` and `flutter/android/build.gradle.kts`.
 2. Build the Swift package's engine with `scripts/release-apple.sh <version>`
    and commit `Package.swift` (`apple/README.md`, "Releases").
 3. Tag that commit with the version itself (`0.2.0`, no `v`) and push the
@@ -155,6 +171,10 @@ Each platform's README has its own details and device checks.
    `@masko/player` and `@masko/player-react-native` to npm. npm trusts that
    workflow (trusted publishing), so no token or one-time code is needed.
 4. Make the GitHub release for the tag and attach the Swift engine's zip.
+5. Publish `masko_player` to pub.dev from `flutter/` (`flutter/README.md`,
+   "Releases"). pub.dev takes the first version only from its owner's own
+   `dart pub publish`; after it, the package's admin page can let this
+   repository's tags publish.
 
 ## License
 

@@ -146,3 +146,27 @@ jobs:
         run: npm run lint
       - name: Test
         run: npm test
+
+  flutter:
+    name: Flutter
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install Flutter
+        run: |
+          curl -fsSL https://storage.googleapis.com/flutter_infra_release/releases/stable/linux/flutter_linux_3.47.9-stable.tar.xz \
+            | tar -xJ -C "$RUNNER_TEMP"
+          echo "$RUNNER_TEMP/flutter/bin" >> "$GITHUB_PATH"
+      # These checks need no native build: the package's Android and iOS
+      # builds take the players scripts/build-flutter.sh copies in, and run
+      # by hand (flutter/README.md).
+      - name: Analyze the package and the example
+        run: |
+          (cd flutter && flutter pub get && flutter analyze)
+          (cd examples/flutter && flutter pub get && flutter analyze)
+      - name: Test
+        working-directory: flutter
+        run: flutter test

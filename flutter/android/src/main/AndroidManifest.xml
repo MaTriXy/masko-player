@@ -1,0 +1,6 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- Clips, stills and sounds are loaded from the delivery's links. -->
+    <uses-permission android:name="android.permission.INTERNET" />
+
+</manifest>
