@@ -34,6 +34,21 @@ privacy manifest (`PrivacyInfo.xcprivacy`): no tracking, no data collected,
 and the system boot time (`ProcessInfo.systemUptime`, reason `35F9.1`) for
 the play-time clock.
 
+A Mac app built for Apple silicon and Intel at once from the command line,
+`swift build --arch arm64 --arch x86_64`, fails to link with Xcode 16's
+linker (an assertion in `ObjCClassReadOnlyDataRef`): that build merges dav1d,
+whose ARM assembly is not split by symbol, into the player's object file.
+Xcode and `xcodebuild` builds, for both architectures too, link dav1d only
+into the app and are not affected. From the command line, build each
+architecture on its own and join them:
+
+```bash
+swift build -c release --arch arm64
+swift build -c release --arch x86_64
+lipo -create "$(swift build -c release --arch arm64 --show-bin-path)/MyApp" \
+  "$(swift build -c release --arch x86_64 --show-bin-path)/MyApp" -output MyApp
+```
+
 ## Use
 
 ```swift
