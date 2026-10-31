@@ -23,10 +23,9 @@ Install:
 - **React Native and Expo**: `npm install @masko/player-react-native`
   ([react-native/README.md](react-native/README.md)); it carries the iOS and
   Android players.
-- **Flutter**: `masko_player` in `pubspec.yaml`
-  ([flutter/README.md](flutter/README.md)); not on pub.dev yet, so depend
-  on this repository's `flutter/` folder by path after
-  `scripts/build-flutter.sh`. It carries the iOS and Android players.
+- **Flutter**: `flutter pub add masko_player`
+  ([flutter/README.md](flutter/README.md)); it carries the iOS and Android
+  players.
 - **Android**: not on Maven Central yet. Build it from this repository
   ([android/README.md](android/README.md)): `scripts/build-android.sh`, then
   `./gradlew :player:publishReleasePublicationToLocalRepository` in
@@ -168,13 +167,10 @@ Each platform's README has its own details and device checks.
    and commit `Package.swift` (`apple/README.md`, "Releases").
 3. Tag that commit with the version itself (`0.2.0`, no `v`) and push the
    tag. `.github/workflows/release.yml` builds and publishes
-   `@masko/player` and `@masko/player-react-native` to npm. npm trusts that
-   workflow (trusted publishing), so no token or one-time code is needed.
+   `@masko/player` and `@masko/player-react-native` to npm, and
+   `masko_player` to pub.dev. npm and pub.dev trust that workflow (trusted
+   publishing), so no token or one-time code is needed.
 4. Make the GitHub release for the tag and attach the Swift engine's zip.
-5. Publish `masko_player` to pub.dev from `flutter/` (`flutter/README.md`,
-   "Releases"). pub.dev takes the first version only from its owner's own
-   `dart pub publish`; after it, the package's admin page can let this
-   repository's tags publish.
 
 ## License
 
