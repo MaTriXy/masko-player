@@ -183,21 +183,23 @@ script warns when that happens, and `swift package purge-cache` clears it.
 scripts/release-apple.sh 0.1.0
 ```
 
-It builds the engine, writes
-`target/apple-release/<version>/MaskoPlayerFFI.xcframework.zip` (the
-xcframework at the top of the zip, as SwiftPM expects), and sets
-`releaseURL`
-(`https://github.com/masko-ai/masko-player/releases/download/<version>/MaskoPlayerFFI.xcframework.zip`)
-and `releaseChecksum` (`swift package compute-checksum`) in `Package.swift`.
-Every file in the zip is dated to the commit it builds from, so the same
-commit gives the same zip (`scripts/zip-xcframework.sh`; its check is
-`scripts/test-zip-xcframework.sh`). Then:
+It builds the engine and dav1d, writes
+`target/apple-release/<version>/MaskoPlayerFFI.xcframework.zip` and
+`dav1d.xcframework.zip` (each xcframework at the top of its zip, as SwiftPM
+expects), and sets `releaseURL` and `releaseChecksum`, and
+`dav1dReleaseURL` and `dav1dReleaseChecksum` (`swift package
+compute-checksum`), in `Package.swift`, pointing at the GitHub release named
+after the version. Every file in a zip is dated to the commit it builds
+from, so the same commit gives the same zip (`scripts/zip-xcframework.sh`;
+its check is `scripts/test-zip-xcframework.sh`). Then:
 
 1. Commit `Package.swift` with `Sources/MaskoPlayer/Generated/` from the
    same build: the bindings must match the engine in the zip.
-2. Tag that commit with the version itself (`0.1.0`, no `v`), push it, and
-   make the GitHub release for the tag.
-3. Attach the zip to the release, under its own name.
+2. Tag that commit with the version itself (`0.1.0`, no `v`) and push it.
+3. Make the GitHub release for the tag with both zips, under their own
+   names: `gh release create <version> target/apple-release/<version>/*.zip`.
 
-Run the script again after any engine change: the zip, its checksum and the
-bindings go together.
+Run the script for a release whose engine, dav1d or bindings changed: the
+zips, their checksums and the bindings go together. A release without such a
+change keeps the earlier release's zips. [RELEASING.md](../RELEASING.md) has
+the whole release, with the other packages.

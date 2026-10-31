@@ -199,13 +199,14 @@ package whose folder name differs from its name (`flutter` here,
 
 ## Releases
 
-A version tag publishes it from `../.github/workflows/release.yml` (the
-repository's README, "Releases"), with the other packages: the job builds
-the native players, copies them in with `scripts/build-flutter.sh`, runs the
-checks above and publishes. pub.dev trusts that workflow for tags that match
-`{{version}}` (the package's admin page, "Automated publishing"), so no
-token is needed. Set the version in `pubspec.yaml` and
-`android/build.gradle.kts` with the other packages.
+A version tag publishes it from `../.github/workflows/release.yml`, with the
+other packages (`../RELEASING.md`): the job builds the native players,
+copies them in with `scripts/build-flutter.sh`, runs the checks above and
+publishes. pub.dev trusts that workflow for tags that match `{{version}}`
+(the package's admin page, "Automated publishing"), so no token is needed.
+`../scripts/set-version.sh` sets the version in `pubspec.yaml` and
+`android/build.gradle.kts` with the other packages; `CHANGELOG.md` takes an
+entry for each version, written by hand.
 
 To see what a release would publish:
 

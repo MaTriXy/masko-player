@@ -247,7 +247,7 @@ repository), the AAR, sources and javadoc jars, all signed. Once:
    too, instead of the in-memory key.
 
 A version tag publishes it from `../.github/workflows/release.yml`, with the
-other packages (the repository's README, "Releases"): the job builds the
+other packages (`../RELEASING.md`): the job builds the
 engine, runs the tests and lint, and runs `publishAndReleaseToMavenCentral`,
 which leaves no step on the portal. It reads the repository secrets
 `MAVEN_CENTRAL_USERNAME` and `MAVEN_CENTRAL_PASSWORD` (the user token),

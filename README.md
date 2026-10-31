@@ -158,19 +158,14 @@ Each platform's README has its own details and device checks.
 
 ## Releases
 
-1. Set the version in `web/package.json`, `react-native/package.json`,
-   `android/player/build.gradle.kts`, `react-native/android/build.gradle`,
-   `flutter/pubspec.yaml` and `flutter/android/build.gradle.kts`.
-2. Build the Swift package's engine with `scripts/release-apple.sh <version>`
-   and commit `Package.swift` (`apple/README.md`, "Releases").
-3. Tag that commit with the version itself (`0.2.0`, no `v`) and push the
-   tag. `.github/workflows/release.yml` builds and publishes
-   `@masko/player` and `@masko/player-react-native` to npm, `masko_player`
-   to pub.dev and `ai.masko:player` to Maven Central. npm and pub.dev trust
-   that workflow (trusted publishing), so no token or one-time code is
-   needed; Maven Central reads its token and signing key from repository
-   secrets (`android/README.md`, "Publish to Maven Central").
-4. Make the GitHub release for the tag and attach the Swift engine's zip.
+[RELEASING.md](RELEASING.md) has every step, from the command line:
+`scripts/set-version.sh <version>` sets one version in every package, and a
+version tag (`0.2.0`, no `v`) publishes `@masko/player` and
+`@masko/player-react-native` to npm, `masko_player` to pub.dev and
+`ai.masko:player` to Maven Central from `.github/workflows/release.yml`.
+The Swift package is the tag, with its engine zips on a GitHub release when
+the engine changed. It also lists the credentials, the checks after a
+release, and what to do when a job fails.
 
 ## License
 
