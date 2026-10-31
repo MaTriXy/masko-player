@@ -22,12 +22,14 @@ What an Electron app needs to know:
   (`renderer.js`). Loaded from local files, the engine's `.wasm` file next to
   the module may not be fetchable; the player then uses its built-in copy,
   with nothing to configure.
-- A Content Security Policy (`index.html`) needs four things, each checked by
-  removing it: `script-src 'wasm-unsafe-eval'` (without it the engine does
-  not start: `engine_unavailable`), `media-src` with the clips' host (nothing
-  plays), `connect-src` with the same host (the next clips cannot download
-  ahead) and `media-src blob:` (the downloaded clips are refused, and moves
-  start late). Clips from Masko's CDN come from `https://assets.masko.ai`.
+- A Content Security Policy (`index.html`) follows the web README's list.
+  Four parts were checked by removing each: `script-src 'wasm-unsafe-eval'`
+  (without it the engine does not start: `engine_unavailable`), `media-src`
+  with the clips' host (nothing plays), `connect-src` with the same host (the
+  next clips cannot download ahead) and `media-src blob:` (the downloaded
+  clips are refused, and moves start late). `style-src 'unsafe-inline'` lets
+  in the small style element the player adds. Clips from Masko's CDN come
+  from `https://assets.masko.ai`.
 - The release delivery comes from your backend, as on the web: never put the
   API key in the app.
 - The window is the app's business: `transparent: true` and `frame: false`
