@@ -16,7 +16,8 @@ call `set` and `fire`, and the canvas decides which clip plays.
 
 Install:
 
-- **Web**: `npm install @masko/player` ([web/README.md](web/README.md)).
+- **Web**: `npm install @masko/player` ([web/README.md](web/README.md)). It
+  runs in Electron too ([examples/electron](examples/electron)).
 - **Apple**: add `https://github.com/masko-ai/masko-player` from `0.1.0` in
   Xcode or `Package.swift`, product `MaskoPlayer`
   ([apple/README.md](apple/README.md)).
@@ -26,11 +27,8 @@ Install:
 - **Flutter**: `flutter pub add masko_player`
   ([flutter/README.md](flutter/README.md)); it carries the iOS and Android
   players.
-- **Android**: not on Maven Central yet. Build it from this repository
-  ([android/README.md](android/README.md)): `scripts/build-android.sh`, then
-  `./gradlew :player:publishReleasePublicationToLocalRepository` in
-  `android/` writes `ai.masko:player:0.1.10` to `android/player/build/repo`;
-  add that folder to your app's Maven repositories.
+- **Android**: `implementation("ai.masko:player:0.1.10")` from Maven Central
+  ([android/README.md](android/README.md)).
 
 The React Native and Flutter packages wrap the Swift and Kotlin players;
 they add no rules of their own.
@@ -167,9 +165,11 @@ Each platform's README has its own details and device checks.
    and commit `Package.swift` (`apple/README.md`, "Releases").
 3. Tag that commit with the version itself (`0.2.0`, no `v`) and push the
    tag. `.github/workflows/release.yml` builds and publishes
-   `@masko/player` and `@masko/player-react-native` to npm, and
-   `masko_player` to pub.dev. npm and pub.dev trust that workflow (trusted
-   publishing), so no token or one-time code is needed.
+   `@masko/player` and `@masko/player-react-native` to npm, `masko_player`
+   to pub.dev and `ai.masko:player` to Maven Central. npm and pub.dev trust
+   that workflow (trusted publishing), so no token or one-time code is
+   needed; Maven Central reads its token and signing key from repository
+   secrets (`android/README.md`, "Publish to Maven Central").
 4. Make the GitHub release for the tag and attach the Swift engine's zip.
 
 ## License

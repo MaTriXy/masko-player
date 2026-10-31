@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <!--
+      The player needs: 'wasm-unsafe-eval' to start its engine, connect-src for
+      the hosts its clips come from (it downloads them), and media-src blob:
+      to play the downloaded files. A release from Masko's CDN uses
+      https://assets.masko.ai.
+    -->
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; connect-src 'self' https://assets.masko.ai; media-src 'self' blob: https://assets.masko.ai; style-src 'self' 'unsafe-inline'"
+    />
+    <title>Masko player in Electron</title>
+    <style>
+      html, body { margin: 0; height: 100%; background: transparent; overflow: hidden; }
+      #mascot { width: 100vw; height: 100vh; cursor: pointer; }
+    </style>
+    <script type="module" src="renderer.js"></script>
+  </head>
+  <body>
+    <div id="mascot"></div>
+  </body>
+</html>

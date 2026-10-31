@@ -9,7 +9,7 @@ engine's commands, as `../spec/player.md` describes.
 ## Install
 
 Minimum SDK 24 (Android 7.0), Java 17, a hardware-accelerated window (the
-default). Once `ai.masko:player` is on Maven Central:
+default). From Maven Central:
 
 ```kotlin
 // settings.gradle.kts: repositories { google(); mavenCentral() }
@@ -17,9 +17,6 @@ dependencies {
     implementation("ai.masko:player:0.1.10")
 }
 ```
-
-Until then, build it from this repository (Build, below) and use the local
-Maven repository it writes, `player/build/repo`.
 
 The engine library is built for `arm64-v8a`, `armeabi-v7a` and `x86_64`. JNA
 also ships its own library for other ABIs, so an app should keep only these:
@@ -249,7 +246,15 @@ repository), the AAR, sources and javadoc jars, all signed. Once:
    `signing.keyId`, `signing.password` and `signing.secretKeyRingFile` work
    too, instead of the in-memory key.
 
-Each release:
+A version tag publishes it from `../.github/workflows/release.yml`, with the
+other packages (the repository's README, "Releases"): the job builds the
+engine, runs the tests and lint, and runs `publishAndReleaseToMavenCentral`,
+which leaves no step on the portal. It reads the repository secrets
+`MAVEN_CENTRAL_USERNAME` and `MAVEN_CENTRAL_PASSWORD` (the user token),
+`MAVEN_SIGNING_KEY` (the whole armored export) and
+`MAVEN_SIGNING_KEY_PASSWORD`.
+
+By hand:
 
 ```bash
 scripts/build-android.sh

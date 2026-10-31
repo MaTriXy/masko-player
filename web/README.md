@@ -16,6 +16,13 @@ It runs in Chrome and Edge 87, Firefox 79, and Safari 15 (iOS 15) or later:
 the engine's WebAssembly needs bulk memory and non-trapping float-to-int
 conversions.
 
+It runs unchanged in Electron apps, including in a transparent window as a
+desktop mascot:
+[`examples/electron`](https://github.com/masko-ai/masko-player/tree/main/examples/electron)
+shows one, with the Content Security Policy the player needs
+(`'wasm-unsafe-eval'`, and the clips' host in `connect-src` and `media-src`
+with `blob:`).
+
 ## Use
 
 ```ts
